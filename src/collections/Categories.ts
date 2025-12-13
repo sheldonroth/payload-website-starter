@@ -24,5 +24,27 @@ export const Categories: CollectionConfig = {
     slugField({
       position: undefined,
     }),
+    {
+      name: 'icon',
+      type: 'text',
+      admin: {
+        description: 'Emoji icon for the category (e.g., 📱)',
+      },
+    },
+    {
+      name: 'imageUrl',
+      type: 'text',
+      admin: {
+        description: 'URL to the category image',
+      },
+    },
+    {
+      name: 'productCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        description: 'Number of products in this category (auto-updated)',
+      },
+    },
   ],
 }
