@@ -2,7 +2,6 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
-import { slugField } from 'payload'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -13,37 +12,31 @@ export const Categories: CollectionConfig = {
     update: authenticated,
   },
   admin: {
-    useAsTitle: 'title',
+    useAsTitle: 'name',
   },
   fields: [
     {
-      name: 'title',
+      name: 'name',
       type: 'text',
       required: true,
     },
-    slugField({
-      position: undefined,
-    }),
     {
       name: 'icon',
       type: 'text',
       admin: {
-        description: 'Emoji icon for the category (e.g., 📱)',
-      },
-    },
-    {
-      name: 'imageUrl',
-      type: 'text',
-      admin: {
-        description: 'URL to the category image',
+        description: 'Icon name for the category',
       },
     },
     {
       name: 'productCount',
       type: 'number',
       defaultValue: 0,
+    },
+    {
+      name: 'imageUrl',
+      type: 'text',
       admin: {
-        description: 'Number of products in this category (auto-updated)',
+        description: 'URL to the category image',
       },
     },
   ],

@@ -28,14 +28,15 @@ export const Products: CollectionConfig = {
         },
         {
             name: 'category',
-            type: 'relationship',
-            relationTo: 'categories',
+            type: 'text',
             required: true,
+            admin: {
+                description: 'Category slug (e.g., "smartphones", "laptops")',
+            },
         },
         {
             name: 'imageUrl',
             type: 'text',
-            required: true,
             admin: {
                 description: 'URL to the product image',
             },
@@ -43,7 +44,6 @@ export const Products: CollectionConfig = {
         {
             name: 'overallScore',
             type: 'number',
-            required: true,
             min: 0,
             max: 100,
             admin: {
@@ -53,7 +53,6 @@ export const Products: CollectionConfig = {
         {
             name: 'priceRange',
             type: 'text',
-            required: true,
             admin: {
                 description: 'e.g., "$999 - $1,299"',
             },
@@ -67,28 +66,24 @@ export const Products: CollectionConfig = {
                     type: 'number',
                     min: 0,
                     max: 100,
-                    defaultValue: 0,
                 },
                 {
                     name: 'reliability',
                     type: 'number',
                     min: 0,
                     max: 100,
-                    defaultValue: 0,
                 },
                 {
                     name: 'valueForMoney',
                     type: 'number',
                     min: 0,
                     max: 100,
-                    defaultValue: 0,
                 },
                 {
                     name: 'features',
                     type: 'number',
                     min: 0,
                     max: 100,
-                    defaultValue: 0,
                 },
             ],
         },
@@ -97,7 +92,7 @@ export const Products: CollectionConfig = {
             type: 'array',
             fields: [
                 {
-                    name: 'item',
+                    name: 'text',
                     type: 'text',
                     required: true,
                 },
@@ -108,7 +103,7 @@ export const Products: CollectionConfig = {
             type: 'array',
             fields: [
                 {
-                    name: 'item',
+                    name: 'text',
                     type: 'text',
                     required: true,
                 },
@@ -117,12 +112,10 @@ export const Products: CollectionConfig = {
         {
             name: 'summary',
             type: 'textarea',
-            required: true,
         },
         {
             name: 'reviewDate',
             type: 'date',
-            required: true,
         },
         {
             name: 'isBestBuy',
