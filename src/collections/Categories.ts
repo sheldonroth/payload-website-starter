@@ -1,15 +1,9 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
-
 export const Categories: CollectionConfig = {
   slug: 'categories',
   access: {
-    create: authenticated,
-    delete: authenticated,
-    read: anyone,
-    update: authenticated,
+    read: () => true,
   },
   admin: {
     useAsTitle: 'name',
@@ -19,25 +13,32 @@ export const Categories: CollectionConfig = {
       name: 'name',
       type: 'text',
       required: true,
+      label: 'Category Name',
     },
     {
       name: 'icon',
       type: 'text',
+      label: 'Icon Name',
       admin: {
-        description: 'Icon name for the category',
+        description: 'Ionicons icon name (e.g., "water-outline")',
       },
     },
     {
       name: 'productCount',
       type: 'number',
       defaultValue: 0,
+      label: 'Number of Products',
     },
     {
       name: 'imageUrl',
       type: 'text',
-      admin: {
-        description: 'URL to the category image',
-      },
+      label: 'Image URL',
+    },
+    {
+      name: 'image',
+      type: 'upload',
+      relationTo: 'media',
+      label: 'Category Image',
     },
   ],
 }

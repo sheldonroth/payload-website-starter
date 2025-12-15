@@ -1,15 +1,9 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
-
 export const Products: CollectionConfig = {
     slug: 'products',
     access: {
-        create: authenticated,
-        delete: authenticated,
-        read: anyone,
-        update: authenticated,
+        read: () => true,
     },
     admin: {
         useAsTitle: 'name',
@@ -20,46 +14,49 @@ export const Products: CollectionConfig = {
             name: 'name',
             type: 'text',
             required: true,
+            label: 'Product Name',
         },
         {
             name: 'brand',
             type: 'text',
             required: true,
+            label: 'Brand Name',
         },
         {
             name: 'category',
             type: 'text',
             required: true,
-            admin: {
-                description: 'Category slug (e.g., "smartphones", "laptops")',
-            },
+            label: 'Category Name',
         },
         {
             name: 'imageUrl',
             type: 'text',
-            admin: {
-                description: 'URL to the product image',
-            },
+            label: 'Image URL',
+        },
+        {
+            name: 'image',
+            type: 'upload',
+            relationTo: 'media',
+            label: 'Product Image',
         },
         {
             name: 'overallScore',
             type: 'number',
+            required: true,
             min: 0,
             max: 100,
-            admin: {
-                description: 'Overall score from 0-100',
-            },
+            label: 'Overall Score',
         },
         {
             name: 'priceRange',
             type: 'text',
-            admin: {
-                description: 'e.g., "$999 - $1,299"',
-            },
+            defaultValue: '$-$$',
+            label: 'Price Range',
         },
         {
             name: 'ratings',
             type: 'group',
+            label: 'Ratings',
             fields: [
                 {
                     name: 'performance',
@@ -90,6 +87,7 @@ export const Products: CollectionConfig = {
         {
             name: 'pros',
             type: 'array',
+            label: 'Pros',
             fields: [
                 {
                     name: 'text',
@@ -101,6 +99,7 @@ export const Products: CollectionConfig = {
         {
             name: 'cons',
             type: 'array',
+            label: 'Cons',
             fields: [
                 {
                     name: 'text',
@@ -112,20 +111,29 @@ export const Products: CollectionConfig = {
         {
             name: 'summary',
             type: 'textarea',
+            label: 'Product Summary',
         },
         {
             name: 'reviewDate',
             type: 'date',
+            label: 'Review Date',
+            admin: {
+                date: {
+                    pickerAppearance: 'dayOnly',
+                },
+            },
         },
         {
             name: 'isBestBuy',
             type: 'checkbox',
             defaultValue: false,
+            label: 'Is Best Buy',
         },
         {
             name: 'isRecommended',
             type: 'checkbox',
             defaultValue: false,
+            label: 'Is Recommended',
         },
     ],
 }
