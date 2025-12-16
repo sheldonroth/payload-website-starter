@@ -69,6 +69,8 @@ export interface Config {
   collections: {
     pages: Page;
     posts: Post;
+    products: Product;
+    articles: Article;
     media: Media;
     categories: Category;
     users: User;
@@ -91,6 +93,8 @@ export interface Config {
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
+    products: ProductsSelect<false> | ProductsSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -393,12 +397,14 @@ export interface FolderInterface {
  */
 export interface Category {
   id: number;
-  title: string;
+  name: string;
   /**
-   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   * Ionicons icon name (e.g., "water-outline")
    */
-  generateSlug?: boolean | null;
-  slug: string;
+  icon?: string | null;
+  productCount?: number | null;
+  imageUrl?: string | null;
+  image?: (number | null) | Media;
   parent?: (number | null) | Category;
   breadcrumbs?:
     | {
@@ -780,6 +786,90 @@ export interface Form {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products".
+ */
+export interface Product {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  imageUrl?: string | null;
+  image?: (number | null) | Media;
+  overallScore: number;
+  priceRange?: string | null;
+  ratings?: {
+    performance?: number | null;
+    reliability?: number | null;
+    valueForMoney?: number | null;
+    features?: number | null;
+  };
+  pros?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  cons?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  summary?: string | null;
+  reviewDate?: string | null;
+  isBestBuy?: boolean | null;
+  isRecommended?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  title: string;
+  /**
+   * Short summary shown in article cards
+   */
+  excerpt: string;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * URL to the article cover image
+   */
+  imageUrl: string;
+  category: 'Buying Guide' | 'Investigation' | 'Deals' | 'Behind the Scenes' | 'Health' | 'News';
+  author: string;
+  publishedAt: string;
+  /**
+   * Estimated reading time in minutes
+   */
+  readTime: number;
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -975,6 +1065,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'posts';
         value: number | Post;
+      } | null)
+    | ({
+        relationTo: 'products';
+        value: number | Product;
+      } | null)
+    | ({
+        relationTo: 'articles';
+        value: number | Article;
       } | null)
     | ({
         relationTo: 'media';
@@ -1218,6 +1316,67 @@ export interface PostsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products_select".
+ */
+export interface ProductsSelect<T extends boolean = true> {
+  name?: T;
+  brand?: T;
+  category?: T;
+  imageUrl?: T;
+  image?: T;
+  overallScore?: T;
+  priceRange?: T;
+  ratings?:
+    | T
+    | {
+        performance?: T;
+        reliability?: T;
+        valueForMoney?: T;
+        features?: T;
+      };
+  pros?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  cons?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  summary?: T;
+  reviewDate?: T;
+  isBestBuy?: T;
+  isRecommended?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  title?: T;
+  excerpt?: T;
+  content?: T;
+  imageUrl?: T;
+  category?: T;
+  author?: T;
+  publishedAt?: T;
+  readTime?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -1315,9 +1474,11 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "categories_select".
  */
 export interface CategoriesSelect<T extends boolean = true> {
-  title?: T;
-  generateSlug?: T;
-  slug?: T;
+  name?: T;
+  icon?: T;
+  productCount?: T;
+  imageUrl?: T;
+  image?: T;
   parent?: T;
   breadcrumbs?:
     | T
