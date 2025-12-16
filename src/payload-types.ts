@@ -399,13 +399,35 @@ export interface Category {
   id: number;
   name: string;
   /**
-   * Ionicons icon name (e.g., "water-outline")
+   * Used in URLs (e.g., "smartphones")
+   */
+  slug: string;
+  /**
+   * Brief description for SEO and category pages
+   */
+  description?: string | null;
+  /**
+   * Use emoji (📱) or Ionicons name
    */
   icon?: string | null;
+  /**
+   * Create sub-categories (e.g., Electronics > Smartphones)
+   */
+  parent?: (number | null) | Category;
+  /**
+   * Auto-calculated
+   */
   productCount?: number | null;
   imageUrl?: string | null;
   image?: (number | null) | Media;
-  parent?: (number | null) | Category;
+  /**
+   * Show on homepage
+   */
+  featured?: boolean | null;
+  /**
+   * Lower numbers appear first
+   */
+  sortOrder?: number | null;
   breadcrumbs?:
     | {
         doc?: (number | null) | Category;
@@ -792,17 +814,49 @@ export interface Product {
   id: number;
   name: string;
   brand: string;
-  category: string;
+  category: number | Category;
+  /**
+   * Use this OR upload an image below
+   */
   imageUrl?: string | null;
   image?: (number | null) | Media;
-  overallScore: number;
-  priceRange?: string | null;
+  /**
+   * Auto-calculated from ratings below
+   */
+  overallScore?: number | null;
+  /**
+   * Auto-calculated rank within category
+   */
+  rankInCategory?: number | null;
+  /**
+   * Overall score is auto-calculated: Performance 30%, Reliability 25%, Value 25%, Features 20%
+   */
   ratings?: {
     performance?: number | null;
     reliability?: number | null;
     valueForMoney?: number | null;
     features?: number | null;
   };
+  badges?: {
+    /**
+     * Top product in this category
+     */
+    isBestInCategory?: boolean | null;
+    /**
+     * Editor-approved quality product
+     */
+    isRecommended?: boolean | null;
+    /**
+     * Best price-to-performance ratio
+     */
+    isBestValue?: boolean | null;
+    /**
+     * Exceptional product (rare)
+     */
+    isEditorsChoice?: boolean | null;
+  };
+  status?: ('draft' | 'testing' | 'writing' | 'review' | 'published') | null;
+  priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
   pros?:
     | {
         text: string;
@@ -815,8 +869,47 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Brief overview for cards and previews
+   */
   summary?: string | null;
-  reviewDate?: string | null;
+  fullReview?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  purchaseLinks?:
+    | {
+        retailer: string;
+        url: string;
+        price?: string | null;
+        isAffiliate?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Link related products for comparison
+   */
+  comparedWith?: (number | Product)[] | null;
+  testingInfo?: {
+    reviewDate?: string | null;
+    lastTestedDate?: string | null;
+    versionTested?: string | null;
+    /**
+     * Notes about changes since last review
+     */
+    updateNotes?: string | null;
+  };
   isBestBuy?: boolean | null;
   isRecommended?: boolean | null;
   updatedAt: string;
@@ -830,7 +923,11 @@ export interface Article {
   id: number;
   title: string;
   /**
-   * Short summary shown in article cards
+   * URL-friendly slug (e.g., "best-headphones-2024")
+   */
+  slug: string;
+  /**
+   * Short summary shown in article cards (150-200 chars)
    */
   excerpt: string;
   content: {
@@ -849,22 +946,32 @@ export interface Article {
     [k: string]: unknown;
   };
   /**
-   * URL to the article cover image
+   * URL to external cover image
    */
-  imageUrl: string;
-  category: 'Buying Guide' | 'Investigation' | 'Deals' | 'Behind the Scenes' | 'Health' | 'News';
-  author: string;
-  publishedAt: string;
-  /**
-   * Estimated reading time in minutes
-   */
-  readTime: number;
+  imageUrl?: string | null;
+  image?: (number | null) | Media;
+  category: 'buying-guide' | 'investigation' | 'deals' | 'behind-the-scenes' | 'health' | 'news' | 'comparison';
   tags?:
     | {
         tag: string;
         id?: string | null;
       }[]
     | null;
+  /**
+   * Products mentioned in this article
+   */
+  relatedProducts?: (number | Product)[] | null;
+  author: string;
+  publishedAt: string;
+  /**
+   * Estimated reading time in minutes
+   */
+  readTime: number;
+  status?: ('draft' | 'review' | 'published') | null;
+  /**
+   * Show on homepage
+   */
+  featured?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1325,7 +1432,7 @@ export interface ProductsSelect<T extends boolean = true> {
   imageUrl?: T;
   image?: T;
   overallScore?: T;
-  priceRange?: T;
+  rankInCategory?: T;
   ratings?:
     | T
     | {
@@ -1334,6 +1441,16 @@ export interface ProductsSelect<T extends boolean = true> {
         valueForMoney?: T;
         features?: T;
       };
+  badges?:
+    | T
+    | {
+        isBestInCategory?: T;
+        isRecommended?: T;
+        isBestValue?: T;
+        isEditorsChoice?: T;
+      };
+  status?: T;
+  priceRange?: T;
   pros?:
     | T
     | {
@@ -1347,7 +1464,25 @@ export interface ProductsSelect<T extends boolean = true> {
         id?: T;
       };
   summary?: T;
-  reviewDate?: T;
+  fullReview?: T;
+  purchaseLinks?:
+    | T
+    | {
+        retailer?: T;
+        url?: T;
+        price?: T;
+        isAffiliate?: T;
+        id?: T;
+      };
+  comparedWith?: T;
+  testingInfo?:
+    | T
+    | {
+        reviewDate?: T;
+        lastTestedDate?: T;
+        versionTested?: T;
+        updateNotes?: T;
+      };
   isBestBuy?: T;
   isRecommended?: T;
   updatedAt?: T;
@@ -1359,19 +1494,24 @@ export interface ProductsSelect<T extends boolean = true> {
  */
 export interface ArticlesSelect<T extends boolean = true> {
   title?: T;
+  slug?: T;
   excerpt?: T;
   content?: T;
   imageUrl?: T;
+  image?: T;
   category?: T;
-  author?: T;
-  publishedAt?: T;
-  readTime?: T;
   tags?:
     | T
     | {
         tag?: T;
         id?: T;
       };
+  relatedProducts?: T;
+  author?: T;
+  publishedAt?: T;
+  readTime?: T;
+  status?: T;
+  featured?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1475,11 +1615,15 @@ export interface MediaSelect<T extends boolean = true> {
  */
 export interface CategoriesSelect<T extends boolean = true> {
   name?: T;
+  slug?: T;
+  description?: T;
   icon?: T;
+  parent?: T;
   productCount?: T;
   imageUrl?: T;
   image?: T;
-  parent?: T;
+  featured?: T;
+  sortOrder?: T;
   breadcrumbs?:
     | T
     | {
