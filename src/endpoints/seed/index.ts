@@ -131,8 +131,7 @@ export const seed = async ({
       payload.create({
         collection: 'categories',
         data: {
-          title: category,
-          slug: category,
+          name: category,
         },
       }),
     ),
