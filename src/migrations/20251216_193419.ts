@@ -60,7 +60,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   );
   
   DROP INDEX "categories_slug_idx";
-  ALTER TABLE "categories" ADD COLUMN "name" varchar NOT NULL;
+  ALTER TABLE "categories" ADD COLUMN "name" varchar;
+  UPDATE "categories" SET "name" = "title";
+  ALTER TABLE "categories" ALTER COLUMN "name" SET NOT NULL;
   ALTER TABLE "categories" ADD COLUMN "icon" varchar;
   ALTER TABLE "categories" ADD COLUMN "product_count" numeric DEFAULT 0;
   ALTER TABLE "categories" ADD COLUMN "image_url" varchar;
