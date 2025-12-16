@@ -132,6 +132,7 @@ export const seed = async ({
         collection: 'categories',
         data: {
           name: category,
+          slug: category.toLowerCase().replace(/\s+/g, '-'),
         },
       }),
     ),
