@@ -103,15 +103,17 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     ALTER TABLE "products" ADD COLUMN "testing_info_update_notes" varchar;
   `)
 
-  // Handle price_range column type change
+  // Handle price_range column type change - must drop default first
   await db.execute(sql`
-    ALTER TABLE "products" ALTER COLUMN "price_range" SET DATA TYPE varchar;
+    ALTER TABLE "products" ALTER COLUMN "price_range" DROP DEFAULT;
   `)
   await db.execute(sql`
     UPDATE "products" SET "price_range" = '$$' WHERE "price_range" IS NULL OR "price_range" NOT IN ('$', '$$', '$$$', '$$$$');
   `)
   await db.execute(sql`
     ALTER TABLE "products" ALTER COLUMN "price_range" SET DATA TYPE "public"."enum_products_price_range" USING "price_range"::"public"."enum_products_price_range";
+  `)
+  await db.execute(sql`
     ALTER TABLE "products" ALTER COLUMN "price_range" SET DEFAULT '$$'::"public"."enum_products_price_range";
   `)
 
