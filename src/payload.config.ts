@@ -18,6 +18,7 @@ import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
 import { migrations } from './migrations'
+import { oauthEndpoints } from './endpoints/oauth'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -76,6 +77,7 @@ export default buildConfig({
     process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
   ].filter(Boolean) as string[],
   globals: [Header, Footer],
+  endpoints: oauthEndpoints,
   plugins: [
     ...plugins,
     vercelBlobStorage({

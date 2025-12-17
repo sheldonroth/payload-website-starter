@@ -446,6 +446,72 @@ export interface Category {
 export interface User {
   id: number;
   name?: string | null;
+  subscriptionStatus?: ('free' | 'trial' | 'premium' | 'cancelled') | null;
+  /**
+   * When the 7-day trial started
+   */
+  trialStartDate?: string | null;
+  /**
+   * When the 7-day trial ends
+   */
+  trialEndDate?: string | null;
+  /**
+   * Products viewed this month (5 free limit)
+   */
+  productViewsThisMonth?: number | null;
+  /**
+   * When product views counter resets
+   */
+  productViewsResetDate?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  revenuecatUserId?: string | null;
+  /**
+   * Google OAuth user ID
+   */
+  googleId?: string | null;
+  /**
+   * Apple Sign-In user ID
+   */
+  appleId?: string | null;
+  privacyConsent?: {
+    /**
+     * User consented to data processing for service operation
+     */
+    dataProcessingConsent?: boolean | null;
+    /**
+     * When consent was given
+     */
+    consentDate?: string | null;
+    /**
+     * User opted in to receive marketing emails
+     */
+    marketingOptIn?: boolean | null;
+  };
+  /**
+   * Array of saved product IDs
+   */
+  savedProductIds?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of saved article IDs
+   */
+  savedArticleIds?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1641,6 +1707,25 @@ export interface CategoriesSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  subscriptionStatus?: T;
+  trialStartDate?: T;
+  trialEndDate?: T;
+  productViewsThisMonth?: T;
+  productViewsResetDate?: T;
+  stripeCustomerId?: T;
+  stripeSubscriptionId?: T;
+  revenuecatUserId?: T;
+  googleId?: T;
+  appleId?: T;
+  privacyConsent?:
+    | T
+    | {
+        dataProcessingConsent?: T;
+        consentDate?: T;
+        marketingOptIn?: T;
+      };
+  savedProductIds?: T;
+  savedArticleIds?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
