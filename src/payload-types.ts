@@ -814,7 +814,7 @@ export interface Product {
   id: number;
   name: string;
   brand: string;
-  category: number | Category;
+  category?: (number | null) | Category;
   /**
    * Use this OR upload an image below
    */
