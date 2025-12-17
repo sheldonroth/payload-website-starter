@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
         )
     }
 
-    const serverUrl = process.env.PAYLOAD_PUBLIC_SERVER_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    // Use stable production URL - MUST match what's configured in Google Cloud Console
+    const serverUrl = process.env.PAYLOAD_PUBLIC_SERVER_URL || 'https://payload-website-starter-smoky-sigma.vercel.app'
     const redirectUri = `${serverUrl}/api/users/oauth/google/callback`
     const scope = 'openid email profile'
 
