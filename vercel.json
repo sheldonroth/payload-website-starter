@@ -1,8 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/payload-jobs/run",
-      "schedule": "0 0 * * *"
-    }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm run build"
 }
