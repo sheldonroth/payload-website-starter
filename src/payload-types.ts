@@ -117,10 +117,12 @@ export interface Config {
   globals: {
     header: Header;
     footer: Footer;
+    'youtube-settings': YoutubeSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    'youtube-settings': YoutubeSettingsSelect<false> | YoutubeSettingsSelect<true>;
   };
   locale: null;
   user: User & {
@@ -1081,6 +1083,14 @@ export interface Video {
   sortOrder?: number | null;
   viewCount?: number | null;
   isFeatured?: boolean | null;
+  /**
+   * Was this video imported from YouTube automatically?
+   */
+  isAutoImported?: boolean | null;
+  /**
+   * When this video was last synced from YouTube
+   */
+  youtubeImportedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1650,6 +1660,8 @@ export interface VideosSelect<T extends boolean = true> {
   sortOrder?: T;
   viewCount?: T;
   isFeatured?: T;
+  isAutoImported?: T;
+  youtubeImportedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2150,6 +2162,40 @@ export interface Footer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "youtube-settings".
+ */
+export interface YoutubeSetting {
+  id: number;
+  /**
+   * Your YouTube channel ID (found at youtube.com/account_advanced)
+   */
+  channelId?: string | null;
+  /**
+   * Get from Google Cloud Console with YouTube Data API v3 enabled
+   */
+  apiKey?: string | null;
+  /**
+   * Automatically sync videos daily
+   */
+  autoSyncEnabled?: boolean | null;
+  /**
+   * Maximum number of videos to import per sync
+   */
+  maxVideosToSync?: number | null;
+  /**
+   * Only import YouTube Shorts (videos under 60 seconds)
+   */
+  shortsOnly?: boolean | null;
+  /**
+   * When videos were last synced from YouTube
+   */
+  lastSyncAt?: string | null;
+  lastSyncStatus?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -2190,6 +2236,22 @@ export interface FooterSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "youtube-settings_select".
+ */
+export interface YoutubeSettingsSelect<T extends boolean = true> {
+  channelId?: T;
+  apiKey?: T;
+  autoSyncEnabled?: T;
+  maxVideosToSync?: T;
+  shortsOnly?: T;
+  lastSyncAt?: T;
+  lastSyncStatus?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

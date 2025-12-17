@@ -116,5 +116,26 @@ export const Videos: CollectionConfig = {
                 position: 'sidebar',
             },
         },
+        {
+            name: 'isAutoImported',
+            type: 'checkbox',
+            label: 'Auto-Imported',
+            defaultValue: false,
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'Was this video imported from YouTube automatically?',
+            },
+        },
+        {
+            name: 'youtubeImportedAt',
+            type: 'date',
+            label: 'Last Imported',
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'When this video was last synced from YouTube',
+            },
+        },
     ],
 }

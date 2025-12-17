@@ -43,21 +43,20 @@ export const seed = async ({
   // the custom `/api/seed` endpoint does not
   payload.logger.info(`— Clearing collections and globals...`)
 
-  // clear the database
-  await Promise.all(
-    globals.map((global) =>
-      payload.updateGlobal({
-        slug: global,
-        data: {
-          navItems: [],
-        },
-        depth: 0,
-        context: {
-          disableRevalidate: true,
-        },
-      }),
-    ),
-  )
+  // clear the database - only clear header/footer which have navItems
+  // Using type assertion because GlobalSlug includes youtube-settings which has different schema
+  for (const global of globals) {
+    await payload.updateGlobal({
+      slug: global,
+      data: {
+        navItems: [],
+      } as Record<string, unknown>,
+      depth: 0,
+      context: {
+        disableRevalidate: true,
+      },
+    })
+  }
 
   await Promise.all(
     collections.map((collection) => payload.db.deleteMany({ collection, req, where: {} })),

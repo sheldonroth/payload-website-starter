@@ -20,6 +20,8 @@ import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
 import { migrations } from './migrations'
 import { oauthEndpoints } from './endpoints/oauth'
+import { youtubeSyncHandler } from './endpoints/youtube-sync'
+import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -77,8 +79,15 @@ export default buildConfig({
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '',
     process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
   ].filter(Boolean) as string[],
-  globals: [Header, Footer],
-  endpoints: oauthEndpoints,
+  globals: [Header, Footer, YouTubeSettings],
+  endpoints: [
+    ...oauthEndpoints,
+    {
+      path: '/youtube/sync',
+      method: 'post',
+      handler: youtubeSyncHandler,
+    },
+  ],
   plugins: [
     ...plugins,
     vercelBlobStorage({
