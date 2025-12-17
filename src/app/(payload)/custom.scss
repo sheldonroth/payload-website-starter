@@ -1,0 +1,572 @@
+/* =========================================================
+   THE PRODUCT REPORT - APPLE-INSPIRED CMS THEME
+   Clean, minimal, elegant design inspired by Apple's aesthetics
+   ========================================================= */
+
+/* ================================
+   CSS VARIABLES - APPLE PALETTE
+   ================================ */
+:root {
+    /* Primary Brand Colors */
+    --theme-bg: #FFFFFF;
+    --theme-elevation-0: #FFFFFF;
+    --theme-elevation-50: #FAFAFA;
+    --theme-elevation-100: #F5F5F7;
+    --theme-elevation-150: #F0F0F2;
+    --theme-elevation-200: #E8E8ED;
+    --theme-elevation-250: #D2D2D7;
+    --theme-elevation-300: #C6C6CC;
+    --theme-elevation-350: #AEAEB2;
+    --theme-elevation-400: #8E8E93;
+    --theme-elevation-450: #6E6E73;
+    --theme-elevation-500: #48484A;
+    --theme-elevation-550: #3A3A3C;
+    --theme-elevation-600: #2C2C2E;
+    --theme-elevation-650: #1D1D1F;
+    --theme-elevation-700: #1C1C1E;
+    --theme-elevation-750: #171717;
+    --theme-elevation-800: #141414;
+    --theme-elevation-850: #0A0A0A;
+    --theme-elevation-900: #000000;
+    --theme-elevation-950: #000000;
+    --theme-elevation-1000: #000000;
+
+    /* Apple-inspired primary color (emerald for TPR brand) */
+    --theme-success-50: #e8faf1;
+    --theme-success-100: #c6f4de;
+    --theme-success-200: #a0edca;
+    --theme-success-300: #6de4ad;
+    --theme-success-400: #34d399;
+    --theme-success-500: #10b981;
+    --theme-success-600: #059669;
+    --theme-success-700: #047857;
+    --theme-success-800: #065f46;
+    --theme-success-900: #064e3b;
+
+    /* Font Stack - SF Pro inspired */
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, 'Cascadia Code', monospace;
+
+    /* Refined Spacing */
+    --base-space: 16px;
+    --gutter-h: 24px;
+
+    /* Smooth Border Radius - Apple style */
+    --style-radius-s: 8px;
+    --style-radius-m: 12px;
+    --style-radius-l: 16px;
+
+    /* Refined Shadows - Apple's depth system */
+    --theme-elevation-50-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --theme-elevation-100-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --theme-elevation-200-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --theme-elevation-300-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ================================
+   GLOBAL TYPOGRAPHY
+   ================================ */
+body {
+    font-family: var(--font-body) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.heading,
+.nav__label,
+.collection-list__header,
+.step-nav__link {
+    font-weight: 600 !important;
+    letter-spacing: -0.02em !important;
+}
+
+/* ================================
+   NAVIGATION SIDEBAR - Apple Style
+   ================================ */
+.nav {
+    background: var(--theme-elevation-50) !important;
+    border-right: 1px solid var(--theme-elevation-200) !important;
+}
+
+.nav__label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--theme-elevation-400) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    padding: 16px 20px 8px !important;
+}
+
+.nav__link {
+    border-radius: var(--style-radius-s) !important;
+    margin: 2px 12px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease !important;
+    color: var(--theme-elevation-600) !important;
+}
+
+.nav__link:hover {
+    background: var(--theme-elevation-150) !important;
+    color: var(--theme-elevation-800) !important;
+}
+
+.nav__link.active,
+.nav__link--active {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: var(--theme-success-600) !important;
+}
+
+.nav__link.active::before,
+.nav__link--active::before {
+    display: none !important;
+}
+
+/* Nav icons */
+.nav__link svg {
+    width: 18px !important;
+    height: 18px !important;
+    opacity: 0.7 !important;
+}
+
+/* ================================
+   HEADER BAR - Minimal & Clean
+   ================================ */
+.app-header {
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: saturate(180%) blur(20px) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
+    border-bottom: 1px solid var(--theme-elevation-200) !important;
+    box-shadow: none !important;
+}
+
+.step-nav {
+    font-size: 14px !important;
+}
+
+.step-nav__link {
+    color: var(--theme-elevation-400) !important;
+    font-weight: 500 !important;
+}
+
+.step-nav__link:last-child {
+    color: var(--theme-elevation-800) !important;
+    font-weight: 600 !important;
+}
+
+/* ================================
+   BUTTONS - Apple Rounded Style
+   ================================ */
+.btn,
+button[type="submit"],
+.form-submit .btn {
+    border-radius: var(--style-radius-s) !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    padding: 10px 20px !important;
+    transition: all 0.2s ease !important;
+    letter-spacing: -0.01em !important;
+}
+
+.btn--style-primary,
+button[type="submit"] {
+    background: var(--theme-success-500) !important;
+    border: none !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+.btn--style-primary:hover,
+button[type="submit"]:hover {
+    background: var(--theme-success-600) !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+.btn--style-secondary {
+    background: var(--theme-elevation-100) !important;
+    border: 1px solid var(--theme-elevation-200) !important;
+    color: var(--theme-elevation-700) !important;
+}
+
+.btn--style-secondary:hover {
+    background: var(--theme-elevation-150) !important;
+    border-color: var(--theme-elevation-300) !important;
+}
+
+/* ================================
+   FORM FIELDS - Clean Inputs
+   ================================ */
+.field-type {
+    margin-bottom: 24px !important;
+}
+
+.field-type label,
+.field-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--theme-elevation-600) !important;
+    margin-bottom: 8px !important;
+    letter-spacing: -0.01em !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+textarea,
+select,
+.rich-text__editor {
+    border-radius: var(--style-radius-s) !important;
+    border: 1px solid var(--theme-elevation-250) !important;
+    padding: 12px 14px !important;
+    font-size: 15px !important;
+    background: var(--theme-bg) !important;
+    transition: all 0.15s ease !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.rich-text__editor:focus-within {
+    border-color: var(--theme-success-400) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+    outline: none !important;
+}
+
+/* Placeholder styling */
+input::placeholder,
+textarea::placeholder {
+    color: var(--theme-elevation-350) !important;
+    opacity: 1 !important;
+}
+
+/* ================================
+   CARDS & PANELS
+   ================================ */
+.card,
+.collection-list__wrap,
+.document-fields,
+.group-field__wrap,
+.collapsible,
+.tabs-field__tabs-wrap {
+    background: var(--theme-bg) !important;
+    border-radius: var(--style-radius-m) !important;
+    border: 1px solid var(--theme-elevation-200) !important;
+    box-shadow: var(--theme-elevation-50-shadow) !important;
+    overflow: hidden !important;
+}
+
+.collapsible__header {
+    padding: 16px 20px !important;
+    font-weight: 600 !important;
+}
+
+.collapsible__content {
+    padding: 0 20px 20px !important;
+}
+
+/* ================================
+   TABLE / LIST VIEWS
+   ================================ */
+.collection-list {
+    border-radius: var(--style-radius-m) !important;
+    overflow: hidden !important;
+}
+
+.collection-list table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.collection-list th {
+    background: var(--theme-elevation-50) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: var(--theme-elevation-400) !important;
+    padding: 14px 16px !important;
+    border-bottom: 1px solid var(--theme-elevation-200) !important;
+}
+
+.collection-list td {
+    padding: 14px 16px !important;
+    font-size: 14px !important;
+    border-bottom: 1px solid var(--theme-elevation-100) !important;
+}
+
+.collection-list tr:hover td {
+    background: var(--theme-elevation-50) !important;
+}
+
+/* Row Actions */
+.row-actions {
+    opacity: 0 !important;
+    transition: opacity 0.15s ease !important;
+}
+
+tr:hover .row-actions {
+    opacity: 1 !important;
+}
+
+/* ================================
+   TABS
+   ================================ */
+.tabs-field__tab-button {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 12px 20px !important;
+    border-radius: var(--style-radius-s) var(--style-radius-s) 0 0 !important;
+    color: var(--theme-elevation-500) !important;
+    transition: all 0.15s ease !important;
+}
+
+.tabs-field__tab-button:hover {
+    color: var(--theme-elevation-700) !important;
+    background: var(--theme-elevation-50) !important;
+}
+
+.tabs-field__tab-button--active {
+    color: var(--theme-success-600) !important;
+    border-bottom: 2px solid var(--theme-success-500) !important;
+    font-weight: 600 !important;
+}
+
+/* ================================
+   DASHBOARD CARDS
+   ================================ */
+.dashboard__card {
+    border-radius: var(--style-radius-l) !important;
+    border: 1px solid var(--theme-elevation-200) !important;
+    background: var(--theme-bg) !important;
+    box-shadow: var(--theme-elevation-100-shadow) !important;
+    transition: all 0.2s ease !important;
+    overflow: hidden !important;
+}
+
+.dashboard__card:hover {
+    box-shadow: var(--theme-elevation-200-shadow) !important;
+    transform: translateY(-2px) !important;
+}
+
+.dashboard__card-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+/* ================================
+   MODAL / DRAWER STYLES
+   ================================ */
+.modal__content,
+.drawer__content {
+    border-radius: var(--style-radius-l) !important;
+    box-shadow: var(--theme-elevation-300-shadow) !important;
+}
+
+.modal__header,
+.drawer__header {
+    border-bottom: 1px solid var(--theme-elevation-200) !important;
+    padding: 20px 24px !important;
+}
+
+.modal__header-title,
+.drawer__header-title {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+}
+
+/* ================================
+   UPLOAD / MEDIA FIELD
+   ================================ */
+.upload__upload {
+    border-radius: var(--style-radius-m) !important;
+    border: 2px dashed var(--theme-elevation-250) !important;
+    background: var(--theme-elevation-50) !important;
+    transition: all 0.15s ease !important;
+}
+
+.upload__upload:hover {
+    border-color: var(--theme-success-400) !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+}
+
+/* ================================
+   BADGES & PILLS
+   ================================ */
+.pill,
+.status-pill {
+    border-radius: 20px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 4px 12px !important;
+}
+
+.pill--style-success,
+.status-pill--published {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: var(--theme-success-700) !important;
+}
+
+.pill--style-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #b45309 !important;
+}
+
+.pill--style-error {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #b91c1c !important;
+}
+
+/* ================================
+   TOOLTIPS
+   ================================ */
+.tooltip {
+    background: var(--theme-elevation-700) !important;
+    color: white !important;
+    border-radius: var(--style-radius-s) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    padding: 8px 12px !important;
+    box-shadow: var(--theme-elevation-200-shadow) !important;
+}
+
+/* ================================
+   LOADING STATES
+   ================================ */
+.loading-overlay {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.loader,
+.loading-shimmer {
+    background: linear-gradient(90deg,
+            var(--theme-elevation-100) 25%,
+            var(--theme-elevation-150) 50%,
+            var(--theme-elevation-100) 75%) !important;
+    background-size: 200% 100% !important;
+    animation: shimmer 1.5s infinite !important;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ================================
+   SCROLLBARS - Refined
+   ================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--theme-elevation-300);
+    border-radius: 100px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-elevation-350);
+}
+
+/* ================================
+   FOCUS STATES - Apple Ring
+   ================================ */
+*:focus-visible {
+    outline: 2px solid var(--theme-success-400) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+/* ================================
+   ANIMATIONS - Subtle & Smooth
+   ================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.document-fields,
+.dashboard__card,
+.collection-list {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ================================
+   CUSTOM BANNER - Clean Design
+   ================================ */
+.before-dashboard {
+    padding: 24px !important;
+}
+
+.before-dashboard__banner {
+    border-radius: var(--style-radius-m) !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%) !important;
+}
+
+.before-dashboard__banner h4 {
+    color: var(--theme-success-700) !important;
+    font-size: 16px !important;
+}
+
+/* ================================
+   LOGO AREA STYLING
+   ================================ */
+.nav__brand {
+    padding: 20px 16px !important;
+    margin-bottom: 8px !important;
+}
+
+.nav__brand .nav__logo {
+    max-height: 28px !important;
+}
+
+/* ================================
+   RESPONSIVE ADJUSTMENTS
+   ================================ */
+@media (max-width: 768px) {
+    .nav {
+        width: 100% !important;
+    }
+
+    .nav__link {
+        padding: 14px 16px !important;
+        font-size: 15px !important;
+    }
+
+    .field-type {
+        margin-bottom: 16px !important;
+    }
+}
