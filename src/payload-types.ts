@@ -71,6 +71,7 @@ export interface Config {
     posts: Post;
     products: Product;
     articles: Article;
+    videos: Video;
     media: Media;
     categories: Category;
     users: User;
@@ -95,6 +96,7 @@ export interface Config {
     posts: PostsSelect<false> | PostsSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    videos: VideosSelect<false> | VideosSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -1043,6 +1045,47 @@ export interface Article {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos".
+ */
+export interface Video {
+  id: number;
+  title: string;
+  /**
+   * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
+   */
+  youtubeVideoId: string;
+  /**
+   * Leave empty to auto-fetch from YouTube
+   */
+  thumbnailUrl?: string | null;
+  description?: string | null;
+  /**
+   * Video duration in seconds
+   */
+  duration?: number | null;
+  category?: (number | null) | Category;
+  /**
+   * Link to the product being reviewed in this video
+   */
+  relatedProduct?: (number | null) | Product;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('draft' | 'published') | null;
+  /**
+   * Lower numbers appear first
+   */
+  sortOrder?: number | null;
+  viewCount?: number | null;
+  isFeatured?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1246,6 +1289,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'articles';
         value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'videos';
+        value: number | Video;
       } | null)
     | ({
         relationTo: 'media';
@@ -1578,6 +1625,31 @@ export interface ArticlesSelect<T extends boolean = true> {
   readTime?: T;
   status?: T;
   featured?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos_select".
+ */
+export interface VideosSelect<T extends boolean = true> {
+  title?: T;
+  youtubeVideoId?: T;
+  thumbnailUrl?: T;
+  description?: T;
+  duration?: T;
+  category?: T;
+  relatedProduct?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  status?: T;
+  sortOrder?: T;
+  viewCount?: T;
+  isFeatured?: T;
   updatedAt?: T;
   createdAt?: T;
 }
