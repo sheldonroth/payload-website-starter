@@ -68,7 +68,13 @@ export default buildConfig({
     prodMigrations: migrations,
   }),
   collections: [Pages, Posts, Products, Articles, Media, Categories, Users],
-  cors: '*',
+  cors: [
+    'https://www.theproductreport.org',
+    'https://theproductreport.org',
+    'https://theproductreport-61qu.vercel.app',
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '',
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
+  ].filter(Boolean) as string[],
   globals: [Header, Footer],
   plugins: [
     ...plugins,
