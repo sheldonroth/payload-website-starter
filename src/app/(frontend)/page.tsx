@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation'
+import PageTemplate, { generateMetadata } from './[slug]/page'
 
-export const dynamic = 'force-dynamic'
+export default PageTemplate
 
-// Redirect home page to admin since this CMS doesn't serve a frontend
-export default function HomePage() {
-    redirect('/admin')
-}
+export { generateMetadata }

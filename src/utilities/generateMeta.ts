@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import type { Media, Config } from '../payload-types'
+import type { Media, Page, Post, Config } from '../payload-types'
 
 import { mergeOpenGraph } from './mergeOpenGraph'
 import { getServerSideURL } from './getURL'
@@ -19,42 +19,30 @@ const getImageURL = (image?: Media | Config['db']['defaultIDType'] | null) => {
   return url
 }
 
-interface DocWithMeta {
-  title?: string | null
-  slug?: string | null
-  meta?: {
-    title?: string | null
-    description?: string | null
-    image?: Media | string | number | null
-  } | null
-}
-
 export const generateMeta = async (args: {
-  doc: DocWithMeta | null
+  doc: Partial<Page> | Partial<Post> | null
 }): Promise<Metadata> => {
   const { doc } = args
 
-  const ogImage = getImageURL(doc?.meta?.image as Media | null)
+  const ogImage = getImageURL(doc?.meta?.image)
 
   const title = doc?.meta?.title
-    ? doc?.meta?.title + ' | The Product Report'
-    : doc?.title
-      ? doc.title + ' | The Product Report'
-      : 'The Product Report'
+    ? doc?.meta?.title + ' | Payload Website Template'
+    : 'Payload Website Template'
 
   return {
-    description: doc?.meta?.description || '',
+    description: doc?.meta?.description,
     openGraph: mergeOpenGraph({
       description: doc?.meta?.description || '',
       images: ogImage
         ? [
-          {
-            url: ogImage,
-          },
-        ]
+            {
+              url: ogImage,
+            },
+          ]
         : undefined,
       title,
-      url: doc?.slug ? `/${doc.slug}` : '/',
+      url: Array.isArray(doc?.slug) ? doc?.slug.join('/') : '/',
     }),
     title,
   }
