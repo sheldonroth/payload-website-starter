@@ -7,8 +7,6 @@ import { fileURLToPath } from 'url'
 
 import { Categories } from './collections/Categories'
 import { Media } from './collections/Media'
-import { Pages } from './collections/Pages'
-import { Posts } from './collections/Posts'
 import { Products } from './collections/Products'
 import { Articles } from './collections/Articles'
 import { Videos } from './collections/Videos'
@@ -17,7 +15,6 @@ import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
-import { getServerSideURL } from './utilities/getURL'
 import { migrations } from './migrations'
 import { oauthEndpoints } from './endpoints/oauth'
 import { youtubeSyncHandler } from './endpoints/youtube-sync'
@@ -71,7 +68,7 @@ export default buildConfig({
     },
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, Users],
+  collections: [Products, Articles, Videos, Media, Categories, Users],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',

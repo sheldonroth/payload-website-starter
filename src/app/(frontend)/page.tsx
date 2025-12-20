@@ -1,5 +1,6 @@
-import PageTemplate, { generateMetadata } from './[slug]/page'
+import { redirect } from 'next/navigation'
 
-export default PageTemplate
-
-export { generateMetadata }
+// Redirect home page to admin since this CMS doesn't serve a frontend
+export default function HomePage() {
+    redirect('/admin')
+}
