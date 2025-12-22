@@ -115,8 +115,8 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
         for (const video of detailsData.items) {
             const duration = video.contentDetails ? parseDuration(video.contentDetails.duration) : 0
 
-            // Skip if shortsOnly and video is longer than 60 seconds
-            if (shortsOnly && duration > 60) {
+            // Skip if shortsOnly and video is longer than 3 minutes (180 seconds)
+            if (shortsOnly && duration > 180) {
                 skipped++
                 continue
             }
