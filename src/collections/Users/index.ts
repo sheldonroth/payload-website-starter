@@ -22,6 +22,15 @@ export const Users: CollectionConfig = {
       name: 'name',
       type: 'text',
     },
+    {
+      name: 'isAdmin',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: 'Grant admin privileges to this user',
+      },
+    },
     // ============================================
     // Subscription Fields
     // ============================================
