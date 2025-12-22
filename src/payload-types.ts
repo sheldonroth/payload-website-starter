@@ -450,6 +450,10 @@ export interface Category {
 export interface User {
   id: number;
   name?: string | null;
+  /**
+   * Grant admin privileges to this user
+   */
+  isAdmin?: boolean | null;
   subscriptionStatus?: ('free' | 'trial' | 'premium' | 'cancelled') | null;
   /**
    * When the 7-day trial started
@@ -1791,6 +1795,7 @@ export interface CategoriesSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  isAdmin?: T;
   subscriptionStatus?: T;
   trialStartDate?: T;
   trialEndDate?: T;
