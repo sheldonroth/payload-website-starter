@@ -25,6 +25,7 @@
   "dependencies": {
     "@payloadcms/admin-bar": "3.63.0",
     "@payloadcms/db-vercel-postgres": "3.63.0",
+    "@payloadcms/email-resend": "3.63.0",
     "@payloadcms/live-preview-react": "3.63.0",
     "@payloadcms/next": "3.63.0",
     "@payloadcms/plugin-form-builder": "3.63.0",
@@ -54,6 +55,7 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-hook-form": "7.45.4",
+    "resend": "^6.6.0",
     "sharp": "0.34.2",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7"
