@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { authenticated } from '../../access/authenticated'
+import { isSelfOrAdmin } from '../../access/isSelfOrAdmin'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -8,9 +9,9 @@ export const Users: CollectionConfig = {
     admin: authenticated,
     // Allow anyone to create an account (signup)
     create: () => true,
-    delete: authenticated,
-    read: authenticated,
-    update: authenticated,
+    delete: isSelfOrAdmin,
+    read: isSelfOrAdmin,
+    update: isSelfOrAdmin,
   },
   admin: {
     defaultColumns: ['name', 'email', 'subscriptionStatus'],
