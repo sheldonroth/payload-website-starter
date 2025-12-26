@@ -6,6 +6,7 @@ import ProductsToReview from '../ProductsToReview'
 import PollGenerator from '../PollGenerator'
 import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
+import ProductEnricher from '../ProductEnricher'
 
 import './index.scss'
 
@@ -37,14 +38,17 @@ const BeforeDashboard: React.FC = () => {
           {/* Channel Sync */}
           <ChannelSync />
 
+          {/* Product Enricher */}
+          <ProductEnricher />
+
+          {/* SEO Generator */}
+          <SEOGenerator />
+
           {/* Trending Topics Poll */}
           <PollGenerator />
 
           {/* Category Poll */}
           <CategoryPollGenerator />
-
-          {/* SEO Generator */}
-          <SEOGenerator />
         </div>
       </div>
     </div>

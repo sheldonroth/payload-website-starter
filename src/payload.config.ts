@@ -28,6 +28,7 @@ import { channelAnalyzeHandler } from './endpoints/channel-analyze'
 import { pollGenerateHandler } from './endpoints/poll-generate'
 import { seoGenerateHandler } from './endpoints/seo-generate'
 import { categoryPollHandler } from './endpoints/category-poll-generate'
+import { productEnrichHandler } from './endpoints/product-enrich'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -118,6 +119,11 @@ export default buildConfig({
       path: '/poll/category',
       method: 'post',
       handler: categoryPollHandler,
+    },
+    {
+      path: '/product/enrich',
+      method: 'post',
+      handler: productEnrichHandler,
     },
   ],
   plugins: [
