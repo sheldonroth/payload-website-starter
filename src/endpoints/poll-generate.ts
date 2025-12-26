@@ -1,59 +1,67 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
+interface PollOption {
+    name: string
+    description: string
+}
+
 interface GeneratedPoll {
     title: string
     description: string
-    options: Array<{
-        name: string
-        description: string
-    }>
+    options: PollOption[]
 }
 
-const SYSTEM_PROMPT = `You are a content strategist for 'The Product Report,' a consumer investigation platform. Your job is to generate engaging poll questions that will drive user engagement and help us decide what products/categories to investigate next.
+// Auto-generate trending poll with NO user input required
+const AUTO_POLL_PROMPT = `You are a content strategist for 'The Product Report,' a consumer investigation platform. Your job is to generate a poll asking members what they want us to investigate next.
+
+IMPORTANT: Generate topics based on:
+1. Current health and consumer safety trends in the news
+2. Emerging product categories people are concerned about
+3. Food, supplements, baby products, pet food, cosmetics, and household items
+4. Things that could be harmful or misleading to consumers
 
 Rules:
-1. Make questions conversational and engaging
-2. Options should be specific product categories or investigation topics
-3. Include 4-6 options per poll
-4. Each option should have a brief, compelling description (10 words max)
-5. Focus on topics that affect consumer health, safety, or wallet
+1. Poll question should ask what to investigate next
+2. Generate 4 specific, timely options (NOT generic categories)
+3. Each option should reference a real concern or trend
+4. Be specific: "Heavy metals in rice baby cereal" NOT just "Baby food"
+5. Think trending: What's in the news? What are people worried about?
 
-Output ONLY a valid JSON object with this exact schema:
+Output ONLY a valid JSON object:
 {
-  "title": "string (the poll question, 10 words max)",
+  "title": "string (poll question, 10 words max)",
   "description": "string (context for voters, 20 words max)",
   "options": [
     {
-      "name": "string (category/topic name)",
+      "name": "string (specific investigation topic)",
       "description": "string (why it matters, 10 words max)"
     }
   ]
 }`
 
-async function generatePollWithAI(topic: string, existingCategories: string[]): Promise<GeneratedPoll> {
+async function generateAutoPolls(existingProducts: string[], existingCategories: string[]): Promise<GeneratedPoll> {
     const OpenAI = (await import('openai')).default
     const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
     })
 
-    const categoryContext = existingCategories.length > 0
-        ? `Current categories we cover: ${existingCategories.join(', ')}`
-        : 'We are a new platform.'
+    const avoidList = [...existingProducts, ...existingCategories].slice(0, 30).join(', ')
 
     const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: AUTO_POLL_PROMPT },
             {
                 role: 'user',
-                content: `Generate an investigation poll about: "${topic}"
+                content: `Generate a poll for our members to vote on what we should investigate next.
 
-${categoryContext}
+AVOID these topics (we've already covered them):
+${avoidList || 'None yet'}
 
-Create an engaging poll that asks users what they want us to investigate next related to this topic.`,
+Focus on trending consumer safety concerns, recent news about product recalls, contamination, misleading claims, or emerging health trends.`,
             },
         ],
-        temperature: 0.7,
+        temperature: 0.8, // Higher temp for more creative/varied suggestions
         response_format: { type: 'json_object' },
     })
 
@@ -77,21 +85,25 @@ export const pollGenerateHandler: PayloadHandler = async (req: PayloadRequest) =
 
     try {
         const body = await req.json?.()
-        const { topic, autoCreate = false } = body || {}
+        const { autoCreate = false } = body || {}
 
-        if (!topic) {
-            return Response.json({ error: 'topic is required' }, { status: 400 })
-        }
+        // Fetch existing products and categories to avoid
+        const [productsResult, categoriesResult] = await Promise.all([
+            req.payload.find({
+                collection: 'products',
+                limit: 50,
+            }),
+            req.payload.find({
+                collection: 'categories',
+                limit: 50,
+            }),
+        ])
 
-        // Fetch existing categories for context
-        const categoriesResult = await req.payload.find({
-            collection: 'categories',
-            limit: 100,
-        })
-        const existingCategories = categoriesResult.docs.map((cat: { name: string }) => cat.name)
+        const existingProducts = productsResult.docs.map((p: { name?: string }) => p.name || '').filter(Boolean)
+        const existingCategories = categoriesResult.docs.map((c: { name?: string }) => c.name || '').filter(Boolean)
 
-        // Generate poll with AI
-        const generatedPoll = await generatePollWithAI(topic, existingCategories)
+        // Generate poll with AI (no user input needed)
+        const generatedPoll = await generateAutoPolls(existingProducts, existingCategories)
 
         // Optionally auto-create the poll
         let createdPoll = null
@@ -102,7 +114,7 @@ export const pollGenerateHandler: PayloadHandler = async (req: PayloadRequest) =
                     title: generatedPoll.title,
                     description: generatedPoll.description,
                     status: 'active',
-                    options: generatedPoll.options.map(opt => ({
+                    options: generatedPoll.options.map((opt) => ({
                         name: opt.name,
                         description: opt.description,
                         votes: 0,

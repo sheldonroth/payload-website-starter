@@ -24,15 +24,12 @@ interface GenerationResult {
 type GenerationStep = 'idle' | 'generating' | 'preview' | 'creating' | 'done' | 'error'
 
 const PollGenerator: React.FC = () => {
-    const [topic, setTopic] = useState('')
     const [step, setStep] = useState<GenerationStep>('idle')
     const [generatedPoll, setGeneratedPoll] = useState<GeneratedPoll | null>(null)
     const [createdPollId, setCreatedPollId] = useState<number | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     const handleGenerate = async () => {
-        if (!topic.trim()) return
-
         setStep('generating')
         setError(null)
         setGeneratedPoll(null)
@@ -41,7 +38,7 @@ const PollGenerator: React.FC = () => {
             const response = await fetch('/api/poll/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, autoCreate: false }),
+                body: JSON.stringify({ autoCreate: false }),
             })
 
             const data: GenerationResult = await response.json()
@@ -60,15 +57,13 @@ const PollGenerator: React.FC = () => {
     }
 
     const handleCreatePoll = async () => {
-        if (!generatedPoll) return
-
         setStep('creating')
 
         try {
             const response = await fetch('/api/poll/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, autoCreate: true }),
+                body: JSON.stringify({ autoCreate: true }),
             })
 
             const data: GenerationResult = await response.json()
@@ -88,7 +83,6 @@ const PollGenerator: React.FC = () => {
 
     const handleReset = () => {
         setStep('idle')
-        setTopic('')
         setGeneratedPoll(null)
         setCreatedPollId(null)
         setError(null)
@@ -109,44 +103,21 @@ const PollGenerator: React.FC = () => {
                 <div>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Poll Generator</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6e6e73' }}>
-                        AI-powered investigation poll creation
+                        Auto-generate trending investigation polls
                     </p>
                 </div>
             </div>
 
             {(step === 'idle' || step === 'generating' || step === 'error') && (
                 <>
-                    <div style={{ marginBottom: '16px' }}>
-                        <label
-                            style={{
-                                display: 'block',
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                marginBottom: '8px',
-                            }}
-                        >
-                            Topic or Category
-                        </label>
-                        <input
-                            type="text"
-                            value={topic}
-                            onChange={(e) => setTopic(e.target.value)}
-                            placeholder="e.g., protein powders, baby food safety, energy drinks..."
-                            disabled={step === 'generating'}
-                            style={{
-                                width: '100%',
-                                padding: '10px 14px',
-                                borderRadius: '6px',
-                                border: '1px solid #d1d1d6',
-                                fontSize: '14px',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                    </div>
+                    <p style={{ fontSize: '13px', color: '#86868b', marginBottom: '16px' }}>
+                        AI will suggest 4 trending investigation topics based on current news and consumer concerns.
+                        It automatically avoids topics you've already covered.
+                    </p>
 
                     <button
                         onClick={handleGenerate}
-                        disabled={!topic.trim() || step === 'generating'}
+                        disabled={step === 'generating'}
                         style={{
                             width: '100%',
                             padding: '12px',
@@ -159,7 +130,7 @@ const PollGenerator: React.FC = () => {
                             cursor: step === 'generating' ? 'not-allowed' : 'pointer',
                         }}
                     >
-                        {step === 'generating' ? '⏳ Generating...' : '✨ Generate Poll'}
+                        {step === 'generating' ? '⏳ Finding trending topics...' : '✨ Generate Poll Ideas'}
                     </button>
 
                     {error && (
@@ -203,7 +174,7 @@ const PollGenerator: React.FC = () => {
                     </div>
 
                     <div style={{ marginBottom: '16px' }}>
-                        <p style={{ fontWeight: 500, marginBottom: '8px', fontSize: '14px' }}>Options:</p>
+                        <p style={{ fontWeight: 500, marginBottom: '8px', fontSize: '14px' }}>Trending Topics:</p>
                         {generatedPoll.options.map((option, index) => (
                             <div
                                 key={index}
@@ -256,7 +227,7 @@ const PollGenerator: React.FC = () => {
                                 cursor: step === 'creating' ? 'not-allowed' : 'pointer',
                             }}
                         >
-                            {step === 'creating' ? '⏳ Creating...' : '✅ Create Poll'}
+                            {step === 'creating' ? '⏳ Creating...' : '✅ Publish Poll'}
                         </button>
                     </div>
                 </div>
@@ -276,7 +247,7 @@ const PollGenerator: React.FC = () => {
                     >
                         <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>🎉</span>
                         <p style={{ margin: 0, fontWeight: 600, color: '#166534' }}>
-                            Poll Created Successfully!
+                            Poll Published!
                         </p>
                     </div>
 
