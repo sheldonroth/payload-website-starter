@@ -54,6 +54,29 @@ export const Products: CollectionConfig = {
             label: 'Brand Name',
         },
         {
+            name: 'slug',
+            type: 'text',
+            unique: true,
+            label: 'URL Slug',
+            admin: {
+                description: 'Used in URLs (auto-generated from brand + name if empty)',
+            },
+            hooks: {
+                beforeValidate: [
+                    ({ value, data }) => {
+                        if (value) return value;
+                        // Auto-generate slug from brand + name
+                        const brand = data?.brand || '';
+                        const name = data?.name || '';
+                        return `${brand}-${name}`
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')
+                            .replace(/(^-|-$)/g, '');
+                    },
+                ],
+            },
+        },
+        {
             name: 'category',
             type: 'relationship',
             relationTo: 'categories',
