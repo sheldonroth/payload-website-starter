@@ -404,10 +404,7 @@ export interface FolderInterface {
 export interface Category {
   id: number;
   name: string;
-  /**
-   * Used in URLs (e.g., "smartphones")
-   */
-  slug: string;
+  slug?: string | null;
   /**
    * Brief description for SEO and category pages
    */
@@ -894,9 +891,6 @@ export interface Product {
   id: number;
   name: string;
   brand: string;
-  /**
-   * Used in URLs (auto-generated from brand + name if empty)
-   */
   slug?: string | null;
   category?: (number | null) | Category;
   /**
