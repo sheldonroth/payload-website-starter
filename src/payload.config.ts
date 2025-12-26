@@ -27,6 +27,7 @@ import { videoAnalyzeHandler } from './endpoints/video-analyze'
 import { channelAnalyzeHandler } from './endpoints/channel-analyze'
 import { pollGenerateHandler } from './endpoints/poll-generate'
 import { seoGenerateHandler } from './endpoints/seo-generate'
+import { categoryPollHandler } from './endpoints/category-poll-generate'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -112,6 +113,11 @@ export default buildConfig({
       path: '/seo/generate',
       method: 'post',
       handler: seoGenerateHandler,
+    },
+    {
+      path: '/poll/category',
+      method: 'post',
+      handler: categoryPollHandler,
     },
   ],
   plugins: [

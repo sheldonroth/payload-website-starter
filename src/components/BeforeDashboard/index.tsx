@@ -4,6 +4,7 @@ import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
 import ProductsToReview from '../ProductsToReview'
 import PollGenerator from '../PollGenerator'
+import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
 
 import './index.scss'
@@ -36,8 +37,11 @@ const BeforeDashboard: React.FC = () => {
           {/* Channel Sync */}
           <ChannelSync />
 
-          {/* Poll Generator */}
+          {/* Trending Topics Poll */}
           <PollGenerator />
+
+          {/* Category Poll */}
+          <CategoryPollGenerator />
 
           {/* SEO Generator */}
           <SEOGenerator />
