@@ -246,6 +246,19 @@ export const Users: CollectionConfig = {
         description: 'Array of saved article IDs',
       },
     },
+    // ============================================
+    // Watchlist (category alerts)
+    // ============================================
+    {
+      name: 'watchlistCategories',
+      type: 'relationship',
+      relationTo: 'categories',
+      hasMany: true,
+      label: 'Watchlist Categories',
+      admin: {
+        description: 'Categories this user is watching for updates',
+      },
+    },
   ],
   timestamps: true,
 }

@@ -74,6 +74,7 @@ export interface Config {
     videos: Video;
     media: Media;
     categories: Category;
+    'investigation-polls': InvestigationPoll;
     users: User;
     redirects: Redirect;
     forms: Form;
@@ -99,6 +100,7 @@ export interface Config {
     videos: VideosSelect<false> | VideosSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    'investigation-polls': InvestigationPollsSelect<false> | InvestigationPollsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -520,6 +522,10 @@ export interface User {
     | number
     | boolean
     | null;
+  /**
+   * Categories this user is watching for updates
+   */
+  watchlistCategories?: (number | Category)[] | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1100,6 +1106,47 @@ export interface Video {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "investigation-polls".
+ */
+export interface InvestigationPoll {
+  id: number;
+  /**
+   * e.g., "What should we investigate next?"
+   */
+  title: string;
+  /**
+   * Additional context for the poll
+   */
+  description?: string | null;
+  status: 'active' | 'closed';
+  /**
+   * Leave empty for no end date
+   */
+  endDate?: string | null;
+  options: {
+    name: string;
+    description?: string | null;
+    votes?: number | null;
+    id?: string | null;
+  }[];
+  /**
+   * Map of userId -> optionIndex tracking who voted
+   */
+  voters?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  totalVotes?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1315,6 +1362,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'investigation-polls';
+        value: number | InvestigationPoll;
       } | null)
     | ({
         relationTo: 'users';
@@ -1791,6 +1842,28 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "investigation-polls_select".
+ */
+export interface InvestigationPollsSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  status?: T;
+  endDate?: T;
+  options?:
+    | T
+    | {
+        name?: T;
+        description?: T;
+        votes?: T;
+        id?: T;
+      };
+  voters?: T;
+  totalVotes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -1815,6 +1888,7 @@ export interface UsersSelect<T extends boolean = true> {
       };
   savedProductIds?: T;
   savedArticleIds?: T;
+  watchlistCategories?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
