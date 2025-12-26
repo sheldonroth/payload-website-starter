@@ -59,7 +59,7 @@ export const Products: CollectionConfig = {
             label: 'URL Slug',
             index: true,
             admin: {
-                description: 'Used in URLs (auto-generated from brand + name if empty)',
+                hidden: true, // Auto-generated from brand + name
             },
             hooks: {
                 beforeValidate: [

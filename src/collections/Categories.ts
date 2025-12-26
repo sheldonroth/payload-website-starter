@@ -20,11 +20,23 @@ export const Categories: CollectionConfig = {
     {
       name: 'slug',
       type: 'text',
-      required: true,
       unique: true,
-      label: 'URL Slug',
+      index: true,
       admin: {
-        description: 'Used in URLs (e.g., "smartphones")',
+        hidden: true, // Auto-generated, no need to show
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, data }) => {
+            if (value) return value;
+            // Auto-generate from name
+            const name = data?.name || '';
+            return name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)/g, '') || `category-${Date.now()}`;
+          },
+        ],
       },
     },
     {
