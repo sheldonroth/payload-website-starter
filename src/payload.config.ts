@@ -25,6 +25,7 @@ import { oauthEndpoints } from './endpoints/oauth'
 import { youtubeSyncHandler } from './endpoints/youtube-sync'
 import { videoAnalyzeHandler } from './endpoints/video-analyze'
 import { channelAnalyzeHandler } from './endpoints/channel-analyze'
+import { pollGenerateHandler } from './endpoints/poll-generate'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -100,6 +101,11 @@ export default buildConfig({
       path: '/channel/analyze',
       method: 'post',
       handler: channelAnalyzeHandler,
+    },
+    {
+      path: '/poll/generate',
+      method: 'post',
+      handler: pollGenerateHandler,
     },
   ],
   plugins: [

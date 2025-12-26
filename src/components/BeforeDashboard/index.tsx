@@ -3,6 +3,7 @@ import React from 'react'
 import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
 import ProductsToReview from '../ProductsToReview'
+import PollGenerator from '../PollGenerator'
 
 import './index.scss'
 
@@ -27,12 +28,15 @@ const BeforeDashboard: React.FC = () => {
           🤖 AI Tools
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
           {/* Single Video Analysis */}
           <VideoToDraft />
 
           {/* Channel Sync */}
           <ChannelSync />
+
+          {/* Poll Generator */}
+          <PollGenerator />
         </div>
       </div>
     </div>
