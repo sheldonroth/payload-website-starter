@@ -85,27 +85,22 @@ async function getTranscript(videoId: string): Promise<string | null> {
 }
 
 async function extractProducts(transcript: string, existingCategories: string[]): Promise<ExtractedProduct[]> {
-    const OpenAI = (await import('openai')).default
-    const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    })
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const systemPrompt = generateSystemPrompt(existingCategories)
+    const fullPrompt = `${systemPrompt}\n\nAnalyze this video transcript and extract all products reviewed:\n\n${transcript}`
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            { role: 'system', content: systemPrompt },
-            {
-                role: 'user',
-                content: `Analyze this video transcript and extract all products reviewed:\n\n${transcript}`,
-            },
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+        },
     })
 
-    const content = response.choices[0]?.message?.content
+    const content = result.response.text()
     if (!content) return []
 
     try {
@@ -122,8 +117,8 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-        return Response.json({ error: 'OpenAI API key not configured' }, { status: 500 })
+    if (!process.env.GEMINI_API_KEY) {
+        return Response.json({ error: 'Gemini API key not configured' }, { status: 500 })
     }
 
     try {

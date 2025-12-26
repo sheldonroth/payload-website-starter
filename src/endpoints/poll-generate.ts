@@ -40,34 +40,32 @@ Output ONLY a valid JSON object:
 }`
 
 async function generateAutoPolls(existingProducts: string[], existingCategories: string[]): Promise<GeneratedPoll> {
-    const OpenAI = (await import('openai')).default
-    const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    })
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const avoidList = [...existingProducts, ...existingCategories].slice(0, 30).join(', ')
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            { role: 'system', content: AUTO_POLL_PROMPT },
-            {
-                role: 'user',
-                content: `Generate a poll for our members to vote on what we should investigate next.
+    const userPrompt = `Generate a poll for our members to vote on what we should investigate next.
 
 AVOID these topics (we've already covered them):
 ${avoidList || 'None yet'}
 
-Focus on trending consumer safety concerns, recent news about product recalls, contamination, misleading claims, or emerging health trends.`,
-            },
-        ],
-        temperature: 0.8, // Higher temp for more creative/varied suggestions
-        response_format: { type: 'json_object' },
+Focus on trending consumer safety concerns, recent news about product recalls, contamination, misleading claims, or emerging health trends.`
+
+    const fullPrompt = `${AUTO_POLL_PROMPT}\n\n${userPrompt}`
+
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+            temperature: 0.8,
+            responseMimeType: 'application/json',
+        },
     })
 
-    const content = response.choices[0]?.message?.content
+    const content = result.response.text()
     if (!content) {
-        throw new Error('No response from GPT-4o')
+        throw new Error('No response from Gemini')
     }
 
     return JSON.parse(content)
@@ -79,8 +77,8 @@ export const pollGenerateHandler: PayloadHandler = async (req: PayloadRequest) =
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-        return Response.json({ error: 'OpenAI API key not configured' }, { status: 500 })
+    if (!process.env.GEMINI_API_KEY) {
+        return Response.json({ error: 'Gemini API key not configured' }, { status: 500 })
     }
 
     try {

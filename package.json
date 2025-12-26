@@ -23,6 +23,7 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@payloadcms/admin-bar": "3.63.0",
     "@payloadcms/db-vercel-postgres": "3.63.0",
     "@payloadcms/email-resend": "3.63.0",

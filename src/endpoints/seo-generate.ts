@@ -33,10 +33,9 @@ async function generateSEOMeta(
     category: string | null,
     summary: string | null
 ): Promise<SEOOutput> {
-    const OpenAI = (await import('openai')).default
-    const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    })
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const context = type === 'product'
         ? `Product: ${name}
@@ -46,22 +45,19 @@ Summary: ${summary || 'No summary available'}`
         : `Article: ${name}
 Summary: ${summary || 'No summary available'}`
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            {
-                role: 'user',
-                content: `Generate SEO meta information for this ${type}:\n\n${context}`,
-            },
-        ],
-        temperature: 0.5,
-        response_format: { type: 'json_object' },
+    const fullPrompt = `${SYSTEM_PROMPT}\n\nGenerate SEO meta information for this ${type}:\n\n${context}`
+
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+            temperature: 0.5,
+            responseMimeType: 'application/json',
+        },
     })
 
-    const content = response.choices[0]?.message?.content
+    const content = result.response.text()
     if (!content) {
-        throw new Error('No response from GPT-4o')
+        throw new Error('No response from Gemini')
     }
 
     return JSON.parse(content)
@@ -73,8 +69,8 @@ export const seoGenerateHandler: PayloadHandler = async (req: PayloadRequest) =>
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-        return Response.json({ error: 'OpenAI API key not configured' }, { status: 500 })
+    if (!process.env.GEMINI_API_KEY) {
+        return Response.json({ error: 'Gemini API key not configured' }, { status: 500 })
     }
 
     try {
