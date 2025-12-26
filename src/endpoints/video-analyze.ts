@@ -37,18 +37,28 @@ async function getYouTubeTranscript(videoUrl: string): Promise<string> {
     }
 }
 
-// Product extraction schema
+// Product extraction schema with smart category detection
 interface ExtractedProduct {
     productName: string
     brandName: string
-    category: string
+    suggestedCategory: string
+    isNewCategory: boolean
     sentimentScore: number
     pros: string[]
     cons: string[]
     summary: string
 }
 
-const SYSTEM_PROMPT = `You are an expert Editor for 'The Product Report.' You will receive a transcript of a video review. Your job is to extract structured data for every product mentioned.
+// Generate system prompt with existing categories
+function generateSystemPrompt(existingCategories: string[]): string {
+    const categoryList = existingCategories.length > 0
+        ? existingCategories.join(', ')
+        : 'None yet'
+
+    return `You are an expert Editor for 'The Product Report.' You will receive a transcript of a video review. Your job is to extract structured data for every product mentioned.
+
+EXISTING CATEGORIES IN OUR DATABASE:
+${categoryList}
 
 Rules:
 1. Ignore Sponsors: Do not extract products that are clearly ad reads or sponsorships unless the host explicitly reviews them as part of the content.
@@ -57,7 +67,10 @@ Rules:
    - "Love it, buying more" = 9-10
    - "It's okay, but pricey" = 6-7
    - "Don't buy this" = 1-3
-4. Categories should be one of: Supplements, Food, Baby & Kids, Water, Cosmetics, Pet Food, Nicotine Pouches, or Other.
+4. CATEGORY DETECTION:
+   - If the product fits an EXISTING category from the list above, use that exact name.
+   - If no existing category fits, suggest a NEW category name and set isNewCategory to true.
+   - Be specific but not too narrow (e.g., "Energy Drinks" not "Sugar-Free Caffeinated Beverages").
 
 Output ONLY a valid JSON object with this exact schema:
 {
@@ -65,7 +78,8 @@ Output ONLY a valid JSON object with this exact schema:
     {
       "productName": "string",
       "brandName": "string", 
-      "category": "string",
+      "suggestedCategory": "string (use existing category name if it fits, otherwise suggest a new one)",
+      "isNewCategory": boolean (true if this is a NEW category not in the existing list),
       "sentimentScore": number,
       "pros": ["string"],
       "cons": ["string"],
@@ -73,18 +87,24 @@ Output ONLY a valid JSON object with this exact schema:
     }
   ]
 }`
+}
 
-// Extract products from transcript using GPT-4o
-async function extractProductsFromTranscript(transcript: string): Promise<ExtractedProduct[]> {
+// Extract products from transcript using GPT-4o with category awareness
+async function extractProductsFromTranscript(
+    transcript: string,
+    existingCategories: string[]
+): Promise<ExtractedProduct[]> {
     const OpenAI = (await import('openai')).default
     const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
     })
 
+    const systemPrompt = generateSystemPrompt(existingCategories)
+
     const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             {
                 role: 'user',
                 content: `Analyze this video transcript and extract all products reviewed:\n\n${transcript}`,
@@ -132,17 +152,36 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             return Response.json({ error: 'Only YouTube URLs are currently supported' }, { status: 400 })
         }
 
-        // Step 1: Get transcript
+        // Step 1: Fetch existing categories
+        const categoriesResult = await req.payload.find({
+            collection: 'categories',
+            limit: 100,
+        })
+        const existingCategories = categoriesResult.docs.map((cat: { name: string }) => cat.name)
+
+        // Step 2: Get transcript
         const transcript = await getYouTubeTranscript(videoUrl)
 
-        // Step 2: Extract products with GPT-4o
-        const products = await extractProductsFromTranscript(transcript)
+        // Step 3: Extract products with category awareness
+        const products = await extractProductsFromTranscript(transcript, existingCategories)
 
-        // Step 3: Create drafts in Payload
-        const createdDrafts: { id: number; name: string }[] = []
+        // Step 4: Create drafts in Payload
+        const createdDrafts: { id: number; name: string; category: string; isNewCategory: boolean }[] = []
 
         for (const product of products) {
             try {
+                // Find existing category or leave null for new ones
+                let categoryId: number | null = null
+                if (!product.isNewCategory) {
+                    const existingCat = categoriesResult.docs.find(
+                        (cat: { name: string; id: number }) =>
+                            cat.name.toLowerCase() === product.suggestedCategory.toLowerCase()
+                    )
+                    if (existingCat) {
+                        categoryId = existingCat.id as number
+                    }
+                }
+
                 const created = await req.payload.create({
                     collection: 'products',
                     data: {
@@ -151,6 +190,8 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                         status: 'draft',
                         priceRange: '$$',
                         summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}`,
+                        ...(categoryId && { category: categoryId }),
+                        ...(product.isNewCategory && { pendingCategoryName: product.suggestedCategory }),
                         ratings: {
                             performance: product.sentimentScore * 10,
                             reliability: product.sentimentScore * 10,
@@ -165,7 +206,12 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     },
                 })
 
-                createdDrafts.push({ id: created.id as number, name: product.productName })
+                createdDrafts.push({
+                    id: created.id as number,
+                    name: product.productName,
+                    category: product.suggestedCategory,
+                    isNewCategory: product.isNewCategory,
+                })
             } catch (error) {
                 console.error(`Error creating draft for ${product.productName}:`, error)
             }
@@ -177,6 +223,7 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             productsFound: products.length,
             products,
             draftsCreated: createdDrafts,
+            existingCategories,
         })
     } catch (error) {
         console.error('Video analysis error:', error)

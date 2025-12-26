@@ -894,6 +894,10 @@ export interface Product {
   slug?: string | null;
   category?: (number | null) | Category;
   /**
+   * New category will be auto-created when published
+   */
+  pendingCategoryName?: string | null;
+  /**
    * Use this OR upload an image below
    */
   imageUrl?: string | null;
@@ -1606,6 +1610,7 @@ export interface ProductsSelect<T extends boolean = true> {
   brand?: T;
   slug?: T;
   category?: T;
+  pendingCategoryName?: T;
   imageUrl?: T;
   image?: T;
   overallScore?: T;

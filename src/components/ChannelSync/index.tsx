@@ -8,7 +8,8 @@ interface AnalysisResult {
     videosSkipped?: number
     productsFound?: number
     draftsCreated?: number
-    createdDrafts?: { id: number; name: string; video: string }[]
+    newCategories?: string[]
+    createdDrafts?: { id: number; name: string; video: string; category: string; isNewCategory: boolean }[]
     errors?: string[]
     error?: string
     message?: string
@@ -160,6 +161,56 @@ const ChannelSync: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* New Categories Alert */}
+                    {result.newCategories && result.newCategories.length > 0 && (
+                        <div
+                            style={{
+                                padding: '12px',
+                                background: '#dbeafe',
+                                border: '1px solid #3b82f6',
+                                borderRadius: '6px',
+                                marginBottom: '16px',
+                            }}
+                        >
+                            <p style={{ margin: 0, fontWeight: 600, color: '#1d4ed8', fontSize: '14px' }}>
+                                🆕 New Categories Suggested:
+                            </p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                                {result.newCategories.map((cat) => (
+                                    <span
+                                        key={cat}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            padding: '4px 10px',
+                                            background: '#fff',
+                                            color: '#1d4ed8',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            borderRadius: '4px',
+                                            border: '1px solid #3b82f6',
+                                        }}
+                                    >
+                                        {cat}
+                                        <span
+                                            style={{
+                                                background: '#3b82f6',
+                                                color: '#fff',
+                                                padding: '1px 5px',
+                                                borderRadius: '3px',
+                                                fontSize: '10px',
+                                                fontWeight: 700,
+                                            }}
+                                        >
+                                            NEW
+                                        </span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {result.errors && result.errors.length > 0 && (
                         <div
                             style={{
@@ -187,13 +238,15 @@ const ChannelSync: React.FC = () => {
                     {result.createdDrafts && result.createdDrafts.length > 0 && (
                         <div>
                             <p style={{ fontWeight: 500, marginBottom: '8px' }}>Created Drafts:</p>
-                            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                 {result.createdDrafts.map((draft) => (
                                     <a
                                         key={draft.id}
                                         href={`/admin/collections/products/${draft.id}`}
                                         style={{
-                                            display: 'block',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
                                             padding: '10px 12px',
                                             marginBottom: '6px',
                                             background: '#f9fafb',
@@ -203,10 +256,42 @@ const ChannelSync: React.FC = () => {
                                             color: '#374151',
                                         }}
                                     >
-                                        <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{draft.name}</p>
-                                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                                            From: {draft.video}
-                                        </p>
+                                        <div>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{draft.name}</p>
+                                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                                                From: {draft.video.length > 40 ? draft.video.substring(0, 40) + '...' : draft.video}
+                                            </p>
+                                        </div>
+                                        <span
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                padding: '4px 10px',
+                                                background: draft.isNewCategory ? '#dbeafe' : '#f3f4f6',
+                                                color: draft.isNewCategory ? '#1d4ed8' : '#6b7280',
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                borderRadius: '4px',
+                                                border: draft.isNewCategory ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+                                            }}
+                                        >
+                                            {draft.category}
+                                            {draft.isNewCategory && (
+                                                <span
+                                                    style={{
+                                                        background: '#3b82f6',
+                                                        color: '#fff',
+                                                        padding: '1px 4px',
+                                                        borderRadius: '2px',
+                                                        fontSize: '9px',
+                                                        fontWeight: 700,
+                                                    }}
+                                                >
+                                                    NEW
+                                                </span>
+                                            )}
+                                        </span>
                                     </a>
                                 ))}
                             </div>

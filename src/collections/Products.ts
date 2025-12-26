@@ -37,6 +37,52 @@ export const Products: CollectionConfig = {
                 }
                 return data;
             },
+            // Auto-create category when publishing with pending category
+            async ({ data, req, originalDoc }) => {
+                // Check if status is changing to published and there's a pending category
+                if (
+                    data?.status === 'published' &&
+                    data?.pendingCategoryName &&
+                    !data?.category
+                ) {
+                    try {
+                        // Check if category already exists
+                        const existing = await req.payload.find({
+                            collection: 'categories',
+                            where: {
+                                name: { equals: data.pendingCategoryName },
+                            },
+                            limit: 1,
+                        });
+
+                        let categoryId: number;
+
+                        if (existing.docs.length > 0) {
+                            categoryId = existing.docs[0].id as number;
+                        } else {
+                            // Create new category
+                            const newCategory = await req.payload.create({
+                                collection: 'categories',
+                                data: {
+                                    name: data.pendingCategoryName,
+                                    slug: data.pendingCategoryName
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9]+/g, '-')
+                                        .replace(/(^-|-$)/g, ''),
+                                },
+                            });
+                            categoryId = newCategory.id as number;
+                        }
+
+                        // Link product to category and clear pending
+                        data.category = categoryId;
+                        data.pendingCategoryName = null;
+                    } catch (error) {
+                        console.error('Failed to auto-create category:', error);
+                    }
+                }
+                return data;
+            },
         ],
     },
     fields: [
@@ -86,6 +132,16 @@ export const Products: CollectionConfig = {
             hasMany: false,
             admin: {
                 position: 'sidebar',
+            },
+        },
+        {
+            name: 'pendingCategoryName',
+            type: 'text',
+            label: 'Pending Category (AI Suggested)',
+            admin: {
+                position: 'sidebar',
+                description: 'New category will be auto-created when published',
+                condition: (data) => !!data?.pendingCategoryName,
             },
         },
 

@@ -5,7 +5,8 @@ import React, { useState } from 'react'
 interface ExtractedProduct {
     productName: string
     brandName: string
-    category: string
+    suggestedCategory: string
+    isNewCategory: boolean
     sentimentScore: number
     pros: string[]
     cons: string[]
@@ -17,7 +18,8 @@ interface AnalysisResult {
     transcript?: string
     productsFound?: number
     products?: ExtractedProduct[]
-    draftsCreated?: { id: number; name: string }[]
+    draftsCreated?: { id: number; name: string; category: string; isNewCategory: boolean }[]
+    existingCategories?: string[]
     error?: string
 }
 
@@ -73,7 +75,7 @@ const VideoToDraft: React.FC = () => {
                 <div>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Video-to-Draft</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6e6e73' }}>
-                        Analyze YouTube videos and auto-create product drafts
+                        Analyze a single video and create product drafts
                     </p>
                 </div>
             </div>
@@ -161,25 +163,62 @@ const VideoToDraft: React.FC = () => {
 
                     {result.draftsCreated && result.draftsCreated.length > 0 && (
                         <div>
-                            <p style={{ fontWeight: 500, marginBottom: '8px' }}>Edit Drafts:</p>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            <p style={{ fontWeight: 500, marginBottom: '8px' }}>Created Drafts:</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {result.draftsCreated.map((draft) => (
                                     <a
                                         key={draft.id}
                                         href={`/admin/collections/products/${draft.id}`}
                                         style={{
-                                            display: 'inline-flex',
+                                            display: 'flex',
                                             alignItems: 'center',
-                                            gap: '6px',
-                                            padding: '8px 12px',
-                                            background: '#1f2937',
-                                            color: '#fff',
+                                            justifyContent: 'space-between',
+                                            padding: '12px',
+                                            background: '#f9fafb',
+                                            border: '1px solid #e5e7eb',
                                             borderRadius: '6px',
-                                            fontSize: '13px',
                                             textDecoration: 'none',
+                                            color: '#374151',
                                         }}
                                     >
-                                        {draft.name} →
+                                        <div>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{draft.name}</p>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {/* Category Badge */}
+                                            <span
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    padding: '4px 10px',
+                                                    background: draft.isNewCategory ? '#dbeafe' : '#f3f4f6',
+                                                    color: draft.isNewCategory ? '#1d4ed8' : '#6b7280',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    borderRadius: '4px',
+                                                    border: draft.isNewCategory ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+                                                }}
+                                            >
+                                                {draft.category}
+                                                {draft.isNewCategory && (
+                                                    <span
+                                                        style={{
+                                                            background: '#3b82f6',
+                                                            color: '#fff',
+                                                            padding: '1px 5px',
+                                                            borderRadius: '3px',
+                                                            fontSize: '10px',
+                                                            fontWeight: 700,
+                                                            textTransform: 'uppercase',
+                                                        }}
+                                                    >
+                                                        New
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span style={{ color: '#9ca3af' }}>→</span>
+                                        </div>
                                     </a>
                                 ))}
                             </div>
