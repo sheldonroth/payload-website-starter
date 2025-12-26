@@ -1,6 +1,8 @@
 import { Banner } from '@payloadcms/ui/elements/Banner'
 import React from 'react'
 import VideoToDraft from '../VideoToDraft'
+import ChannelSync from '../ChannelSync'
+import ProductsToReview from '../ProductsToReview'
 
 import './index.scss'
 
@@ -16,9 +18,22 @@ const BeforeDashboard: React.FC = () => {
         Use the sidebar to manage products, articles, videos, and more.
       </p>
 
-      {/* Video-to-Draft Tool */}
       <div style={{ padding: '0 24px' }}>
-        <VideoToDraft />
+        {/* Products to Review */}
+        <ProductsToReview />
+
+        {/* AI Tools */}
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
+          🤖 AI Tools
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+          {/* Single Video Analysis */}
+          <VideoToDraft />
+
+          {/* Channel Sync */}
+          <ChannelSync />
+        </div>
       </div>
     </div>
   )

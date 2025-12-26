@@ -24,6 +24,7 @@ import { migrations } from './migrations'
 import { oauthEndpoints } from './endpoints/oauth'
 import { youtubeSyncHandler } from './endpoints/youtube-sync'
 import { videoAnalyzeHandler } from './endpoints/video-analyze'
+import { channelAnalyzeHandler } from './endpoints/channel-analyze'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -94,6 +95,11 @@ export default buildConfig({
       path: '/video/analyze',
       method: 'post',
       handler: videoAnalyzeHandler,
+    },
+    {
+      path: '/channel/analyze',
+      method: 'post',
+      handler: channelAnalyzeHandler,
     },
   ],
   plugins: [
