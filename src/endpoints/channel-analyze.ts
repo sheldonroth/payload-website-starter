@@ -124,21 +124,28 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
     try {
         const { payload } = req
         const body = await req.json?.()
-        const { maxVideos = 10 } = body || {}
+        const { maxVideos = 10, customChannelId } = body || {}
 
-        // Get YouTube settings
+        // Get YouTube settings for API key
         const settings = await payload.findGlobal({
             slug: 'youtube-settings',
         })
 
-        const { channelId, apiKey } = settings as {
+        const { channelId: defaultChannelId, apiKey } = settings as {
             channelId?: string
             apiKey?: string
         }
 
+        // Use custom channel ID if provided, otherwise use default
+        const channelId = customChannelId || defaultChannelId
+
         if (!channelId || !apiKey) {
             return Response.json(
-                { error: 'YouTube channel ID and API key are required. Configure in CMS Settings.' },
+                {
+                    error: customChannelId
+                        ? 'YouTube API key is required. Configure in CMS Settings.'
+                        : 'YouTube channel ID and API key are required. Configure in CMS Settings.'
+                },
                 { status: 400 }
             )
         }

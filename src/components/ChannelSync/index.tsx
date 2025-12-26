@@ -19,6 +19,7 @@ type AnalysisStep = 'idle' | 'analyzing' | 'done' | 'error'
 
 const ChannelSync: React.FC = () => {
     const [maxVideos, setMaxVideos] = useState(10)
+    const [customChannelId, setCustomChannelId] = useState('')
     const [step, setStep] = useState<AnalysisStep>('idle')
     const [result, setResult] = useState<AnalysisResult | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -32,7 +33,10 @@ const ChannelSync: React.FC = () => {
             const response = await fetch('/api/channel/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ maxVideos }),
+                body: JSON.stringify({
+                    maxVideos,
+                    ...(customChannelId.trim() && { customChannelId: customChannelId.trim() })
+                }),
             })
 
             const data: AnalysisResult = await response.json()
@@ -63,16 +67,47 @@ const ChannelSync: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <span style={{ fontSize: '24px' }}>📺</span>
                 <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Channel Sync</h3>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Channel Analyzer</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6e6e73' }}>
-                        Analyze all videos from your channel
+                        Analyze videos from any YouTube channel
                     </p>
                 </div>
             </div>
 
             <p style={{ fontSize: '13px', color: '#86868b', marginBottom: '16px' }}>
-                Uses the channel configured in YouTube Settings. Processes each video's transcript and creates product drafts.
+                Leave channel ID empty to use your default channel, or enter any channel ID to analyze external sources.
             </p>
+
+            <div style={{ marginBottom: '16px' }}>
+                <label
+                    style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        marginBottom: '8px',
+                    }}
+                >
+                    YouTube Channel ID <span style={{ color: '#86868b', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                    type="text"
+                    value={customChannelId}
+                    onChange={(e) => setCustomChannelId(e.target.value)}
+                    placeholder="e.g., UC-lHJZR3Gqxm24_Vd_AJ5Yw (leave empty for default)"
+                    disabled={step === 'analyzing'}
+                    style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        border: '1px solid #d1d1d6',
+                        fontSize: '14px',
+                        boxSizing: 'border-box',
+                    }}
+                />
+                <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#86868b' }}>
+                    Get the channel ID from any YouTube channel URL or &quot;About&quot; page
+                </p>
+            </div>
 
             <div style={{ marginBottom: '16px' }}>
                 <label
