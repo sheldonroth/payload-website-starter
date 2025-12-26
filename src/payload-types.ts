@@ -894,6 +894,10 @@ export interface Product {
   id: number;
   name: string;
   brand: string;
+  /**
+   * Used in URLs (auto-generated from brand + name if empty)
+   */
+  slug?: string | null;
   category?: (number | null) | Category;
   /**
    * Use this OR upload an image below
@@ -1606,6 +1610,7 @@ export interface PostsSelect<T extends boolean = true> {
 export interface ProductsSelect<T extends boolean = true> {
   name?: T;
   brand?: T;
+  slug?: T;
   category?: T;
   imageUrl?: T;
   image?: T;

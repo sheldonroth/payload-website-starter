@@ -56,8 +56,8 @@ export const Products: CollectionConfig = {
         {
             name: 'slug',
             type: 'text',
-            unique: true,
             label: 'URL Slug',
+            index: true,
             admin: {
                 description: 'Used in URLs (auto-generated from brand + name if empty)',
             },
@@ -68,10 +68,12 @@ export const Products: CollectionConfig = {
                         // Auto-generate slug from brand + name
                         const brand = data?.brand || '';
                         const name = data?.name || '';
-                        return `${brand}-${name}`
+                        const baseSlug = `${brand}-${name}`
                             .toLowerCase()
                             .replace(/[^a-z0-9]+/g, '-')
                             .replace(/(^-|-$)/g, '');
+                        // Add timestamp suffix to avoid duplicates
+                        return baseSlug || `product-${Date.now()}`;
                     },
                 ],
             },
