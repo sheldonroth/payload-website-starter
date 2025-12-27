@@ -67,6 +67,9 @@ export const Categories: CollectionConfig = {
         { label: '☀️ Sun (Skincare/SPF)', value: 'sun' },
         { label: '💪 Dumbbell (Fitness)', value: 'dumbbell' },
         { label: '🧠 Brain (Mental Health)', value: 'brain' },
+        { label: '🍬 Candy (Chocolate/Sweets)', value: 'candy' },
+        { label: '🍪 Cookie (Snacks/Baked)', value: 'cookie' },
+        { label: '☕ Coffee (Beverages)', value: 'coffee' },
         { label: '🔍 Search (Default)', value: 'search' },
       ],
       admin: {
@@ -84,9 +87,9 @@ export const Categories: CollectionConfig = {
             // Keyword to icon mapping
             const iconKeywords: Record<string, string[]> = {
               'pill': ['supplement', 'vitamin', 'mineral', 'probiotic', 'capsule', 'tablet'],
-              'apple': ['food', 'grocery', 'snack', 'meal', 'nutrition', 'diet', 'eating'],
+              'apple': ['food', 'grocery', 'meal', 'nutrition', 'diet', 'eating', 'produce'],
               'baby': ['baby', 'kid', 'child', 'infant', 'toddler', 'children', 'nursery'],
-              'droplets': ['water', 'beverage', 'drink', 'hydration', 'liquid', 'juice'],
+              'droplets': ['water', 'beverage', 'hydration', 'liquid'],
               'sparkles': ['cosmetic', 'beauty', 'makeup', 'lipstick', 'foundation', 'mascara'],
               'pawprint': ['pet', 'dog', 'cat', 'animal', 'veterinary'],
               'home': ['home', 'house', 'cleaning', 'household', 'laundry', 'kitchen'],
@@ -97,6 +100,9 @@ export const Categories: CollectionConfig = {
               'dumbbell': ['fitness', 'workout', 'protein', 'gym', 'sport', 'exercise', 'muscle'],
               'brain': ['mental', 'brain', 'cognitive', 'nootropic', 'focus', 'memory', 'sleep'],
               'microscope': ['lab', 'test', 'science', 'research'],
+              'candy': ['chocolate', 'candy', 'sweet', 'confection', 'cocoa', 'dessert', 'sugar', 'bar', 'treat'],
+              'cookie': ['snack', 'cookie', 'biscuit', 'cracker', 'baked', 'pastry', 'chip'],
+              'coffee': ['coffee', 'tea', 'drink', 'juice', 'soda', 'energy drink'],
             };
 
             // Find best matching icon
