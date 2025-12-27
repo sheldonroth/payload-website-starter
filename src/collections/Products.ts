@@ -255,6 +255,9 @@ export const Products: CollectionConfig = {
             name: 'badges',
             type: 'group',
             label: 'Product Badges',
+            access: {
+                read: premiumFieldAccess,
+            },
             admin: {
                 position: 'sidebar',
             },
