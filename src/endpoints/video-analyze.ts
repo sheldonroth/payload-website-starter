@@ -110,10 +110,17 @@ Rules:
    - "Love it, buying more" = 9-10
    - "It's okay, but pricey" = 6-7
    - "Don't buy this" = 1-3
-4. CATEGORY DETECTION:
-   - If the product fits an EXISTING category from the list above, use that exact name.
-   - If no existing category fits, suggest a NEW category name and set isNewCategory to true.
-   - Be specific but not too narrow (e.g., "Energy Drinks" not "Sugar-Free Caffeinated Beverages").
+4. HIERARCHICAL CATEGORY DETECTION:
+   - Use "Parent > Child" format for granular categorization
+   - Examples:
+     * "Food & Beverage > Sports Drinks" for Prime Hydration
+     * "Food & Beverage > Protein Bars" for protein bars
+     * "Supplements > Pre-Workout" for pre-workout supplements
+     * "Baby & Kids > Baby Food" for baby food products
+     * "Pet Care > Dog Food" for dog food
+   - If a product fits an EXISTING category, use that exact name
+   - If suggesting a NEW category, use the Parent > Child format
+   - Set isNewCategory to true for any category not in the existing list
 
 Output ONLY a valid JSON object with this exact schema:
 {
@@ -121,7 +128,7 @@ Output ONLY a valid JSON object with this exact schema:
     {
       "productName": "string",
       "brandName": "string", 
-      "suggestedCategory": "string (use existing category name if it fits, otherwise suggest a new one)",
+      "suggestedCategory": "string (use 'Parent > Child' format, e.g., 'Food & Beverage > Sports Drinks')",
       "isNewCategory": boolean (true if this is a NEW category not in the existing list),
       "sentimentScore": number,
       "pros": ["string"],
