@@ -1,4 +1,4 @@
-import type { PayloadHandler, PayloadRequest } from 'payload'
+import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
 
 interface ProductInfo {
     imageUrl: string | null
@@ -62,6 +62,67 @@ async function searchProductInfo(productName: string, brand: string | null): Pro
     }
 }
 
+/**
+ * Download an image from external URL and upload to Payload CMS Media collection
+ * Returns the Media document ID on success, or null on failure
+ */
+async function downloadAndUploadImage(
+    payload: Payload,
+    imageUrl: string,
+    productName: string,
+    brand: string | null
+): Promise<number | null> {
+    try {
+        // Fetch the image from external URL
+        const response = await fetch(imageUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; ProductReport/1.0)',
+            },
+        })
+
+        if (!response.ok) {
+            console.error(`Failed to fetch image: ${response.status} ${response.statusText}`)
+            return null
+        }
+
+        // Get image data as buffer
+        const arrayBuffer = await response.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        // Determine file extension from content-type
+        const contentType = response.headers.get('content-type') || 'image/jpeg'
+        const ext = contentType.includes('png') ? 'png' :
+            contentType.includes('webp') ? 'webp' :
+                contentType.includes('gif') ? 'gif' : 'jpg'
+
+        // Generate safe filename
+        const safeBrand = (brand || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-')
+        const safeName = productName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        const filename = `${safeBrand}-${safeName}-${Date.now()}.${ext}`
+
+        // Create Media document in Payload
+        const media = await payload.create({
+            collection: 'media',
+            data: {
+                alt: `${brand || ''} ${productName}`.trim(),
+            },
+            file: {
+                data: buffer,
+                name: filename,
+                mimetype: contentType,
+                size: buffer.length,
+            },
+        })
+
+        console.log(`Uploaded image for ${brand} ${productName}: Media ID ${media.id}`)
+        return media.id as number
+    } catch (error) {
+        console.error('Failed to download/upload image:', error)
+        return null
+    }
+}
+
+
 export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -96,13 +157,33 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
         // Search for product info
         const info = await searchProductInfo(productName, brand)
 
+        // Track if we successfully downloaded the image
+        let imageDownloaded = false
+        let mediaId: number | null = null
+
         // Optionally auto-apply to product
         if (autoApply && (info.imageUrl || info.priceRange)) {
             const updateData: Record<string, unknown> = {}
 
-            if (info.imageUrl && !productData.imageUrl) {
-                updateData.imageUrl = info.imageUrl
+            // Try to download and upload image to CMS instead of storing external URL
+            if (info.imageUrl && !productData.image) {
+                mediaId = await downloadAndUploadImage(
+                    req.payload,
+                    info.imageUrl,
+                    productName,
+                    brand
+                )
+
+                if (mediaId) {
+                    // Successfully uploaded to CMS - link the Media document
+                    updateData.image = mediaId
+                    imageDownloaded = true
+                } else if (!productData.imageUrl) {
+                    // Fallback: store external URL if download failed
+                    updateData.imageUrl = info.imageUrl
+                }
             }
+
             if (info.priceRange && !productData.priceRange) {
                 updateData.priceRange = info.priceRange
             }
@@ -121,6 +202,8 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
             productName,
             brand,
             imageUrl: info.imageUrl,
+            imageDownloaded,
+            mediaId,
             priceRange: info.priceRange,
             source: info.source,
             searchQuery: info.searchQuery,
