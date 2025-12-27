@@ -79,6 +79,9 @@ export default buildConfig({
   db: vercelPostgresAdapter({
     pool: {
       connectionString: process.env.POSTGRES_URL || '',
+      max: 5,                      // Limit concurrent connections
+      idleTimeoutMillis: 10000,    // Release idle connections after 10s
+      connectionTimeoutMillis: 3000, // Fail fast if can't connect
     },
     prodMigrations: migrations,
   }),
