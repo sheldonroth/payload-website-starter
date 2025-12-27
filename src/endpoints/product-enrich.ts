@@ -8,17 +8,19 @@ interface ProductInfo {
 }
 
 const SEARCH_PROMPT = `You are a product research assistant. Given a product name and brand, find:
-1. A direct image URL from a reputable source (Amazon, manufacturer site, etc.)
+1. A direct image URL from a reputable source (Amazon, manufacturer official site, major retailers)
 2. The typical price range for this product
 
 IMPORTANT:
-- For imageUrl, provide a DIRECT link to a product image (ending in .jpg, .png, .webp, etc.) from a reputable retailer or manufacturer
+- For imageUrl, provide a DIRECT link to a product image (ending in .jpg, .png, .webp, etc.) from a MAJOR RETAILER like Amazon, Walmart, Target, or the manufacturer's official website
+- AVOID CDN subdomains that may not resolve (like images.brand.com) - use the main domain
+- Amazon product images are ideal: look for images.amazon.com or m.media-amazon.com URLs
 - For priceRange, provide a realistic USD price range like "$15-25" or "$49.99"
 - If you can't find reliable info, return null for that field
 
 Output ONLY a valid JSON object:
 {
-  "imageUrl": "string or null (direct image URL)",
+  "imageUrl": "string or null (direct image URL from major retailer)",
   "priceRange": "string or null (e.g., '$15-25')",
   "source": "string or null (where the info came from)",
   "searchQuery": "string (what you would search for)"
@@ -64,33 +66,52 @@ async function searchProductInfo(productName: string, brand: string | null): Pro
 
 /**
  * Download an image from external URL and upload to Payload CMS Media collection
- * Returns the Media document ID on success, or null on failure
+ * Returns object with mediaId on success or error details on failure
  */
 async function downloadAndUploadImage(
     payload: Payload,
     imageUrl: string,
     productName: string,
     brand: string | null
-): Promise<number | null> {
+): Promise<{ mediaId: number | null; error?: string }> {
     try {
-        // Fetch the image from external URL
+        // Fetch the image from external URL with timeout
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
         const response = await fetch(imageUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (compatible; ProductReport/1.0)',
             },
+            signal: controller.signal,
         })
+        clearTimeout(timeoutId)
 
         if (!response.ok) {
-            console.error(`Failed to fetch image: ${response.status} ${response.statusText}`)
-            return null
+            const error = `Failed to fetch image: ${response.status} ${response.statusText}`
+            console.error(error)
+            return { mediaId: null, error }
         }
 
         // Get image data as buffer
         const arrayBuffer = await response.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
+        // Check if we actually got image data
+        if (buffer.length < 1000) {
+            const error = 'Image too small (likely invalid or blocked)'
+            console.error(error)
+            return { mediaId: null, error }
+        }
+
         // Determine file extension from content-type
         const contentType = response.headers.get('content-type') || 'image/jpeg'
+        if (!contentType.includes('image')) {
+            const error = `Invalid content type: ${contentType}`
+            console.error(error)
+            return { mediaId: null, error }
+        }
+
         const ext = contentType.includes('png') ? 'png' :
             contentType.includes('webp') ? 'webp' :
                 contentType.includes('gif') ? 'gif' : 'jpg'
@@ -115,10 +136,11 @@ async function downloadAndUploadImage(
         })
 
         console.log(`Uploaded image for ${brand} ${productName}: Media ID ${media.id}`)
-        return media.id as number
+        return { mediaId: media.id as number }
     } catch (error) {
-        console.error('Failed to download/upload image:', error)
-        return null
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('Failed to download/upload image:', errorMessage)
+        return { mediaId: null, error: errorMessage }
     }
 }
 
@@ -160,6 +182,7 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
         // Track if we successfully downloaded the image
         let imageDownloaded = false
         let mediaId: number | null = null
+        let imageError: string | null = null
 
         // Optionally auto-apply to product
         if (autoApply && (info.imageUrl || info.priceRange)) {
@@ -167,20 +190,24 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
 
             // Try to download and upload image to CMS instead of storing external URL
             if (info.imageUrl && !productData.image) {
-                mediaId = await downloadAndUploadImage(
+                const downloadResult = await downloadAndUploadImage(
                     req.payload,
                     info.imageUrl,
                     productName,
                     brand
                 )
 
-                if (mediaId) {
+                if (downloadResult.mediaId) {
                     // Successfully uploaded to CMS - link the Media document
-                    updateData.image = mediaId
+                    updateData.image = downloadResult.mediaId
+                    mediaId = downloadResult.mediaId
                     imageDownloaded = true
-                } else if (!productData.imageUrl) {
-                    // Fallback: store external URL if download failed
-                    updateData.imageUrl = info.imageUrl
+                } else {
+                    // Download failed - store external URL as fallback and report error
+                    if (!productData.imageUrl) {
+                        updateData.imageUrl = info.imageUrl
+                    }
+                    imageError = downloadResult.error || 'Download failed'
                 }
             }
 
@@ -204,6 +231,7 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
             imageUrl: info.imageUrl,
             imageDownloaded,
             mediaId,
+            imageError,
             priceRange: info.priceRange,
             source: info.source,
             searchQuery: info.searchQuery,
