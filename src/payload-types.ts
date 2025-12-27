@@ -523,6 +523,22 @@ export interface User {
    * Categories this user is watching for updates
    */
   watchlistCategories?: (number | Category)[] | null;
+  /**
+   * Number of free product unlocks remaining
+   */
+  freeUnlockCredits?: number | null;
+  /**
+   * Array of permanently unlocked product IDs
+   */
+  unlockedProducts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1893,6 +1909,8 @@ export interface UsersSelect<T extends boolean = true> {
   savedProductIds?: T;
   savedArticleIds?: T;
   watchlistCategories?: T;
+  freeUnlockCredits?: T;
+  unlockedProducts?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

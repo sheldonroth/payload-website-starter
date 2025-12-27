@@ -259,6 +259,26 @@ export const Users: CollectionConfig = {
         description: 'Categories this user is watching for updates',
       },
     },
+    // ============================================
+    // Free Unlock System (PLG)
+    // ============================================
+    {
+      name: 'freeUnlockCredits',
+      type: 'number',
+      defaultValue: 1,
+      admin: {
+        position: 'sidebar',
+        description: 'Number of free product unlocks remaining',
+      },
+    },
+    {
+      name: 'unlockedProducts',
+      type: 'json',
+      defaultValue: [],
+      admin: {
+        description: 'Array of permanently unlocked product IDs',
+      },
+    },
   ],
   timestamps: true,
 }
