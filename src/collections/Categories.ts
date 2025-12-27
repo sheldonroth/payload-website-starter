@@ -49,10 +49,66 @@ export const Categories: CollectionConfig = {
     },
     {
       name: 'icon',
-      type: 'text',
-      label: 'Icon (Emoji or Name)',
+      type: 'select',
+      label: 'Category Icon',
+      defaultValue: 'search',
+      options: [
+        { label: '💊 Pill (Supplements)', value: 'pill' },
+        { label: '🍎 Apple (Food)', value: 'apple' },
+        { label: '👶 Baby (Baby & Kids)', value: 'baby' },
+        { label: '💧 Droplets (Water)', value: 'droplets' },
+        { label: '✨ Sparkles (Cosmetics)', value: 'sparkles' },
+        { label: '🐾 Paw Print (Pet Food)', value: 'pawprint' },
+        { label: '🏠 Home (Household)', value: 'home' },
+        { label: '🧴 Spray Can (Personal Care)', value: 'spraycan' },
+        { label: '🔬 Microscope (Lab/Science)', value: 'microscope' },
+        { label: '❤️ Heart (Health)', value: 'heart' },
+        { label: '🌿 Leaf (Organic/Natural)', value: 'leaf' },
+        { label: '☀️ Sun (Skincare/SPF)', value: 'sun' },
+        { label: '💪 Dumbbell (Fitness)', value: 'dumbbell' },
+        { label: '🧠 Brain (Mental Health)', value: 'brain' },
+        { label: '🔍 Search (Default)', value: 'search' },
+      ],
       admin: {
-        description: 'Use emoji (📱) or Ionicons name',
+        description: 'Auto-selected based on category name. You can override if needed.',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, data }) => {
+            // If icon already set and not default, keep it
+            if (value && value !== 'search') return value;
+
+            // Auto-select icon based on category name
+            const name = (data?.name || '').toLowerCase();
+
+            // Keyword to icon mapping
+            const iconKeywords: Record<string, string[]> = {
+              'pill': ['supplement', 'vitamin', 'mineral', 'probiotic', 'capsule', 'tablet'],
+              'apple': ['food', 'grocery', 'snack', 'meal', 'nutrition', 'diet', 'eating'],
+              'baby': ['baby', 'kid', 'child', 'infant', 'toddler', 'children', 'nursery'],
+              'droplets': ['water', 'beverage', 'drink', 'hydration', 'liquid', 'juice'],
+              'sparkles': ['cosmetic', 'beauty', 'makeup', 'lipstick', 'foundation', 'mascara'],
+              'pawprint': ['pet', 'dog', 'cat', 'animal', 'veterinary'],
+              'home': ['home', 'house', 'cleaning', 'household', 'laundry', 'kitchen'],
+              'spraycan': ['personal care', 'hygiene', 'deodorant', 'soap', 'shampoo', 'body'],
+              'heart': ['health', 'wellness', 'medical', 'cardio', 'heart'],
+              'leaf': ['organic', 'natural', 'vegan', 'plant', 'herbal', 'eco', 'green'],
+              'sun': ['skin', 'sunscreen', 'spf', 'uv', 'tanning', 'sun'],
+              'dumbbell': ['fitness', 'workout', 'protein', 'gym', 'sport', 'exercise', 'muscle'],
+              'brain': ['mental', 'brain', 'cognitive', 'nootropic', 'focus', 'memory', 'sleep'],
+              'microscope': ['lab', 'test', 'science', 'research'],
+            };
+
+            // Find best matching icon
+            for (const [icon, keywords] of Object.entries(iconKeywords)) {
+              if (keywords.some(keyword => name.includes(keyword))) {
+                return icon;
+              }
+            }
+
+            return 'search'; // Default fallback
+          },
+        ],
       },
     },
     {
