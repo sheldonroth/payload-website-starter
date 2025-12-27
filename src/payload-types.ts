@@ -937,7 +937,7 @@ export interface Product {
      */
     isEditorsChoice?: boolean | null;
   };
-  status?: ('draft' | 'testing' | 'writing' | 'review' | 'published') | null;
+  status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
   priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
   pros?:
     | {

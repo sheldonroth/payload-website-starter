@@ -17,7 +17,8 @@ const ProductsToReview: React.FC = () => {
     useEffect(() => {
         const fetchDrafts = async () => {
             try {
-                const response = await fetch('/api/products?where[status][equals]=draft&limit=10&sort=-createdAt')
+                // Fetch both ai_draft AND draft products
+                const response = await fetch('/api/products?where[or][0][status][equals]=ai_draft&where[or][1][status][equals]=draft&limit=10&sort=-createdAt')
                 const data = await response.json()
                 setProducts(data.docs || [])
             } catch (error) {
@@ -33,6 +34,21 @@ const ProductsToReview: React.FC = () => {
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+
+    const getStatusBadge = (status: string) => {
+        if (status === 'ai_draft') {
+            return {
+                label: '🤖 AI Draft',
+                background: '#dbeafe',
+                color: '#1d4ed8',
+            }
+        }
+        return {
+            label: '📝 Draft',
+            background: '#fef3c7',
+            color: '#92400e',
+        }
     }
 
     return (
@@ -51,12 +67,12 @@ const ProductsToReview: React.FC = () => {
                     <div>
                         <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Products to Review</h3>
                         <p style={{ margin: 0, fontSize: '14px', color: '#6e6e73' }}>
-                            Draft products waiting for publishing
+                            AI drafts and manual drafts waiting for publishing
                         </p>
                     </div>
                 </div>
                 <a
-                    href="/admin/collections/products?where[status][equals]=draft"
+                    href="/admin/collections/products?where[or][0][status][equals]=ai_draft&where[or][1][status][equals]=draft"
                     style={{
                         fontSize: '13px',
                         color: '#5c5ce0',
@@ -86,52 +102,54 @@ const ProductsToReview: React.FC = () => {
                 </div>
             ) : (
                 <div>
-                    {products.map((product) => (
-                        <a
-                            key={product.id}
-                            href={`/admin/collections/products/${product.id}`}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '12px',
-                                marginBottom: '8px',
-                                background: '#f9fafb',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '6px',
-                                textDecoration: 'none',
-                                color: '#374151',
-                            }}
-                        >
-                            <div>
-                                <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>
-                                    {product.name}
-                                </p>
-                                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                                    {product.brand}
-                                </p>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span
-                                    style={{
-                                        display: 'inline-block',
-                                        padding: '4px 8px',
-                                        background: '#fef3c7',
-                                        color: '#92400e',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        borderRadius: '4px',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    Draft
-                                </span>
-                                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
-                                    {formatDate(product.createdAt)}
-                                </p>
-                            </div>
-                        </a>
-                    ))}
+                    {products.map((product) => {
+                        const badge = getStatusBadge(product.status)
+                        return (
+                            <a
+                                key={product.id}
+                                href={`/admin/collections/products/${product.id}`}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '12px',
+                                    marginBottom: '8px',
+                                    background: '#f9fafb',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '6px',
+                                    textDecoration: 'none',
+                                    color: '#374151',
+                                }}
+                            >
+                                <div>
+                                    <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>
+                                        {product.name}
+                                    </p>
+                                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                                        {product.brand}
+                                    </p>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span
+                                        style={{
+                                            display: 'inline-block',
+                                            padding: '4px 8px',
+                                            background: badge.background,
+                                            color: badge.color,
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            borderRadius: '4px',
+                                        }}
+                                    >
+                                        {badge.label}
+                                    </span>
+                                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                                        {formatDate(product.createdAt)}
+                                    </p>
+                                </div>
+                            </a>
+                        )
+                    })}
                 </div>
             )}
         </div>

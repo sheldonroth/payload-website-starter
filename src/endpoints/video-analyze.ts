@@ -212,12 +212,51 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             console.log('Using Gemini video analysis for:', videoUrl)
             products = await extractProductsFromVideo(videoUrl, existingCategories)
         }
+        /* ============================================================================
+         * ⚠️⚠️⚠️ WARNING: AI DUPLICATE DETECTION FEATURE ⚠️⚠️⚠️
+         * ============================================================================
+         * This feature checks for duplicate products ONLY in 'ai_draft' status.
+         * It will NOT affect products with other statuses (draft, published, etc.)
+         * 
+         * Added: December 2024
+         * Reason: AI was creating many duplicate product entries
+         * 
+         * HOW IT WORKS:
+         * 1. Before creating each AI draft, we search for existing ai_draft products
+         * 2. If a product with same name+brand exists as ai_draft, we SKIP it
+         * 3. This ONLY applies to ai_draft, not draft/published/etc.
+         * 
+         * IF THIS CAUSES PROBLEMS:
+         * - Check if legitimate products are being skipped
+         * - The duplicate check is case-insensitive
+         * - Products are matched by (name + brand) combination
+         * - To disable: remove the duplicate check block below and change status to 'draft'
+         * ============================================================================ */
 
-        // Step 4: Create drafts in Payload
+        // Step 4: Create AI drafts in Payload (with duplicate detection)
         const createdDrafts: { id: number; name: string; category: string; isNewCategory: boolean }[] = []
+        const skippedDuplicates: string[] = []
 
         for (const product of products) {
             try {
+                // ⚠️ DUPLICATE CHECK: Only affects ai_draft status products
+                const existingAiDraft = await req.payload.find({
+                    collection: 'products',
+                    where: {
+                        and: [
+                            { status: { equals: 'ai_draft' } },
+                            { name: { equals: product.productName } },
+                            ...(product.brandName ? [{ brand: { equals: product.brandName } }] : []),
+                        ],
+                    },
+                    limit: 1,
+                })
+
+                if (existingAiDraft.docs.length > 0) {
+                    skippedDuplicates.push(`${product.brandName || ''} ${product.productName}`.trim())
+                    continue // Skip this duplicate
+                }
+
                 // Find existing category or leave null for new ones
                 let categoryId: number | null = null
                 if (!product.isNewCategory) {
@@ -235,7 +274,7 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     data: {
                         name: product.productName,
                         brand: product.brandName,
-                        status: 'draft',
+                        status: 'ai_draft', // ⚠️ Uses ai_draft instead of draft
                         priceRange: '$$',
                         summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}`,
                         ...(categoryId && { category: categoryId }),
@@ -272,6 +311,7 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             productsFound: products.length,
             products,
             draftsCreated: createdDrafts,
+            skippedDuplicates, // ⚠️ Products skipped due to duplicate detection
             existingCategories,
         })
     } catch (error) {

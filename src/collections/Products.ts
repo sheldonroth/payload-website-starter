@@ -278,6 +278,7 @@ export const Products: CollectionConfig = {
             type: 'select',
             label: 'Review Status',
             options: [
+                { label: '🤖 AI Draft', value: 'ai_draft' },
                 { label: '📝 Draft', value: 'draft' },
                 { label: '🔬 Under Testing', value: 'testing' },
                 { label: '✍️ Writing Review', value: 'writing' },

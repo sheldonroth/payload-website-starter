@@ -252,9 +252,29 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
             results.videosProcessed++
             results.productsFound += products.length
 
-            // Create drafts for each product
+            /* ⚠️⚠️⚠️ AI DUPLICATE DETECTION - See video-analyze.ts for full documentation ⚠️⚠️⚠️ */
+
+            // Create drafts for each product (with duplicate detection)
             for (const product of products) {
                 try {
+                    // ⚠️ DUPLICATE CHECK: Only affects ai_draft status products
+                    const existingAiDraft = await payload.find({
+                        collection: 'products',
+                        where: {
+                            and: [
+                                { status: { equals: 'ai_draft' } },
+                                { name: { equals: product.productName } },
+                                ...(product.brandName ? [{ brand: { equals: product.brandName } }] : []),
+                            ],
+                        },
+                        limit: 1,
+                    })
+
+                    if (existingAiDraft.docs.length > 0) {
+                        // Skip duplicate, but don't count as error
+                        continue
+                    }
+
                     // Find existing category or leave null for new ones
                     let categoryId: number | null = null
                     if (!product.isNewCategory) {
@@ -277,7 +297,7 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
                         data: {
                             name: product.productName,
                             brand: product.brandName,
-                            status: 'draft',
+                            status: 'ai_draft', // ⚠️ Uses ai_draft instead of draft
                             priceRange: '$$',
                             summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}\n\nSource: ${videoTitle}`,
                             ...(categoryId && { category: categoryId }),
