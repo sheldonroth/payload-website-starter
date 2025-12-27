@@ -83,6 +83,7 @@ export default buildConfig({
       idleTimeoutMillis: 10000,    // Release idle connections after 10s
       connectionTimeoutMillis: 3000, // Fail fast if can't connect
     },
+    push: false,                   // Disable dev auto-push to prevent migration prompts
     prodMigrations: migrations,
   }),
   collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Users],

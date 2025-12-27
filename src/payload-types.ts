@@ -75,6 +75,7 @@ export interface Config {
     media: Media;
     categories: Category;
     'investigation-polls': InvestigationPoll;
+    'sponsored-test-requests': SponsoredTestRequest;
     users: User;
     redirects: Redirect;
     forms: Form;
@@ -101,6 +102,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'investigation-polls': InvestigationPollsSelect<false> | InvestigationPollsSelect<true>;
+    'sponsored-test-requests': SponsoredTestRequestsSelect<false> | SponsoredTestRequestsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -410,9 +412,30 @@ export interface Category {
    */
   description?: string | null;
   /**
-   * Use emoji (📱) or Ionicons name
+   * Auto-selected based on category name. You can override if needed.
    */
-  icon?: string | null;
+  icon?:
+    | (
+        | 'pill'
+        | 'apple'
+        | 'baby'
+        | 'droplets'
+        | 'sparkles'
+        | 'pawprint'
+        | 'home'
+        | 'spraycan'
+        | 'microscope'
+        | 'heart'
+        | 'leaf'
+        | 'sun'
+        | 'dumbbell'
+        | 'brain'
+        | 'candy'
+        | 'cookie'
+        | 'coffee'
+        | 'search'
+      )
+    | null;
   /**
    * Create sub-categories (e.g., Electronics > Smartphones)
    */
@@ -1164,6 +1187,41 @@ export interface InvestigationPoll {
   createdAt: string;
 }
 /**
+ * User-sponsored product test requests ($149 each)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsored-test-requests".
+ */
+export interface SponsoredTestRequest {
+  id: number;
+  /**
+   * The product the customer wants tested
+   */
+  productName: string;
+  /**
+   * Customer email from Stripe checkout
+   */
+  email: string;
+  /**
+   * Stripe payment intent ID for this sponsorship
+   */
+  stripePaymentId?: string | null;
+  /**
+   * Current status of the test request
+   */
+  status: 'pending' | 'testing' | 'complete' | 'refunded';
+  /**
+   * Internal notes about this request
+   */
+  notes?: string | null;
+  /**
+   * URL to the completed PDF report (once testing is done)
+   */
+  reportUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -1384,6 +1442,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'investigation-polls';
         value: number | InvestigationPoll;
+      } | null)
+    | ({
+        relationTo: 'sponsored-test-requests';
+        value: number | SponsoredTestRequest;
       } | null)
     | ({
         relationTo: 'users';
@@ -1879,6 +1941,20 @@ export interface InvestigationPollsSelect<T extends boolean = true> {
       };
   voters?: T;
   totalVotes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsored-test-requests_select".
+ */
+export interface SponsoredTestRequestsSelect<T extends boolean = true> {
+  productName?: T;
+  email?: T;
+  stripePaymentId?: T;
+  status?: T;
+  notes?: T;
+  reportUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }
