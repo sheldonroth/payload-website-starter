@@ -7,6 +7,7 @@ import PollGenerator from '../PollGenerator'
 import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
 import ProductEnricher from '../ProductEnricher'
+import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
 
 import './index.scss'
@@ -38,6 +39,9 @@ const BeforeDashboard: React.FC = () => {
 
           {/* Channel Sync */}
           <ChannelSync />
+
+          {/* TikTok Sync */}
+          <TikTokSync />
 
           {/* Product Enricher */}
           <ProductEnricher />

@@ -30,6 +30,7 @@ import { seoGenerateHandler } from './endpoints/seo-generate'
 import { categoryPollHandler } from './endpoints/category-poll-generate'
 import { productEnrichHandler } from './endpoints/product-enrich'
 import { adminPurgeHandler } from './endpoints/admin-purge'
+import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -130,6 +131,11 @@ export default buildConfig({
       path: '/admin/purge',
       method: 'post',
       handler: adminPurgeHandler,
+    },
+    {
+      path: '/tiktok/analyze',
+      method: 'post',
+      handler: tiktokAnalyzeHandler,
     },
   ],
   plugins: [
