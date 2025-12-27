@@ -7,6 +7,7 @@ import PollGenerator from '../PollGenerator'
 import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
 import ProductEnricher from '../ProductEnricher'
+import AdminPurge from '../AdminPurge'
 
 import './index.scss'
 
@@ -49,6 +50,15 @@ const BeforeDashboard: React.FC = () => {
 
           {/* Category Poll */}
           <CategoryPollGenerator />
+        </div>
+
+        {/* Admin Tools */}
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '32px', marginBottom: '16px', color: '#dc2626' }}>
+          ⚠️ Admin Tools
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <AdminPurge />
         </div>
       </div>
     </div>
