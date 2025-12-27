@@ -65,6 +65,38 @@ export const adminPurgeHandler: PayloadHandler = async (req: PayloadRequest) => 
         }
 
         // ============================================================
+        // ACTION: Delete ALL ai_draft AND draft products
+        // ============================================================
+        if (action === 'purge_all_drafts') {
+            const allDrafts = await payload.find({
+                collection: 'products',
+                where: {
+                    or: [
+                        { status: { equals: 'ai_draft' } },
+                        { status: { equals: 'draft' } },
+                    ],
+                },
+                limit: 1000,
+            })
+
+            let deleted = 0
+            for (const product of allDrafts.docs) {
+                await payload.delete({
+                    collection: 'products',
+                    id: product.id,
+                })
+                deleted++
+            }
+
+            return Response.json({
+                success: true,
+                action: 'purge_all_drafts',
+                deleted,
+                message: `Deleted ${deleted} products (ai_draft + draft)`,
+            })
+        }
+
+        // ============================================================
         // ACTION: Remove duplicate ai_drafts (keep newest of each name+brand)
         // ============================================================
         if (action === 'purge_duplicates') {
