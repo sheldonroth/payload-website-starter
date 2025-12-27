@@ -1,9 +1,24 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
+
+/**
+ * Field-level access control for premium content.
+ * - Authenticated users (admin panel, frontend with auth) can see everything
+ * - Unauthenticated API requests get this field omitted
+ */
+const premiumFieldAccess: FieldAccess = ({ req }) => {
+    // If user is logged in (admin or authenticated request), allow read
+    if (req.user) return true
+    // Public API requests cannot read premium fields
+    return false
+}
 
 export const Products: CollectionConfig = {
     slug: 'products',
     access: {
-        read: () => true,
+        read: () => true, // Basic product info is public
+        create: ({ req }) => !!req.user, // Only authenticated users can create
+        update: ({ req }) => !!req.user, // Only authenticated users can update
+        delete: ({ req }) => !!req.user, // Only authenticated users can delete
     },
     admin: {
         useAsTitle: 'name',
@@ -191,6 +206,9 @@ export const Products: CollectionConfig = {
             name: 'ratings',
             type: 'group',
             label: 'Ratings (0-100)',
+            access: {
+                read: premiumFieldAccess,
+            },
             admin: {
                 description: 'Overall score is auto-calculated: Performance 30%, Reliability 25%, Value 25%, Features 20%',
             },
@@ -317,6 +335,9 @@ export const Products: CollectionConfig = {
                     name: 'pros',
                     type: 'array',
                     label: '✅ Pros',
+                    access: {
+                        read: premiumFieldAccess,
+                    },
                     admin: { width: '50%' },
                     fields: [
                         {
@@ -330,6 +351,9 @@ export const Products: CollectionConfig = {
                     name: 'cons',
                     type: 'array',
                     label: '❌ Cons',
+                    access: {
+                        read: premiumFieldAccess,
+                    },
                     admin: { width: '50%' },
                     fields: [
                         {
@@ -355,6 +379,9 @@ export const Products: CollectionConfig = {
             name: 'fullReview',
             type: 'richText',
             label: 'Full Review',
+            access: {
+                read: premiumFieldAccess,
+            },
         },
 
         // === PURCHASE LINKS ===
@@ -362,6 +389,9 @@ export const Products: CollectionConfig = {
             name: 'purchaseLinks',
             type: 'array',
             label: '🛒 Where to Buy',
+            access: {
+                read: premiumFieldAccess,
+            },
             fields: [
                 {
                     type: 'row',
@@ -415,6 +445,9 @@ export const Products: CollectionConfig = {
             name: 'testingInfo',
             type: 'group',
             label: 'Testing Information',
+            access: {
+                read: premiumFieldAccess,
+            },
             fields: [
                 {
                     type: 'row',
