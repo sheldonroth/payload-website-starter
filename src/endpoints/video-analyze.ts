@@ -15,11 +15,11 @@ function extractYouTubeVideoId(url: string): string | null {
     return null
 }
 
-// Fetch YouTube transcript using captions
-async function getYouTubeTranscript(videoUrl: string): Promise<string> {
+// Fetch YouTube transcript using captions - returns null if unavailable
+async function getYouTubeTranscript(videoUrl: string): Promise<string | null> {
     const videoId = extractYouTubeVideoId(videoUrl)
     if (!videoId) {
-        throw new Error('Invalid YouTube URL')
+        return null
     }
 
     try {
@@ -32,8 +32,51 @@ async function getYouTubeTranscript(videoUrl: string): Promise<string> {
 
         return transcript
     } catch (error) {
-        console.error('Transcript fetch error:', error)
-        throw new Error('Failed to fetch transcript. Video may not have captions enabled.')
+        console.log('Transcript unavailable, will use video analysis:', error)
+        return null
+    }
+}
+
+// Extract products directly from video using Gemini video understanding
+async function extractProductsFromVideo(
+    videoUrl: string,
+    existingCategories: string[]
+): Promise<ExtractedProduct[]> {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
+    const systemPrompt = generateSystemPrompt(existingCategories)
+
+    // For video analysis, we ask Gemini to watch and analyze the video
+    const fullPrompt = `${systemPrompt}
+
+IMPORTANT: You are analyzing a YouTube video directly (not a transcript). 
+Watch/analyze the video at this URL: ${videoUrl}
+
+Extract all products that are reviewed or discussed in this video. If you cannot access the video content, return an empty products array.
+
+Analyze this video and extract all products reviewed:`
+
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+        },
+    })
+
+    const content = result.response.text()
+    if (!content) {
+        return []
+    }
+
+    try {
+        const parsed = JSON.parse(content)
+        return parsed.products || []
+    } catch (error) {
+        console.error('Video analysis JSON parse error:', error)
+        return []
     }
 }
 
@@ -154,11 +197,21 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
         })
         const existingCategories = categoriesResult.docs.map((cat: { name: string }) => cat.name)
 
-        // Step 2: Get transcript
+        // Step 2: Try to get transcript, fallback to video analysis
         const transcript = await getYouTubeTranscript(videoUrl)
+        let products: ExtractedProduct[]
+        let analysisMethod: 'transcript' | 'video'
 
-        // Step 3: Extract products with category awareness
-        const products = await extractProductsFromTranscript(transcript, existingCategories)
+        if (transcript) {
+            // Use transcript-based extraction
+            analysisMethod = 'transcript'
+            products = await extractProductsFromTranscript(transcript, existingCategories)
+        } else {
+            // Fallback to Gemini video analysis
+            analysisMethod = 'video'
+            console.log('Using Gemini video analysis for:', videoUrl)
+            products = await extractProductsFromVideo(videoUrl, existingCategories)
+        }
 
         // Step 4: Create drafts in Payload
         const createdDrafts: { id: number; name: string; category: string; isNewCategory: boolean }[] = []
@@ -214,7 +267,8 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
 
         return Response.json({
             success: true,
-            transcript: transcript.substring(0, 500) + '...',
+            analysisMethod,
+            transcript: transcript ? transcript.substring(0, 500) + '...' : null,
             productsFound: products.length,
             products,
             draftsCreated: createdDrafts,

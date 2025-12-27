@@ -111,6 +111,43 @@ async function extractProducts(transcript: string, existingCategories: string[])
     }
 }
 
+// Extract products directly from video using Gemini video understanding
+async function extractProductsFromVideo(videoId: string, existingCategories: string[]): Promise<ExtractedProduct[]> {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
+    const systemPrompt = generateSystemPrompt(existingCategories)
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
+
+    const fullPrompt = `${systemPrompt}
+
+IMPORTANT: You are analyzing a YouTube video directly (not a transcript). 
+Watch/analyze the video at this URL: ${videoUrl}
+
+Extract all products that are reviewed or discussed in this video. If you cannot access the video content, return an empty products array.
+
+Analyze this video and extract all products reviewed:`
+
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+        },
+    })
+
+    const content = result.response.text()
+    if (!content) return []
+
+    try {
+        const parsed = JSON.parse(content)
+        return parsed.products || []
+    } catch {
+        return []
+    }
+}
+
 export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) => {
     // Check if user is authenticated
     if (!req.user) {
@@ -190,20 +227,25 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
             const videoId = item.id.videoId
             const videoTitle = item.snippet.title
 
-            // Get transcript
+            // Try to get transcript, fallback to video analysis
             const transcript = await getTranscript(videoId)
+            let products: ExtractedProduct[]
+            let analysisMethod: 'transcript' | 'video'
 
-            if (!transcript) {
-                results.videosSkipped++
-                results.errors.push(`${videoTitle}: No captions available`)
-                continue
+            if (transcript) {
+                // Use transcript-based extraction
+                analysisMethod = 'transcript'
+                products = await extractProducts(transcript, existingCategories)
+            } else {
+                // Fallback to Gemini video analysis
+                analysisMethod = 'video'
+                console.log(`Using Gemini video analysis for: ${videoTitle}`)
+                products = await extractProductsFromVideo(videoId, existingCategories)
             }
-
-            // Extract products with category awareness
-            const products = await extractProducts(transcript, existingCategories)
 
             if (products.length === 0) {
                 results.videosSkipped++
+                results.errors.push(`${videoTitle}: No products found (${analysisMethod} analysis)`)
                 continue
             }
 
