@@ -20,8 +20,81 @@ const BeforeDashboard: React.FC = () => {
       <Banner className={`${baseClass}__banner`} type="success">
         <h4>Welcome to The Product Report CMS</h4>
       </Banner>
+
+      {/* Quick Navigation */}
+      <div style={{ padding: '0 24px', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <a
+          href="/admin"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '8px 16px',
+            background: '#1f2937',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 600,
+          }}
+        >
+          🏠 Home
+        </a>
+        <a
+          href="/admin/collections/products"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '8px 16px',
+            background: '#f3f4f6',
+            color: '#374151',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          📦 Products
+        </a>
+        <a
+          href="/admin/collections/investigation-polls"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '8px 16px',
+            background: '#f3f4f6',
+            color: '#374151',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          🗳️ Polls
+        </a>
+        <a
+          href="/admin/collections/categories"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '8px 16px',
+            background: '#f3f4f6',
+            color: '#374151',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          📂 Categories
+        </a>
+      </div>
+
       <p style={{ padding: '0 24px', color: '#6e6e73', marginBottom: '24px' }}>
-        Use the sidebar to manage products, articles, videos, and more.
+        Use the sidebar or quick links above to navigate.
       </p>
 
       <div style={{ padding: '0 24px' }}>
