@@ -84,7 +84,9 @@ export default buildConfig({
       connectionTimeoutMillis: 3000, // Fail fast if can't connect
     },
     push: false,                   // Disable dev auto-push to prevent migration prompts
-    prodMigrations: migrations,
+    // Skip migrations in production - schema was created via dev mode push
+    // Only include migrations when explicitly running `payload migrate`
+    ...(process.env.PAYLOAD_MIGRATING ? { prodMigrations: migrations } : {}),
   }),
   collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Users],
   cors: [
