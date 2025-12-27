@@ -2,12 +2,21 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 
 /**
  * Field-level access control for premium content.
- * - Authenticated users (admin panel, frontend with auth) can see everything
+ * - Authenticated users (admin panel) can see everything
+ * - Requests with valid x-api-key header (frontend server) can see everything
  * - Unauthenticated API requests get this field omitted
  */
 const premiumFieldAccess: FieldAccess = ({ req }) => {
     // If user is logged in (admin or authenticated request), allow read
     if (req.user) return true
+
+    // Check for API key from trusted frontend
+    const apiKey = req.headers.get('x-api-key')
+    const expectedKey = process.env.PAYLOAD_API_SECRET
+    if (apiKey && expectedKey && apiKey === expectedKey) {
+        return true
+    }
+
     // Public API requests cannot read premium fields
     return false
 }
