@@ -14,6 +14,7 @@ import { Products } from './collections/Products'
 import { Articles } from './collections/Articles'
 import { Videos } from './collections/Videos'
 import { InvestigationPolls } from './collections/InvestigationPolls'
+import { SponsoredTestRequests } from './collections/SponsoredTestRequests'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
@@ -81,7 +82,7 @@ export default buildConfig({
     },
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, Users],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Users],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
