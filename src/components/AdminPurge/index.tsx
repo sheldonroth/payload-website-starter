@@ -78,17 +78,18 @@ const AdminPurge: React.FC = () => {
             </div>
 
             {step === 'idle' && (
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button
                         onClick={() => handlePurge('purge_duplicates')}
                         style={{
                             flex: 1,
+                            minWidth: '140px',
                             padding: '12px',
                             background: '#fef3c7',
                             color: '#92400e',
                             border: '1px solid #fcd34d',
                             borderRadius: '6px',
-                            fontSize: '14px',
+                            fontSize: '13px',
                             fontWeight: 600,
                             cursor: 'pointer',
                         }}
@@ -99,17 +100,35 @@ const AdminPurge: React.FC = () => {
                         onClick={() => handlePurge('purge_ai_drafts')}
                         style={{
                             flex: 1,
+                            minWidth: '140px',
                             padding: '12px',
                             background: '#fee2e2',
                             color: '#dc2626',
                             border: '1px solid #fca5a5',
                             borderRadius: '6px',
-                            fontSize: '14px',
+                            fontSize: '13px',
                             fontWeight: 600,
                             cursor: 'pointer',
                         }}
                     >
-                        🗑️ Delete ALL AI Drafts
+                        🤖 AI Drafts Only
+                    </button>
+                    <button
+                        onClick={() => handlePurge('purge_all_drafts')}
+                        style={{
+                            flex: 1,
+                            minWidth: '140px',
+                            padding: '12px',
+                            background: '#7f1d1d',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        🗑️ Delete ALL Drafts
                     </button>
                 </div>
             )}
@@ -131,7 +150,9 @@ const AdminPurge: React.FC = () => {
                         <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#7f1d1d' }}>
                             {selectedAction === 'purge_duplicates'
                                 ? 'This will delete duplicate AI drafts, keeping only the newest of each product.'
-                                : 'This will DELETE ALL products with ai_draft status. This cannot be undone.'}
+                                : selectedAction === 'purge_ai_drafts'
+                                    ? 'This will DELETE ALL products with ai_draft status.'
+                                    : 'This will DELETE ALL products with ai_draft OR draft status. This cannot be undone!'}
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
