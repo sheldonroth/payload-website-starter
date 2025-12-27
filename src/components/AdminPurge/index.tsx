@@ -102,6 +102,23 @@ const AdminPurge: React.FC = () => {
                             flex: 1,
                             minWidth: '140px',
                             padding: '12px',
+                            background: '#dbeafe',
+                            color: '#1d4ed8',
+                            border: '1px solid #93c5fd',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        🤖 AI Drafts Only
+                    </button>
+                    <button
+                        onClick={() => handlePurge('purge_drafts')}
+                        style={{
+                            flex: 1,
+                            minWidth: '140px',
+                            padding: '12px',
                             background: '#fee2e2',
                             color: '#dc2626',
                             border: '1px solid #fca5a5',
@@ -111,7 +128,7 @@ const AdminPurge: React.FC = () => {
                             cursor: 'pointer',
                         }}
                     >
-                        🤖 AI Drafts Only
+                        📝 Drafts Only
                     </button>
                     <button
                         onClick={() => handlePurge('purge_all_drafts')}
@@ -152,7 +169,9 @@ const AdminPurge: React.FC = () => {
                                 ? 'This will delete duplicate AI drafts, keeping only the newest of each product.'
                                 : selectedAction === 'purge_ai_drafts'
                                     ? 'This will DELETE ALL products with ai_draft status.'
-                                    : 'This will DELETE ALL products with ai_draft OR draft status. This cannot be undone!'}
+                                    : selectedAction === 'purge_drafts'
+                                        ? 'This will DELETE ALL products with regular draft status.'
+                                        : 'This will DELETE ALL products with ai_draft OR draft status. This cannot be undone!'}
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
