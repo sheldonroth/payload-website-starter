@@ -49,7 +49,8 @@ export const backupDriveHandler: PayloadHandler = async (req: PayloadRequest) =>
                 polls: { count: polls.totalDocs, docs: polls.docs },
                 users: {
                     count: users.totalDocs,
-                    docs: users.docs.map((u: Record<string, unknown>) => ({
+                    // Strip sensitive fields from user export
+                    docs: (users.docs as unknown as Array<{ id: unknown; email: unknown; name: unknown; createdAt: unknown }>).map((u) => ({
                         id: u.id,
                         email: u.email,
                         name: u.name,
