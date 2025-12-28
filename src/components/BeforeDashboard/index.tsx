@@ -2,7 +2,6 @@ import { Banner } from '@payloadcms/ui/elements/Banner'
 import React from 'react'
 import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
-import ProductsToReview from '../ProductsToReview'
 import PollGenerator from '../PollGenerator'
 import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
@@ -10,6 +9,7 @@ import ProductEnricher from '../ProductEnricher'
 import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
+import InboxDashboard from '../InboxDashboard'
 
 import './index.scss'
 
@@ -115,8 +115,11 @@ const BeforeDashboard: React.FC = () => {
         Use the sidebar or quick links above to navigate.
       </p>
 
+      {/* Inbox Dashboard - Task-based view */}
+      <InboxDashboard />
+
       <div style={{ padding: '0 24px' }}>
-        {/* AI Tools - First */}
+        {/* AI Tools */}
         <div id="ai-tools-section">
           <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
             🤖 AI Tools
@@ -141,11 +144,6 @@ const BeforeDashboard: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
           <BackupDownload />
           <AdminPurge />
-        </div>
-
-        {/* Products to Review - Moved to bottom */}
-        <div style={{ marginTop: '32px' }}>
-          <ProductsToReview />
         </div>
       </div>
     </div>

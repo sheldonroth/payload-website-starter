@@ -3,7 +3,7 @@ import type { CollectionConfig } from 'payload';
 export const SponsoredTestRequests: CollectionConfig = {
     slug: 'sponsored-test-requests',
     admin: {
-        group: 'Lab Operations',
+        group: 'Community',
         useAsTitle: 'productName',
         defaultColumns: ['productName', 'email', 'status', 'createdAt'],
         description: 'User-sponsored product test requests ($149 each)',

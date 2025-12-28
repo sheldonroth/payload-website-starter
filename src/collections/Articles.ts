@@ -14,7 +14,7 @@ export const Articles: CollectionConfig = {
     admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'category', 'status', 'publishedAt'],
-        group: 'Content',
+        group: 'Catalog',
     },
     fields: [
         {

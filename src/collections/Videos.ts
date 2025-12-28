@@ -8,7 +8,7 @@ export const Videos: CollectionConfig = {
     admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'youtubeVideoId', 'category', 'status', 'sortOrder'],
-        group: 'Content',
+        group: 'Catalog',
     },
     fields: [
         {

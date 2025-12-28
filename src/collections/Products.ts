@@ -34,7 +34,7 @@ export const Products: CollectionConfig = {
         useAsTitle: 'name',
         defaultColumns: ['name', 'category', 'overallScore', 'rankInCategory', 'status'],
         listSearchableFields: ['name', 'brand', 'summary'],
-        group: 'Content',
+        group: 'Catalog',
         // Hide AI drafts from main product list - they show in "AI Suggestions" view
         baseListFilter: () => ({
             status: { not_equals: 'ai_draft' },
