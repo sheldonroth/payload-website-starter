@@ -92,6 +92,27 @@ const BeforeDashboard: React.FC = () => {
         >
           📂 Categories
         </a>
+        <a
+          href="#ai-tools"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('ai-tools-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 600,
+          }}
+        >
+          🤖 AI Tools
+        </a>
       </div>
 
       <p style={{ padding: '0 24px', color: '#6e6e73', marginBottom: '24px' }}>
@@ -99,22 +120,21 @@ const BeforeDashboard: React.FC = () => {
       </p>
 
       <div style={{ padding: '0 24px' }}>
-        {/* Products to Review */}
-        <ProductsToReview />
+        {/* AI Tools - First */}
+        <div id="ai-tools-section">
+          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
+            🤖 AI Tools
+          </h3>
 
-        {/* AI Tools */}
-        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
-          🤖 AI Tools
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-          <VideoToDraft />
-          <ChannelSync />
-          <TikTokSync />
-          <ProductEnricher />
-          <SEOGenerator />
-          <PollGenerator />
-          <CategoryPollGenerator />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <VideoToDraft />
+            <ChannelSync />
+            <TikTokSync />
+            <ProductEnricher />
+            <SEOGenerator />
+            <PollGenerator />
+            <CategoryPollGenerator />
+          </div>
         </div>
 
         {/* Admin Tools */}
@@ -126,9 +146,15 @@ const BeforeDashboard: React.FC = () => {
           <BackupDownload />
           <AdminPurge />
         </div>
+
+        {/* Products to Review - Moved to bottom */}
+        <div style={{ marginTop: '32px' }}>
+          <ProductsToReview />
+        </div>
       </div>
     </div>
   )
 }
 
 export default BeforeDashboard
+
