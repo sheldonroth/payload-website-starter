@@ -33,6 +33,7 @@ import { productEnrichHandler } from './endpoints/product-enrich'
 import { adminPurgeHandler } from './endpoints/admin-purge'
 import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
 import { backupExportHandler } from './endpoints/backup-export'
+import { backupDriveHandler } from './endpoints/backup-drive'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -149,6 +150,11 @@ export default buildConfig({
       path: '/backup/export',
       method: 'get',
       handler: backupExportHandler,
+    },
+    {
+      path: '/backup/drive',
+      method: 'post',
+      handler: backupDriveHandler,
     },
   ],
   plugins: [
