@@ -32,7 +32,7 @@ export const Products: CollectionConfig = {
     },
     admin: {
         useAsTitle: 'name',
-        defaultColumns: ['brand', 'name', 'category', 'verdict', 'hasImage', 'status'],
+        defaultColumns: ['brand', 'name', 'category', 'verdict', 'status'],
         listSearchableFields: ['name', 'brand', 'summary'],
         group: 'Catalog',
         // Hide AI drafts from main product list - they show in "AI Suggestions" view
@@ -282,23 +282,6 @@ export const Products: CollectionConfig = {
             type: 'upload',
             relationTo: 'media',
             label: 'Product Image',
-        },
-        // Virtual field for list view - shows if product has image
-        {
-            name: 'hasImage',
-            type: 'checkbox',
-            admin: {
-                readOnly: true,
-                description: 'Auto-calculated: Yes if imageUrl or image is set',
-            },
-            hooks: {
-                beforeChange: [
-                    ({ siblingData }) => {
-                        // Calculate based on whether imageUrl or image exists
-                        return !!(siblingData?.imageUrl || siblingData?.image);
-                    },
-                ],
-            },
         },
 
         // === BINARY VERDICT SYSTEM (First Principles) ===
