@@ -32,6 +32,7 @@ import { categoryPollHandler } from './endpoints/category-poll-generate'
 import { productEnrichHandler } from './endpoints/product-enrich'
 import { adminPurgeHandler } from './endpoints/admin-purge'
 import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
+import { backupExportHandler } from './endpoints/backup-export'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -143,6 +144,11 @@ export default buildConfig({
       path: '/tiktok/analyze',
       method: 'post',
       handler: tiktokAnalyzeHandler,
+    },
+    {
+      path: '/backup/export',
+      method: 'get',
+      handler: backupExportHandler,
     },
   ],
   plugins: [

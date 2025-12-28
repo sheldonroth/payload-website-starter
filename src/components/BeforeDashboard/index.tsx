@@ -9,6 +9,7 @@ import SEOGenerator from '../SEOGenerator'
 import ProductEnricher from '../ProductEnricher'
 import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
+import BackupDownload from '../BackupDownload'
 
 import './index.scss'
 
@@ -135,6 +136,7 @@ const BeforeDashboard: React.FC = () => {
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <BackupDownload />
           <AdminPurge />
         </div>
       </div>
