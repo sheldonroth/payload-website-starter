@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import { DefaultTemplate } from '@payloadcms/next/templates'
+import { useConfig } from '@payloadcms/ui'
 import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
 import ProductEnricher from '../ProductEnricher'
