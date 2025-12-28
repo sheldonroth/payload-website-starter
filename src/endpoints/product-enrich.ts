@@ -7,60 +7,128 @@ interface ProductInfo {
     searchQuery: string
 }
 
-const SEARCH_PROMPT = `You are a product research assistant. Given a product name and brand, find:
-1. A direct image URL from a reputable source (Amazon, manufacturer official site, major retailers)
-2. The typical price range for this product
+interface GoogleSearchResult {
+    link: string
+    image?: {
+        contextLink: string
+        height: number
+        width: number
+    }
+}
 
-IMPORTANT:
-- For imageUrl, provide a DIRECT link to a product image (ending in .jpg, .png, .webp, etc.) from a MAJOR RETAILER like Amazon, Walmart, Target, or the manufacturer's official website
-- AVOID CDN subdomains that may not resolve (like images.brand.com) - use the main domain
-- Amazon product images are ideal: look for images.amazon.com or m.media-amazon.com URLs
-- For priceRange, provide a realistic USD price range like "$15-25" or "$49.99"
-- If you can't find reliable info, return null for that field
+interface GoogleSearchResponse {
+    items?: GoogleSearchResult[]
+    error?: { message: string }
+}
 
-Output ONLY a valid JSON object:
-{
-  "imageUrl": "string or null (direct image URL from major retailer)",
-  "priceRange": "string or null (e.g., '$15-25')",
-  "source": "string or null (where the info came from)",
-  "searchQuery": "string (what you would search for)"
-}`
+/**
+ * Search for product images using Google Custom Search API
+ * Returns the best quality image URL from the search results
+ */
+async function searchProductImage(productName: string, brand: string | null): Promise<string | null> {
+    const apiKey = process.env.GOOGLE_SEARCH_API_KEY
+    const cseId = process.env.GOOGLE_CSE_ID
 
-async function searchProductInfo(productName: string, brand: string | null): Promise<ProductInfo> {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai')
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-
-    const searchTerm = brand ? `${brand} ${productName}` : productName
-
-    const result = await model.generateContent({
-        contents: [{
-            role: 'user',
-            parts: [{
-                text: `${SEARCH_PROMPT}\n\nProduct: ${productName}\nBrand: ${brand || 'Unknown'}\n\nSearch for this product and provide image URL and price range.`
-            }]
-        }],
-        generationConfig: {
-            temperature: 0.3,
-            responseMimeType: 'application/json',
-        },
-    })
-
-    const content = result.response.text()
-    if (!content) {
-        return { imageUrl: null, priceRange: null, source: null, searchQuery: searchTerm }
+    if (!apiKey || !cseId) {
+        console.error('Google Custom Search not configured (missing GOOGLE_SEARCH_API_KEY or GOOGLE_CSE_ID)')
+        return null
     }
 
+    const searchQuery = brand ? `${brand} ${productName} product` : `${productName} product`
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&searchType=image&q=${encodeURIComponent(searchQuery)}&num=5&imgSize=large&safe=active`
+
     try {
-        const parsed = JSON.parse(content)
-        return {
-            imageUrl: parsed.imageUrl || null,
-            priceRange: parsed.priceRange || null,
-            source: parsed.source || null,
-            searchQuery: parsed.searchQuery || searchTerm,
+        const response = await fetch(url)
+        const data: GoogleSearchResponse = await response.json()
+
+        if (data.error) {
+            console.error('Google Search API error:', data.error.message)
+            return null
         }
-    } catch {
-        return { imageUrl: null, priceRange: null, source: null, searchQuery: searchTerm }
+
+        if (!data.items || data.items.length === 0) {
+            console.log('No images found for:', searchQuery)
+            return null
+        }
+
+        // Find the best image - prefer larger images from reputable sources
+        const preferredDomains = ['amazon.com', 'walmart.com', 'target.com', 'manufacturer']
+        let bestImage: string | null = null
+
+        for (const item of data.items) {
+            const link = item.link
+            // Skip tiny images
+            if (item.image && (item.image.width < 200 || item.image.height < 200)) continue
+
+            // Check if from preferred source
+            const isPreferred = preferredDomains.some(domain =>
+                item.image?.contextLink?.includes(domain) || link.includes(domain)
+            )
+
+            if (isPreferred) {
+                bestImage = link
+                break
+            }
+
+            // Use first valid image as fallback
+            if (!bestImage) {
+                bestImage = link
+            }
+        }
+
+        console.log('Found image for', searchQuery, ':', bestImage)
+        return bestImage
+    } catch (error) {
+        console.error('Google Search failed:', error)
+        return null
+    }
+}
+
+/**
+ * Use Gemini AI to estimate price range (more reliable than image search)
+ */
+async function searchProductPrice(productName: string, brand: string | null): Promise<string | null> {
+    try {
+        const { GoogleGenerativeAI } = await import('@google/generative-ai')
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
+        const result = await model.generateContent({
+            contents: [{
+                role: 'user',
+                parts: [{
+                    text: `What is the typical retail price range for "${brand || ''} ${productName}" in USD? 
+                    Reply with ONLY a price range like "$15-25" or "$49.99" or "$$" (budget) / "$$$" (mid) / "$$$$" (premium).
+                    If unknown, reply with just "$$".`
+                }]
+            }],
+            generationConfig: { temperature: 0.3 },
+        })
+
+        const content = result.response.text().trim()
+        // Clean up the response - extract just the price part
+        const priceMatch = content.match(/\$[\d,.]+-?[\d,.]*|\${2,4}/i)
+        return priceMatch ? priceMatch[0] : '$$'
+    } catch (error) {
+        console.error('Price search failed:', error)
+        return '$$'
+    }
+}
+
+async function searchProductInfo(productName: string, brand: string | null): Promise<ProductInfo> {
+    const searchQuery = brand ? `${brand} ${productName}` : productName
+
+    // Search for image using Google Custom Search (real web search)
+    const imageUrl = await searchProductImage(productName, brand)
+
+    // Search for price using Gemini (good at price estimation)
+    const priceRange = await searchProductPrice(productName, brand)
+
+    return {
+        imageUrl,
+        priceRange,
+        source: imageUrl ? 'Google Custom Search' : 'AI Estimated',
+        searchQuery,
     }
 }
 
