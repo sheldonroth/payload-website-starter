@@ -10,6 +10,7 @@ import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import InboxDashboard from '../InboxDashboard'
+import BatchImageReviewer from '../BatchImageReviewer'
 
 import './index.scss'
 
@@ -133,6 +134,11 @@ const BeforeDashboard: React.FC = () => {
             <SEOGenerator />
             <PollGenerator />
             <CategoryPollGenerator />
+          </div>
+
+          {/* Batch Image Reviewer - Full width */}
+          <div style={{ marginTop: '16px' }}>
+            <BatchImageReviewer />
           </div>
         </div>
 
