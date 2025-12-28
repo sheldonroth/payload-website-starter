@@ -32,7 +32,7 @@ export const Products: CollectionConfig = {
     },
     admin: {
         useAsTitle: 'name',
-        defaultColumns: ['name', 'category', 'overallScore', 'rankInCategory', 'status'],
+        defaultColumns: ['brand', 'name', 'category', 'verdict', 'status'],
         listSearchableFields: ['name', 'brand', 'summary'],
         group: 'Catalog',
         // Hide AI drafts from main product list - they show in "AI Suggestions" view
