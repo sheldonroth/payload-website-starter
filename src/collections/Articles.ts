@@ -35,8 +35,24 @@ export const Articles: CollectionConfig = {
             name: 'excerpt',
             type: 'textarea',
             required: true,
+            minLength: 50,
+            maxLength: 300,
+            validate: (value: string | null | undefined) => {
+                if (!value) return 'Excerpt is required';
+                const lowerValue = value.toLowerCase().trim();
+                const placeholderPhrases = ['excerpt here', 'summary here', 'todo', 'placeholder', 'lorem ipsum', 'add excerpt'];
+                for (const phrase of placeholderPhrases) {
+                    if (lowerValue.includes(phrase)) {
+                        return 'Please write a real excerpt, not placeholder text';
+                    }
+                }
+                if (value.length < 50) {
+                    return 'Excerpt must be at least 50 characters';
+                }
+                return true;
+            },
             admin: {
-                description: 'Short summary shown in article cards (150-200 chars)',
+                description: 'Short summary shown in article cards (50-300 chars). No placeholder text allowed.',
             },
         },
         {
