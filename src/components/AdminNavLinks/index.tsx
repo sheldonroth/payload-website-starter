@@ -16,7 +16,7 @@ const AdminNavLinks: React.FC = () => {
                         AI CONTENT
                     </span>
                     <Link
-                        href="/admin/ai-suggestions"
+                        href="/admin/ai-tools"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -27,9 +27,28 @@ const AdminNavLinks: React.FC = () => {
                             color: '#d4d4d8',
                             fontSize: '14px',
                             marginBottom: '4px',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            fontWeight: 600,
                         }}
                     >
                         <span>🤖</span>
+                        <span>AI Tools</span>
+                    </Link>
+                    <Link
+                        href="/admin/ai-suggestions"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#a1a1aa',
+                            fontSize: '13px',
+                            marginBottom: '2px',
+                        }}
+                    >
+                        <span>📝</span>
                         <span>AI Suggestions</span>
                     </Link>
                     <Link
@@ -38,11 +57,11 @@ const AdminNavLinks: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            padding: '8px 12px',
+                            padding: '6px 12px',
                             borderRadius: '6px',
                             textDecoration: 'none',
-                            color: '#d4d4d8',
-                            fontSize: '14px',
+                            color: '#a1a1aa',
+                            fontSize: '13px',
                         }}
                     >
                         <span>📂</span>

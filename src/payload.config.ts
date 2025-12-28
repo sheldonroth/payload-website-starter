@@ -53,6 +53,10 @@ export default buildConfig({
       beforeDashboard: ['@/components/BeforeDashboard'],
       // Custom admin views
       views: {
+        'ai-tools': {
+          Component: '@/components/AITools',
+          path: '/ai-tools',
+        },
         'ai-suggestions': {
           Component: '@/components/AIProductSuggestions',
           path: '/ai-suggestions',
