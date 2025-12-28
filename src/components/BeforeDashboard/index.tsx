@@ -136,10 +136,10 @@ const BeforeDashboard: React.FC = () => {
             <CategoryPollGenerator />
           </div>
 
-          {/* Batch Image Reviewer - Full width */}
-          <div style={{ marginTop: '16px' }}>
+          {/* BatchImageReviewer temporarily disabled - causing loading issues */}
+          {/* <div style={{ marginTop: '16px' }}>
             <BatchImageReviewer />
-          </div>
+          </div> */}
         </div>
 
         {/* Admin Tools */}
