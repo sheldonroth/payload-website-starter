@@ -93,11 +93,7 @@ const BeforeDashboard: React.FC = () => {
           📂 Categories
         </a>
         <a
-          href="#ai-tools"
-          onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('ai-tools-section')?.scrollIntoView({ behavior: 'smooth' });
-          }}
+          href="#ai-tools-section"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
