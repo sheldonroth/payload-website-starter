@@ -10,7 +10,7 @@ import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import InboxDashboard from '../InboxDashboard'
-import BatchImageReviewer from '../BatchImageReviewer'
+import ImageReview from '../ImageReview'
 
 import './index.scss'
 
@@ -136,10 +136,10 @@ const BeforeDashboard: React.FC = () => {
             <CategoryPollGenerator />
           </div>
 
-          {/* BatchImageReviewer temporarily disabled - causing loading issues */}
-          {/* <div style={{ marginTop: '16px' }}>
-            <BatchImageReviewer />
-          </div> */}
+          {/* Image Review Tool */}
+          <div style={{ marginTop: '16px' }}>
+            <ImageReview />
+          </div>
         </div>
 
         {/* Admin Tools */}
