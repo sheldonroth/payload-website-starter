@@ -171,5 +171,87 @@ export const Categories: CollectionConfig = {
         position: 'sidebar',
       },
     },
+    // ============================================
+    // AI Suggestion Fields
+    // ============================================
+    {
+      name: 'aiSuggested',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: 'Created by AI from video analysis',
+      },
+    },
+    {
+      name: 'aiSource',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        description: 'Video ID or source that suggested this category',
+        condition: (data) => data?.aiSuggested,
+      },
+    },
+    // ============================================
+    // Category Enricher Research Fields
+    // ============================================
+    {
+      name: 'harmfulIngredients',
+      type: 'array',
+      label: 'Harmful Ingredients to Avoid',
+      admin: {
+        description: 'Ingredients flagged in research videos',
+      },
+      fields: [
+        {
+          name: 'ingredient',
+          type: 'text',
+          required: true,
+        },
+        {
+          name: 'reason',
+          type: 'text',
+          admin: {
+            description: 'Why it should be avoided',
+          },
+        },
+      ],
+    },
+    {
+      name: 'qualityIndicators',
+      type: 'array',
+      label: 'Quality Indicators',
+      admin: {
+        description: 'What to look for in good products',
+      },
+      fields: [
+        {
+          name: 'indicator',
+          type: 'text',
+          required: true,
+        },
+        {
+          name: 'description',
+          type: 'text',
+        },
+      ],
+    },
+    {
+      name: 'researchNotes',
+      type: 'textarea',
+      label: 'Research Notes',
+      admin: {
+        description: 'AI-extracted research findings from video transcripts',
+      },
+    },
+    {
+      name: 'lastEnrichedAt',
+      type: 'date',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'When category was last enriched with research',
+      },
+    },
   ],
 }

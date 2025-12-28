@@ -257,28 +257,24 @@ export const tiktokAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) 
                         }
                     }
 
+                    // Build product data object
+                    const productData: Record<string, unknown> = {
+                        name: product.productName,
+                        brand: product.brandName,
+                        status: 'ai_draft',
+                        priceRange: '$$',
+                        summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}\n\nSource: TikTok`,
+                        verdict: product.sentimentScore >= 7 ? 'recommend' :
+                            product.sentimentScore >= 4 ? 'caution' : 'avoid',
+                        verdictReason: `AI-extracted from TikTok. Sentiment: ${product.sentimentScore}/10.`,
+                    }
+                    if (categoryId) productData.category = categoryId
+                    if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
+
+                    // @ts-expect-error - Payload types require specific product shape but we're building dynamically
                     const created = await payload.create({
                         collection: 'products',
-                        data: {
-                            name: product.productName,
-                            brand: product.brandName,
-                            status: 'ai_draft',
-                            priceRange: '$$',
-                            summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}\n\nSource: TikTok`,
-                            ...(categoryId && { category: categoryId }),
-                            ...(product.isNewCategory && { pendingCategoryName: product.suggestedCategory }),
-                            ratings: {
-                                performance: product.sentimentScore * 10,
-                                reliability: product.sentimentScore * 10,
-                                valueForMoney: product.sentimentScore * 10,
-                                features: product.sentimentScore * 10,
-                            },
-                            badges: {
-                                isRecommended: product.sentimentScore >= 7,
-                                isBestValue: product.sentimentScore >= 8 && product.sentimentScore < 10,
-                                isBestInCategory: product.sentimentScore >= 9,
-                            },
-                        },
+                        data: productData,
                     })
 
                     results.draftsCreated++

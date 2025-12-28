@@ -209,6 +209,34 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
         let products: ExtractedProduct[]
         let analysisMethod: 'transcript' | 'video'
 
+        // Step 2.5: Find or create Video record and save transcript
+        const videoId = extractYouTubeVideoId(videoUrl)
+        let videoRecord: { id: number } | null = null
+        if (videoId) {
+            // Check if video already exists
+            const existingVideos = await req.payload.find({
+                collection: 'videos',
+                where: { youtubeId: { equals: videoId } },
+                limit: 1,
+            })
+
+            if (existingVideos.docs.length > 0) {
+                videoRecord = existingVideos.docs[0] as { id: number }
+                // Update transcript if we have one
+                if (transcript) {
+                    await req.payload.update({
+                        collection: 'videos',
+                        id: videoRecord.id,
+                        data: {
+                            transcript,
+                            transcriptUpdatedAt: new Date().toISOString(),
+                            analyzedAt: new Date().toISOString(),
+                        },
+                    })
+                }
+            }
+        }
+
         if (transcript) {
             // Use transcript-based extraction
             analysisMethod = 'transcript'
@@ -276,28 +304,24 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     }
                 }
 
+                // Build product data object
+                const productData: Record<string, unknown> = {
+                    name: product.productName,
+                    brand: product.brandName,
+                    status: 'ai_draft',
+                    priceRange: '$$',
+                    summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}`,
+                    verdict: product.sentimentScore >= 7 ? 'recommend' :
+                        product.sentimentScore >= 4 ? 'caution' : 'avoid',
+                    verdictReason: `AI-extracted from video. Sentiment: ${product.sentimentScore}/10.`,
+                }
+                if (categoryId) productData.category = categoryId
+                if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
+
+                // @ts-expect-error - Payload types require specific product shape but we're building dynamically
                 const created = await req.payload.create({
                     collection: 'products',
-                    data: {
-                        name: product.productName,
-                        brand: product.brandName,
-                        status: 'ai_draft', // ⚠️ Uses ai_draft instead of draft
-                        priceRange: '$$',
-                        summary: `${product.summary}\n\nPros: ${product.pros.join(', ')}\nCons: ${product.cons.join(', ')}`,
-                        ...(categoryId && { category: categoryId }),
-                        ...(product.isNewCategory && { pendingCategoryName: product.suggestedCategory }),
-                        ratings: {
-                            performance: product.sentimentScore * 10,
-                            reliability: product.sentimentScore * 10,
-                            valueForMoney: product.sentimentScore * 10,
-                            features: product.sentimentScore * 10,
-                        },
-                        badges: {
-                            isRecommended: product.sentimentScore >= 7,
-                            isBestValue: product.sentimentScore >= 8 && product.sentimentScore < 10,
-                            isBestInCategory: product.sentimentScore >= 9,
-                        },
-                    },
+                    data: productData,
                 })
 
                 createdDrafts.push({

@@ -15,6 +15,8 @@ import { Articles } from './collections/Articles'
 import { Videos } from './collections/Videos'
 import { InvestigationPolls } from './collections/InvestigationPolls'
 import { SponsoredTestRequests } from './collections/SponsoredTestRequests'
+import { Ingredients } from './collections/Ingredients'
+import { VerdictRules } from './collections/VerdictRules'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
@@ -33,6 +35,8 @@ import { productEnrichHandler } from './endpoints/product-enrich'
 import { adminPurgeHandler } from './endpoints/admin-purge'
 import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
 import { backupExportHandler } from './endpoints/backup-export'
+import { magicUrlHandler } from './endpoints/magic-url'
+import { categoryEnrichHandler } from './endpoints/category-enrich'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -47,6 +51,19 @@ export default buildConfig({
       // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
       beforeDashboard: ['@/components/BeforeDashboard'],
+      // Custom admin views
+      views: {
+        'ai-suggestions': {
+          Component: '@/components/AIProductSuggestions',
+          path: '/ai-suggestions',
+        },
+        'suggested-categories': {
+          Component: '@/components/SuggestedCategories',
+          path: '/suggested-categories',
+        },
+      },
+      // Sidebar nav links
+      afterNavLinks: ['@/components/AdminNavLinks'],
     },
     importMap: {
       baseDir: path.resolve(dirname),
@@ -89,7 +106,7 @@ export default buildConfig({
     // Only include migrations when explicitly running `payload migrate`
     ...(process.env.PAYLOAD_MIGRATING ? { prodMigrations: migrations } : {}),
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Users],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, Users],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -149,6 +166,16 @@ export default buildConfig({
       path: '/backup/export',
       method: 'get',
       handler: backupExportHandler,
+    },
+    {
+      path: '/magic-url',
+      method: 'post',
+      handler: magicUrlHandler,
+    },
+    {
+      path: '/category/enrich',
+      method: 'post',
+      handler: categoryEnrichHandler,
     },
   ],
   plugins: [

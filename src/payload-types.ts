@@ -76,6 +76,8 @@ export interface Config {
     categories: Category;
     'investigation-polls': InvestigationPoll;
     'sponsored-test-requests': SponsoredTestRequest;
+    ingredients: Ingredient;
+    'verdict-rules': VerdictRule;
     users: User;
     redirects: Redirect;
     forms: Form;
@@ -103,6 +105,8 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'investigation-polls': InvestigationPollsSelect<false> | InvestigationPollsSelect<true>;
     'sponsored-test-requests': SponsoredTestRequestsSelect<false> | SponsoredTestRequestsSelect<true>;
+    ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
+    'verdict-rules': VerdictRulesSelect<false> | VerdictRulesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -454,6 +458,45 @@ export interface Category {
    * Lower numbers appear first
    */
   sortOrder?: number | null;
+  /**
+   * Created by AI from video analysis
+   */
+  aiSuggested?: boolean | null;
+  /**
+   * Video ID or source that suggested this category
+   */
+  aiSource?: string | null;
+  /**
+   * Ingredients flagged in research videos
+   */
+  harmfulIngredients?:
+    | {
+        ingredient: string;
+        /**
+         * Why it should be avoided
+         */
+        reason?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * What to look for in good products
+   */
+  qualityIndicators?:
+    | {
+        indicator: string;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * AI-extracted research findings from video transcripts
+   */
+  researchNotes?: string | null;
+  /**
+   * When category was last enriched with research
+   */
+  lastEnrichedAt?: string | null;
   breadcrumbs?:
     | {
         doc?: (number | null) | Category;
@@ -946,39 +989,66 @@ export interface Product {
   imageUrl?: string | null;
   image?: (number | null) | Media;
   /**
-   * Auto-calculated from ratings below
+   * Binary verdict: do we recommend this product?
    */
+  verdict: 'recommend' | 'caution' | 'avoid' | 'pending';
+  /**
+   * Brief explanation of why this verdict was given
+   */
+  verdictReason?: string | null;
+  /**
+   * System-calculated verdict based on ingredients
+   */
+  autoVerdict?: ('recommend' | 'caution' | 'avoid') | null;
+  /**
+   * Manual override of auto-verdict
+   */
+  verdictOverride?: boolean | null;
+  /**
+   * Structured ingredient links (enables cascade verdicts)
+   */
+  ingredientsList?: (number | Ingredient)[] | null;
+  /**
+   * Original ingredients text (for reference/parsing)
+   */
+  ingredientsRaw?: string | null;
+  /**
+   * Universal Product Code for barcode scanning
+   */
+  upc?: string | null;
+  /**
+   * Amazon/product page URL where data was extracted
+   */
+  sourceUrl?: string | null;
+  /**
+   * Video that this product was extracted from
+   */
+  sourceVideo?: (number | null) | Video;
+  /**
+   * System-detected conflicts (e.g., AVOID ingredient in RECOMMEND product)
+   */
+  conflicts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  badges?: {
+    isBestInCategory?: boolean | null;
+    isRecommended?: boolean | null;
+    isBestValue?: boolean | null;
+    isEditorsChoice?: boolean | null;
+  };
   overallScore?: number | null;
-  /**
-   * Auto-calculated rank within category
-   */
   rankInCategory?: number | null;
-  /**
-   * Overall score is auto-calculated: Performance 30%, Reliability 25%, Value 25%, Features 20%
-   */
   ratings?: {
     performance?: number | null;
     reliability?: number | null;
     valueForMoney?: number | null;
     features?: number | null;
-  };
-  badges?: {
-    /**
-     * Top product in this category
-     */
-    isBestInCategory?: boolean | null;
-    /**
-     * Editor-approved quality product
-     */
-    isRecommended?: boolean | null;
-    /**
-     * Best price-to-performance ratio
-     */
-    isBestValue?: boolean | null;
-    /**
-     * Exceptional product (rare)
-     */
-    isEditorsChoice?: boolean | null;
   };
   status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
   priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
@@ -1041,6 +1111,153 @@ export interface Product {
   createdAt: string;
 }
 /**
+ * Ingredient database with verdicts that cascade to products
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingredients".
+ */
+export interface Ingredient {
+  id: number;
+  /**
+   * Primary name (e.g., "Red Dye 40")
+   */
+  name: string;
+  /**
+   * Other names this ingredient goes by
+   */
+  aliases?:
+    | {
+        alias: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Final verdict on this ingredient
+   */
+  verdict: 'safe' | 'caution' | 'avoid' | 'unknown';
+  /**
+   * Brief explanation of the verdict
+   */
+  reason?: string | null;
+  category?:
+    | (
+        | 'artificial_colors'
+        | 'artificial_sweeteners'
+        | 'preservatives'
+        | 'emulsifiers'
+        | 'heavy_metals'
+        | 'pesticides'
+        | 'vitamins_minerals'
+        | 'proteins'
+        | 'fats_oils'
+        | 'sugars'
+        | 'fibers'
+        | 'other'
+      )
+    | null;
+  /**
+   * Which product categories is this ingredient relevant to?
+   */
+  productCategories?: (number | Category)[] | null;
+  /**
+   * Videos, studies, or reports that informed this verdict
+   */
+  sources?:
+    | {
+        type?: ('video' | 'study' | 'lab_report' | 'government') | null;
+        reference?: string | null;
+        /**
+         * Brief note about this source
+         */
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Main video where this ingredient was discussed
+   */
+  sourceVideo?: (number | null) | Video;
+  /**
+   * When AVOID, automatically flag products containing this
+   */
+  autoFlagProducts?: boolean | null;
+  /**
+   * Products currently flagged due to this ingredient
+   */
+  flaggedProductCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos".
+ */
+export interface Video {
+  id: number;
+  title: string;
+  /**
+   * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
+   */
+  youtubeVideoId: string;
+  /**
+   * Leave empty to auto-fetch from YouTube
+   */
+  thumbnailUrl?: string | null;
+  description?: string | null;
+  /**
+   * Video duration in seconds
+   */
+  duration?: number | null;
+  category?: (number | null) | Category;
+  /**
+   * Link to the product being reviewed in this video
+   */
+  relatedProduct?: (number | null) | Product;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('draft' | 'published') | null;
+  /**
+   * Lower numbers appear first
+   */
+  sortOrder?: number | null;
+  viewCount?: number | null;
+  isFeatured?: boolean | null;
+  /**
+   * Was this video imported from YouTube automatically?
+   */
+  isAutoImported?: boolean | null;
+  /**
+   * When this video was last synced from YouTube
+   */
+  youtubeImportedAt?: string | null;
+  /**
+   * Stored transcript from YouTube captions (auto-populated on analysis)
+   */
+  transcript?: string | null;
+  /**
+   * When transcript was last fetched
+   */
+  transcriptUpdatedAt?: string | null;
+  /**
+   * When AI last analyzed this video
+   */
+  analyzedAt?: string | null;
+  /**
+   * Products that were created from analyzing this video
+   */
+  extractedProducts?: (number | Product)[] | null;
+  /**
+   * Ingredients discussed in this video
+   */
+  extractedIngredients?: (number | Ingredient)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles".
  */
@@ -1097,55 +1314,6 @@ export interface Article {
    * Show on homepage
    */
   featured?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "videos".
- */
-export interface Video {
-  id: number;
-  title: string;
-  /**
-   * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
-   */
-  youtubeVideoId: string;
-  /**
-   * Leave empty to auto-fetch from YouTube
-   */
-  thumbnailUrl?: string | null;
-  description?: string | null;
-  /**
-   * Video duration in seconds
-   */
-  duration?: number | null;
-  category?: (number | null) | Category;
-  /**
-   * Link to the product being reviewed in this video
-   */
-  relatedProduct?: (number | null) | Product;
-  tags?:
-    | {
-        tag?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  status?: ('draft' | 'published') | null;
-  /**
-   * Lower numbers appear first
-   */
-  sortOrder?: number | null;
-  viewCount?: number | null;
-  isFeatured?: boolean | null;
-  /**
-   * Was this video imported from YouTube automatically?
-   */
-  isAutoImported?: boolean | null;
-  /**
-   * When this video was last synced from YouTube
-   */
-  youtubeImportedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1222,6 +1390,58 @@ export interface SponsoredTestRequest {
    * URL to the completed PDF report (once testing is done)
    */
   reportUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Automated rules for product verdicts
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "verdict-rules".
+ */
+export interface VerdictRule {
+  id: number;
+  /**
+   * e.g., "Flag products with Red Dye 40"
+   */
+  name: string;
+  /**
+   * What this rule does and why
+   */
+  description?: string | null;
+  /**
+   * What triggers this rule
+   */
+  conditionType: 'contains_ingredient' | 'missing_ingredient' | 'ingredient_verdict' | 'category_match';
+  /**
+   * Which ingredients trigger this rule
+   */
+  ingredientCondition?: (number | Ingredient)[] | null;
+  /**
+   * Match based on ingredient verdicts
+   */
+  ingredientVerdictCondition?: ('avoid' | 'caution' | 'safe_only') | null;
+  /**
+   * Apply only to these categories
+   */
+  categoryCondition?: (number | Category)[] | null;
+  /**
+   * What happens when rule matches
+   */
+  action: 'set_avoid' | 'set_caution' | 'set_recommend' | 'block_publish' | 'warn_only';
+  /**
+   * Message shown when rule triggers
+   */
+  warningMessage?: string | null;
+  isActive?: boolean | null;
+  /**
+   * Higher priority rules run first
+   */
+  priority?: number | null;
+  /**
+   * How many times this rule has been applied
+   */
+  appliedCount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1450,6 +1670,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'sponsored-test-requests';
         value: number | SponsoredTestRequest;
+      } | null)
+    | ({
+        relationTo: 'ingredients';
+        value: number | Ingredient;
+      } | null)
+    | ({
+        relationTo: 'verdict-rules';
+        value: number | VerdictRule;
       } | null)
     | ({
         relationTo: 'users';
@@ -1695,6 +1923,24 @@ export interface ProductsSelect<T extends boolean = true> {
   pendingCategoryName?: T;
   imageUrl?: T;
   image?: T;
+  verdict?: T;
+  verdictReason?: T;
+  autoVerdict?: T;
+  verdictOverride?: T;
+  ingredientsList?: T;
+  ingredientsRaw?: T;
+  upc?: T;
+  sourceUrl?: T;
+  sourceVideo?: T;
+  conflicts?: T;
+  badges?:
+    | T
+    | {
+        isBestInCategory?: T;
+        isRecommended?: T;
+        isBestValue?: T;
+        isEditorsChoice?: T;
+      };
   overallScore?: T;
   rankInCategory?: T;
   ratings?:
@@ -1704,14 +1950,6 @@ export interface ProductsSelect<T extends boolean = true> {
         reliability?: T;
         valueForMoney?: T;
         features?: T;
-      };
-  badges?:
-    | T
-    | {
-        isBestInCategory?: T;
-        isRecommended?: T;
-        isBestValue?: T;
-        isEditorsChoice?: T;
       };
   status?: T;
   priceRange?: T;
@@ -1803,6 +2041,11 @@ export interface VideosSelect<T extends boolean = true> {
   isFeatured?: T;
   isAutoImported?: T;
   youtubeImportedAt?: T;
+  transcript?: T;
+  transcriptUpdatedAt?: T;
+  analyzedAt?: T;
+  extractedProducts?: T;
+  extractedIngredients?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1915,6 +2158,24 @@ export interface CategoriesSelect<T extends boolean = true> {
   image?: T;
   featured?: T;
   sortOrder?: T;
+  aiSuggested?: T;
+  aiSource?: T;
+  harmfulIngredients?:
+    | T
+    | {
+        ingredient?: T;
+        reason?: T;
+        id?: T;
+      };
+  qualityIndicators?:
+    | T
+    | {
+        indicator?: T;
+        description?: T;
+        id?: T;
+      };
+  researchNotes?: T;
+  lastEnrichedAt?: T;
   breadcrumbs?:
     | T
     | {
@@ -1959,6 +2220,55 @@ export interface SponsoredTestRequestsSelect<T extends boolean = true> {
   status?: T;
   notes?: T;
   reportUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingredients_select".
+ */
+export interface IngredientsSelect<T extends boolean = true> {
+  name?: T;
+  aliases?:
+    | T
+    | {
+        alias?: T;
+        id?: T;
+      };
+  verdict?: T;
+  reason?: T;
+  category?: T;
+  productCategories?: T;
+  sources?:
+    | T
+    | {
+        type?: T;
+        reference?: T;
+        notes?: T;
+        id?: T;
+      };
+  sourceVideo?: T;
+  autoFlagProducts?: T;
+  flaggedProductCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "verdict-rules_select".
+ */
+export interface VerdictRulesSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  conditionType?: T;
+  ingredientCondition?: T;
+  ingredientVerdictCondition?: T;
+  categoryCondition?: T;
+  action?: T;
+  warningMessage?: T;
+  isActive?: T;
+  priority?: T;
+  appliedCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

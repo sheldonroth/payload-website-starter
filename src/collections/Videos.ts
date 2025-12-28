@@ -137,5 +137,54 @@ export const Videos: CollectionConfig = {
                 description: 'When this video was last synced from YouTube',
             },
         },
+        // ============================================
+        // Transcript & Analysis (First Principles)
+        // ============================================
+        {
+            name: 'transcript',
+            type: 'textarea',
+            label: 'Video Transcript',
+            admin: {
+                description: 'Stored transcript from YouTube captions (auto-populated on analysis)',
+            },
+        },
+        {
+            name: 'transcriptUpdatedAt',
+            type: 'date',
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'When transcript was last fetched',
+            },
+        },
+        {
+            name: 'analyzedAt',
+            type: 'date',
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'When AI last analyzed this video',
+            },
+        },
+        {
+            name: 'extractedProducts',
+            type: 'relationship',
+            relationTo: 'products',
+            hasMany: true,
+            label: 'Products Extracted',
+            admin: {
+                description: 'Products that were created from analyzing this video',
+            },
+        },
+        {
+            name: 'extractedIngredients',
+            type: 'relationship',
+            relationTo: 'ingredients',
+            hasMany: true,
+            label: 'Ingredients Mentioned',
+            admin: {
+                description: 'Ingredients discussed in this video',
+            },
+        },
     ],
 }

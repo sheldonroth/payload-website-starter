@@ -112,6 +112,100 @@ export const Products: CollectionConfig = {
                 }
                 return data;
             },
+            // ============================================
+            // AUTO-VERDICT: Calculate verdict from ingredients
+            // ============================================
+            async ({ data, req }) => {
+                // Only calculate if ingredientsList is provided and not overridden
+                if (data?.ingredientsList?.length > 0 && !data?.verdictOverride) {
+                    try {
+                        // Fetch the linked ingredients to check their verdicts
+                        const ingredientIds = data.ingredientsList.map((ing: number | { id: number }) =>
+                            typeof ing === 'number' ? ing : ing.id
+                        );
+
+                        const ingredients = await req.payload.find({
+                            collection: 'ingredients',
+                            where: { id: { in: ingredientIds } },
+                            limit: 100,
+                        });
+
+                        // Determine auto-verdict based on worst ingredient
+                        let worstVerdict = 'recommend' as 'recommend' | 'caution' | 'avoid';
+                        for (const ing of ingredients.docs) {
+                            const ingVerdict = (ing as { verdict?: string }).verdict;
+                            if (ingVerdict === 'avoid') {
+                                worstVerdict = 'avoid';
+                                break; // Can't get worse
+                            } else if (ingVerdict === 'caution') {
+                                worstVerdict = 'caution';
+                                // Continue checking for worse
+                            }
+                        }
+
+                        // Set auto-verdict
+                        data.autoVerdict = worstVerdict;
+
+                        // If no manual verdict set, use auto-verdict
+                        if (!data.verdict || data.verdict === 'pending') {
+                            data.verdict = worstVerdict;
+                        }
+                    } catch (error) {
+                        console.error('Auto-verdict calculation failed:', error);
+                    }
+                }
+                return data;
+            },
+            // ============================================
+            // CONFLICT DETECTION: Warn on mismatched verdict
+            // ============================================
+            async ({ data, req }) => {
+                // Check for conflicts between verdict and ingredientsList
+                const conflicts: string[] = [];
+
+                if (data?.verdict === 'recommend' && data?.ingredientsList?.length > 0) {
+                    try {
+                        const ingredientIds = data.ingredientsList.map((ing: number | { id: number }) =>
+                            typeof ing === 'number' ? ing : ing.id
+                        );
+
+                        const ingredients = await req.payload.find({
+                            collection: 'ingredients',
+                            where: { id: { in: ingredientIds } },
+                            limit: 100,
+                        });
+
+                        // Check for AVOID ingredients in a RECOMMEND product
+                        const avoidIngredients = ingredients.docs
+                            .filter((ing: { verdict?: string }) => ing.verdict === 'avoid')
+                            .map((ing: { name: string }) => ing.name);
+
+                        if (avoidIngredients.length > 0) {
+                            conflicts.push(`⚠️ Product marked RECOMMEND but contains AVOID ingredients: ${avoidIngredients.join(', ')}`);
+                        }
+
+                        // Check for CAUTION ingredients
+                        const cautionIngredients = ingredients.docs
+                            .filter((ing: { verdict?: string }) => ing.verdict === 'caution')
+                            .map((ing: { name: string }) => ing.name);
+
+                        if (cautionIngredients.length > 0) {
+                            conflicts.push(`⚠️ Product contains CAUTION ingredients: ${cautionIngredients.join(', ')}`);
+                        }
+                    } catch (error) {
+                        console.error('Conflict detection failed:', error);
+                    }
+                }
+
+                // Store conflicts (don't block save, just log)
+                if (conflicts.length > 0) {
+                    data.conflicts = { detected: conflicts, lastChecked: new Date().toISOString() };
+                } else {
+                    data.conflicts = null;
+                }
+
+                return data;
+            },
         ],
     },
     fields: [
@@ -190,117 +284,151 @@ export const Products: CollectionConfig = {
             label: 'Product Image',
         },
 
-        // === SCORES & RANKINGS ===
+        // === BINARY VERDICT SYSTEM (First Principles) ===
+        {
+            name: 'verdict',
+            type: 'select',
+            required: true,
+            defaultValue: 'pending',
+            options: [
+                { label: '✅ RECOMMEND', value: 'recommend' },
+                { label: '⚠️ CAUTION', value: 'caution' },
+                { label: '🚫 AVOID', value: 'avoid' },
+                { label: '⏳ PENDING', value: 'pending' },
+            ],
+            admin: {
+                position: 'sidebar',
+                description: 'Binary verdict: do we recommend this product?',
+            },
+        },
+        {
+            name: 'verdictReason',
+            type: 'textarea',
+            label: 'Verdict Explanation',
+            admin: {
+                description: 'Brief explanation of why this verdict was given',
+            },
+        },
+        {
+            name: 'autoVerdict',
+            type: 'select',
+            options: [
+                { label: '✅ RECOMMEND', value: 'recommend' },
+                { label: '⚠️ CAUTION', value: 'caution' },
+                { label: '🚫 AVOID', value: 'avoid' },
+            ],
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'System-calculated verdict based on ingredients',
+            },
+        },
+        {
+            name: 'verdictOverride',
+            type: 'checkbox',
+            defaultValue: false,
+            admin: {
+                position: 'sidebar',
+                description: 'Manual override of auto-verdict',
+                condition: (data) => data?.autoVerdict && data?.verdict !== data?.autoVerdict,
+            },
+        },
+
+        // === INGREDIENTS (First Principles - Structured) ===
+        {
+            name: 'ingredientsList',
+            type: 'relationship',
+            relationTo: 'ingredients',
+            hasMany: true,
+            label: 'Linked Ingredients',
+            admin: {
+                description: 'Structured ingredient links (enables cascade verdicts)',
+            },
+        },
+        {
+            name: 'ingredientsRaw',
+            type: 'textarea',
+            label: 'Raw Ingredients Text',
+            admin: {
+                description: 'Original ingredients text (for reference/parsing)',
+            },
+        },
+
+        // === SOURCE TRACKING (First Principles - Provenance) ===
+        {
+            name: 'upc',
+            type: 'text',
+            unique: true,
+            index: true,
+            label: 'UPC/Barcode',
+            admin: {
+                description: 'Universal Product Code for barcode scanning',
+            },
+        },
+        {
+            name: 'sourceUrl',
+            type: 'text',
+            label: 'Source URL',
+            admin: {
+                description: 'Amazon/product page URL where data was extracted',
+            },
+        },
+        {
+            name: 'sourceVideo',
+            type: 'relationship',
+            relationTo: 'videos',
+            label: 'Source Video',
+            admin: {
+                description: 'Video that this product was extracted from',
+            },
+        },
+
+        // === CONFLICTS (First Principles - Guardrails) ===
+        {
+            name: 'conflicts',
+            type: 'json',
+            admin: {
+                readOnly: true,
+                description: 'System-detected conflicts (e.g., AVOID ingredient in RECOMMEND product)',
+            },
+        },
+
+        // === LEGACY BADGES (kept for backward compatibility, hidden) ===
+        {
+            name: 'badges',
+            type: 'group',
+            label: 'Legacy Badges',
+            admin: {
+                condition: () => false, // Hide from UI
+            },
+            fields: [
+                { name: 'isBestInCategory', type: 'checkbox' },
+                { name: 'isRecommended', type: 'checkbox' },
+                { name: 'isBestValue', type: 'checkbox' },
+                { name: 'isEditorsChoice', type: 'checkbox' },
+            ],
+        },
+
+        // === LEGACY SCORES (kept for migration, hidden) ===
         {
             name: 'overallScore',
             type: 'number',
-            min: 0,
-            max: 100,
-            label: 'Overall Score',
-            admin: {
-                readOnly: true,
-                description: 'Auto-calculated from ratings below',
-                position: 'sidebar',
-            },
+            admin: { hidden: true },
         },
         {
             name: 'rankInCategory',
             type: 'number',
-            admin: {
-                readOnly: true,
-                description: 'Auto-calculated rank within category',
-                position: 'sidebar',
-            },
+            admin: { hidden: true },
         },
         {
             name: 'ratings',
             type: 'group',
-            label: 'Ratings (0-100)',
-            access: {
-                read: premiumFieldAccess,
-            },
-            admin: {
-                description: 'Overall score is auto-calculated: Performance 30%, Reliability 25%, Value 25%, Features 20%',
-            },
+            admin: { condition: () => false },
             fields: [
-                {
-                    type: 'row',
-                    fields: [
-                        {
-                            name: 'performance',
-                            type: 'number',
-                            min: 0,
-                            max: 100,
-                            admin: { width: '25%' },
-                        },
-                        {
-                            name: 'reliability',
-                            type: 'number',
-                            min: 0,
-                            max: 100,
-                            admin: { width: '25%' },
-                        },
-                        {
-                            name: 'valueForMoney',
-                            type: 'number',
-                            min: 0,
-                            max: 100,
-                            label: 'Value for Money',
-                            admin: { width: '25%' },
-                        },
-                        {
-                            name: 'features',
-                            type: 'number',
-                            min: 0,
-                            max: 100,
-                            admin: { width: '25%' },
-                        },
-                    ],
-                },
-            ],
-        },
-
-        // === BADGES (Sidebar) - Public so isRecommended shows verdict ===
-        {
-            name: 'badges',
-            type: 'group',
-            label: 'Product Badges',
-            admin: {
-                position: 'sidebar',
-            },
-            fields: [
-                {
-                    name: 'isBestInCategory',
-                    type: 'checkbox',
-                    label: '🏆 Best in Category',
-                    admin: {
-                        description: 'Top product in this category',
-                    },
-                },
-                {
-                    name: 'isRecommended',
-                    type: 'checkbox',
-                    label: '✅ Recommended',
-                    admin: {
-                        description: 'Editor-approved quality product',
-                    },
-                },
-                {
-                    name: 'isBestValue',
-                    type: 'checkbox',
-                    label: '💰 Best Value',
-                    admin: {
-                        description: 'Best price-to-performance ratio',
-                    },
-                },
-                {
-                    name: 'isEditorsChoice',
-                    type: 'checkbox',
-                    label: '⭐ Editor\'s Choice',
-                    admin: {
-                        description: 'Exceptional product (rare)',
-                    },
-                },
+                { name: 'performance', type: 'number' },
+                { name: 'reliability', type: 'number' },
+                { name: 'valueForMoney', type: 'number' },
+                { name: 'features', type: 'number' },
             ],
         },
 
