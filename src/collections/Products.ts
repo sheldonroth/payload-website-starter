@@ -259,14 +259,11 @@ export const Products: CollectionConfig = {
             ],
         },
 
-        // === BADGES (Sidebar) ===
+        // === BADGES (Sidebar) - Public so isRecommended shows verdict ===
         {
             name: 'badges',
             type: 'group',
             label: 'Product Badges',
-            access: {
-                read: premiumFieldAccess,
-            },
             admin: {
                 position: 'sidebar',
             },
