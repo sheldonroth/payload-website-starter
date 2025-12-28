@@ -27,18 +27,20 @@ export const Categories: CollectionConfig = {
       unique: true,
       index: true,
       admin: {
-        hidden: true, // Auto-generated, no need to show
+        description: 'Auto-generated from name. Leave empty to auto-create.',
       },
       hooks: {
-        beforeValidate: [
+        beforeChange: [
           ({ value, data }) => {
-            if (value) return value;
+            // If slug is already set, use it (allows manual override)
+            if (value && value.trim()) return value;
             // Auto-generate from name
             const name = data?.name || '';
+            if (!name) return `category-${Date.now()}`;
             return name
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
-              .replace(/(^-|-$)/g, '') || `category-${Date.now()}`;
+              .replace(/(^-|-$)/g, '');
           },
         ],
       },
