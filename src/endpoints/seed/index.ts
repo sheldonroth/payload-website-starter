@@ -103,7 +103,7 @@ export const seed = async ({
       data: {
         name: 'Demo Author',
         email: 'demo-author@example.com',
-        password: 'password',
+        password: process.env.SEED_DEMO_PASSWORD || crypto.randomUUID(),
       },
     }),
     payload.create({
