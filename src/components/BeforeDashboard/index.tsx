@@ -115,8 +115,8 @@ const BeforeDashboard: React.FC = () => {
         Use the sidebar or quick links above to navigate.
       </p>
 
-      {/* Inbox Dashboard - Task-based view */}
-      <InboxDashboard />
+      {/* InboxDashboard temporarily disabled - causing interactivity issues */}
+      {/* <InboxDashboard /> */}
 
       <div style={{ padding: '0 24px' }}>
         {/* AI Tools */}
