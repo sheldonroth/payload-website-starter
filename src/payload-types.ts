@@ -473,7 +473,11 @@ export interface User {
   id: number;
   name?: string | null;
   /**
-   * Grant admin privileges to this user
+   * User role determines CMS permissions. Product Editors can add/edit products and categories but cannot delete.
+   */
+  role?: ('admin' | 'product_editor' | 'user') | null;
+  /**
+   * Legacy admin flag - use role field instead
    */
   isAdmin?: boolean | null;
   subscriptionStatus?: ('free' | 'trial' | 'premium' | 'cancelled') | null;
@@ -1048,7 +1052,7 @@ export interface Article {
    */
   slug: string;
   /**
-   * Short summary shown in article cards (150-200 chars)
+   * Short summary shown in article cards (50-300 chars). No placeholder text allowed.
    */
   excerpt: string;
   content: {
@@ -1964,6 +1968,7 @@ export interface SponsoredTestRequestsSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  role?: T;
   isAdmin?: T;
   subscriptionStatus?: T;
   trialStartDate?: T;

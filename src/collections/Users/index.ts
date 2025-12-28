@@ -83,12 +83,27 @@ export const Users: CollectionConfig = {
       type: 'text',
     },
     {
+      name: 'role',
+      type: 'select',
+      defaultValue: 'user',
+      options: [
+        { label: 'Admin (Full Access)', value: 'admin' },
+        { label: 'Product Editor (Add/Edit Only)', value: 'product_editor' },
+        { label: 'User (Public)', value: 'user' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'User role determines CMS permissions. Product Editors can add/edit products and categories but cannot delete.',
+      },
+    },
+    {
       name: 'isAdmin',
       type: 'checkbox',
       defaultValue: false,
       admin: {
         position: 'sidebar',
-        description: 'Grant admin privileges to this user',
+        description: 'Legacy admin flag - use role field instead',
+        condition: (data) => data?.role === 'admin', // Only show if admin role
       },
     },
     // ============================================

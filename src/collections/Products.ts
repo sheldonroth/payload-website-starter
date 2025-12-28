@@ -1,4 +1,5 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
+import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 
 /**
  * Field-level access control for premium content.
@@ -25,9 +26,9 @@ export const Products: CollectionConfig = {
     slug: 'products',
     access: {
         read: () => true, // Basic product info is public
-        create: ({ req }) => !!req.user, // Only authenticated users can create
-        update: ({ req }) => !!req.user, // Only authenticated users can update
-        delete: ({ req }) => !!req.user, // Only authenticated users can delete
+        create: isEditorOrAdmin, // Admins and product_editors can create
+        update: isEditorOrAdmin, // Admins and product_editors can update
+        delete: isAdmin, // Only admins can delete (product_editors cannot)
     },
     admin: {
         useAsTitle: 'name',

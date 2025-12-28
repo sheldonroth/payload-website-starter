@@ -1,9 +1,13 @@
 import type { CollectionConfig } from 'payload'
+import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
   access: {
     read: () => true,
+    create: isEditorOrAdmin, // Admins and product_editors can create
+    update: isEditorOrAdmin, // Admins and product_editors can update
+    delete: isAdmin, // Only admins can delete (product_editors cannot)
   },
   admin: {
     useAsTitle: 'name',
