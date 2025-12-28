@@ -1,10 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run build",
-  "crons": [
-    {
-      "path": "/api/backup/drive",
-      "schedule": "0 0 * * *"
-    }
-  ]
+  "buildCommand": "pnpm run build"
 }
