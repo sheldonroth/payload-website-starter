@@ -13,13 +13,15 @@ export const backupExportHandler: PayloadHandler = async (req: PayloadRequest) =
     try {
         const payload = req.payload
 
-        // Export all collections
-        const [products, articles, videos, categories, users] = await Promise.all([
-            payload.find({ collection: 'products', limit: 1000, depth: 0 }),
-            payload.find({ collection: 'articles', limit: 1000, depth: 0 }),
-            payload.find({ collection: 'videos', limit: 1000, depth: 0 }),
-            payload.find({ collection: 'categories', limit: 1000, depth: 0 }),
-            payload.find({ collection: 'users', limit: 1000, depth: 0 }),
+        // Export all collections - limits set high for scale (100,000s of records)
+        const [products, articles, videos, categories, users, media, polls] = await Promise.all([
+            payload.find({ collection: 'products', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'articles', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'videos', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'categories', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'users', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'media', limit: 500000, depth: 0 }),
+            payload.find({ collection: 'investigation-polls', limit: 500000, depth: 0 }),
         ])
 
         const backup = {
@@ -42,6 +44,14 @@ export const backupExportHandler: PayloadHandler = async (req: PayloadRequest) =
                     count: categories.totalDocs,
                     docs: categories.docs,
                 },
+                media: {
+                    count: media.totalDocs,
+                    docs: media.docs,
+                },
+                polls: {
+                    count: polls.totalDocs,
+                    docs: polls.docs,
+                },
                 users: {
                     count: users.totalDocs,
                     // Remove sensitive data from user export
@@ -58,6 +68,8 @@ export const backupExportHandler: PayloadHandler = async (req: PayloadRequest) =
                 totalArticles: articles.totalDocs,
                 totalVideos: videos.totalDocs,
                 totalCategories: categories.totalDocs,
+                totalMedia: media.totalDocs,
+                totalPolls: polls.totalDocs,
                 totalUsers: users.totalDocs,
             },
         }
