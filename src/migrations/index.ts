@@ -8,6 +8,7 @@ import * as migration_20251226_185357 from './20251226_185357';
 import * as migration_20251226_215114 from './20251226_215114';
 import * as migration_20251227_030959 from './20251227_030959';
 import * as migration_20251228_170104_add_user_role from './20251228_170104_add_user_role';
+import * as migration_20251228_192023 from './20251228_192023';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20251228_170104_add_user_role.up,
     down: migration_20251228_170104_add_user_role.down,
-    name: '20251228_170104_add_user_role'
+    name: '20251228_170104_add_user_role',
+  },
+  {
+    up: migration_20251228_192023.up,
+    down: migration_20251228_192023.down,
+    name: '20251228_192023'
   },
 ];
