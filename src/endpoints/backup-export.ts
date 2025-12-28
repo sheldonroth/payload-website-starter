@@ -45,7 +45,7 @@ export const backupExportHandler: PayloadHandler = async (req: PayloadRequest) =
                 users: {
                     count: users.totalDocs,
                     // Remove sensitive data from user export
-                    docs: users.docs.map((u: Record<string, unknown>) => ({
+                    docs: (users.docs as unknown as Array<{ id: unknown; email: unknown; name: unknown; createdAt: unknown }>).map((u) => ({
                         id: u.id,
                         email: u.email,
                         name: u.name,
