@@ -1,6 +1,15 @@
 import { Banner } from '@payloadcms/ui/elements/Banner'
 import React from 'react'
+import VideoToDraft from '../VideoToDraft'
+import ChannelSync from '../ChannelSync'
 import ProductsToReview from '../ProductsToReview'
+import PollGenerator from '../PollGenerator'
+import CategoryPollGenerator from '../CategoryPollGenerator'
+import SEOGenerator from '../SEOGenerator'
+import ProductEnricher from '../ProductEnricher'
+import TikTokSync from '../TikTokSync'
+import AdminPurge from '../AdminPurge'
+import BackupDownload from '../BackupDownload'
 
 import './index.scss'
 
@@ -83,37 +92,43 @@ const BeforeDashboard: React.FC = () => {
         >
           📂 Categories
         </a>
-        {/* AI Tools Button - Prominent */}
-        <a
-          href="/admin/ai-tools"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 600,
-          }}
-        >
-          🤖 AI Tools
-        </a>
       </div>
 
       <p style={{ padding: '0 24px', color: '#6e6e73', marginBottom: '24px' }}>
-        Use the sidebar or quick links above to navigate. AI-powered tools are in the <strong>AI Tools</strong> section.
+        Use the sidebar or quick links above to navigate.
       </p>
 
       <div style={{ padding: '0 24px' }}>
-        {/* Products to Review - Keep this on homepage since it's the main review workflow */}
+        {/* Products to Review */}
         <ProductsToReview />
+
+        {/* AI Tools */}
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
+          🤖 AI Tools
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <VideoToDraft />
+          <ChannelSync />
+          <TikTokSync />
+          <ProductEnricher />
+          <SEOGenerator />
+          <PollGenerator />
+          <CategoryPollGenerator />
+        </div>
+
+        {/* Admin Tools */}
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '32px', marginBottom: '16px', color: '#dc2626' }}>
+          ⚠️ Admin Tools
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <BackupDownload />
+          <AdminPurge />
+        </div>
       </div>
     </div>
   )
 }
 
 export default BeforeDashboard
-
