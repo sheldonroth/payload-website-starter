@@ -11,6 +11,7 @@ import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import InboxDashboard from '../InboxDashboard'
 import ImageReview from '../ImageReview'
+import NewsletterExport from '../NewsletterExport'
 
 import './index.scss'
 
@@ -148,6 +149,7 @@ const BeforeDashboard: React.FC = () => {
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <NewsletterExport />
           <BackupDownload />
           <AdminPurge />
         </div>
