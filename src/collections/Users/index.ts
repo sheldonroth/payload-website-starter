@@ -14,7 +14,7 @@ export const Users: CollectionConfig = {
     update: isSelfOrAdmin,
   },
   admin: {
-    defaultColumns: ['name', 'email', 'subscriptionStatus'],
+    defaultColumns: ['name', 'email', 'role', 'subscriptionStatus'],
     useAsTitle: 'name',
   },
   auth: {
