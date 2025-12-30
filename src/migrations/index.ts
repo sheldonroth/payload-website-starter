@@ -11,6 +11,7 @@ import * as migration_20251228_170104_add_user_role from './20251228_170104_add_
 import * as migration_20251228_192023 from './20251228_192023';
 import * as migration_20251230_221025_audit_and_smart_automation from './20251230_221025_audit_and_smart_automation';
 import * as migration_20251230_fix_typos from './20251230_fix_typos';
+import * as migration_20251230_222500_add_conflicts from './20251230_222500_add_conflicts';
 
 export const migrations = [
   {
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20251230_fix_typos.up,
     down: migration_20251230_fix_typos.down,
     name: '20251230_fix_typos'
+  },
+  {
+    up: migration_20251230_222500_add_conflicts.up,
+    down: migration_20251230_222500_add_conflicts.down,
+    name: '20251230_222500_add_conflicts'
   },
 ];
