@@ -9,6 +9,8 @@ import { homeStatic } from '@/endpoints/seed/home-static'
 
 // ISR: Regenerate pages every 60 seconds to balance freshness and Edge caching
 export const revalidate = 60
+// Use dynamic rendering to avoid build-time database queries when DB is not available
+export const dynamic = 'force-dynamic'
 
 import { RenderBlocks } from '@/blocks/RenderBlocks'
 import { RenderHero } from '@/heros/RenderHero'
@@ -17,27 +19,32 @@ import PageClient from './page.client'
 import { LivePreviewListener } from '@/components/LivePreviewListener'
 
 export async function generateStaticParams() {
-  const payload = await getPayload({ config: configPromise })
-  const pages = await payload.find({
-    collection: 'pages',
-    draft: false,
-    limit: 1000,
-    overrideAccess: false,
-    pagination: false,
-    select: {
-      slug: true,
-    },
-  })
-
-  const params = pages.docs
-    ?.filter((doc) => {
-      return doc.slug !== 'home'
-    })
-    .map(({ slug }) => {
-      return { slug }
+  try {
+    const payload = await getPayload({ config: configPromise })
+    const pages = await payload.find({
+      collection: 'pages',
+      draft: false,
+      limit: 1000,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        slug: true,
+      },
     })
 
-  return params
+    const params = pages.docs
+      ?.filter((doc) => {
+        return doc.slug !== 'home'
+      })
+      .map(({ slug }) => {
+        return { slug }
+      })
+
+    return params
+  } catch (error) {
+    // Return empty array if database is not available (e.g., during build without DB credentials)
+    return []
+  }
 }
 
 type Args = {
@@ -95,22 +102,27 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
 }
 
 const queryPageBySlug = cache(async ({ slug }: { slug: string }) => {
-  const { isEnabled: draft } = await draftMode()
+  try {
+    const { isEnabled: draft } = await draftMode()
 
-  const payload = await getPayload({ config: configPromise })
+    const payload = await getPayload({ config: configPromise })
 
-  const result = await payload.find({
-    collection: 'pages',
-    draft,
-    limit: 1,
-    pagination: false,
-    overrideAccess: draft,
-    where: {
-      slug: {
-        equals: slug,
+    const result = await payload.find({
+      collection: 'pages',
+      draft,
+      limit: 1,
+      pagination: false,
+      overrideAccess: draft,
+      where: {
+        slug: {
+          equals: slug,
+        },
       },
-    },
-  })
+    })
 
-  return result.docs?.[0] || null
+    return result.docs?.[0] || null
+  } catch (error) {
+    // Return null if database is not available (e.g., during build without DB credentials)
+    return null
+  }
 })

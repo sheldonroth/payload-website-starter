@@ -202,7 +202,7 @@ export default buildConfig({
     defaultFromName: 'The Product Report',
     apiKey: process.env.RESEND_API_KEY || '',
   }),
-  secret: process.env.PAYLOAD_SECRET,
+  secret: process.env.PAYLOAD_SECRET || 'your-secret-key',
   sharp,
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

@@ -7,14 +7,19 @@ import { unstable_cache } from 'next/cache'
 type Global = keyof Config['globals']
 
 async function getGlobal(slug: Global, depth = 0) {
-  const payload = await getPayload({ config: configPromise })
+  try {
+    const payload = await getPayload({ config: configPromise })
 
-  const global = await payload.findGlobal({
-    slug,
-    depth,
-  })
+    const global = await payload.findGlobal({
+      slug,
+      depth,
+    })
 
-  return global
+    return global
+  } catch (error) {
+    // Return empty object if database is not available (e.g., during build without DB credentials)
+    return {} as any
+  }
 }
 
 /**
