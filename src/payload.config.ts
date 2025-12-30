@@ -37,6 +37,7 @@ import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
 import { backupExportHandler } from './endpoints/backup-export'
 import { magicUrlHandler } from './endpoints/magic-url'
 import { categoryEnrichHandler } from './endpoints/category-enrich'
+import { emailSend } from './endpoints/email-send'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -180,6 +181,11 @@ export default buildConfig({
       path: '/category/enrich',
       method: 'post',
       handler: categoryEnrichHandler,
+    },
+    {
+      path: '/email/send',
+      method: 'post',
+      handler: emailSend,
     },
   ],
   plugins: [

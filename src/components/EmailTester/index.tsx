@@ -48,7 +48,7 @@ const EmailTester: React.FC = () => {
         setMessage('Sending...')
 
         try {
-            const res = await fetch('/api/admin/send-test-email', {
+            const res = await fetch('/api/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
