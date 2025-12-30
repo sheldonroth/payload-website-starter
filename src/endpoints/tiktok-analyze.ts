@@ -109,8 +109,8 @@ async function scrapeTikTokProfile(username: string, maxVideos: number = 10): Pr
         throw new Error('APIFY_API_KEY not configured')
     }
 
-    // Use the free TikTok scraper actor
-    const actorId = 'clockworks/free-tiktok-scraper'
+    // Use the free TikTok scraper actor (use ~ instead of / in URL)
+    const actorId = 'clockworks~free-tiktok-scraper'
     const runUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apiKey}`
 
     // Clean username (remove @ if present)
