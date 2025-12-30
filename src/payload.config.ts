@@ -17,6 +17,7 @@ import { InvestigationPolls } from './collections/InvestigationPolls'
 import { SponsoredTestRequests } from './collections/SponsoredTestRequests'
 import { Ingredients } from './collections/Ingredients'
 import { VerdictRules } from './collections/VerdictRules'
+import { AuditLog } from './collections/AuditLog'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
@@ -38,6 +39,8 @@ import { backupExportHandler } from './endpoints/backup-export'
 import { magicUrlHandler } from './endpoints/magic-url'
 import { categoryEnrichHandler } from './endpoints/category-enrich'
 import { emailSend } from './endpoints/email-send'
+import { batchEnrichHandler } from './endpoints/batch-enrich'
+import { unifiedIngestHandler } from './endpoints/unified-ingest'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -111,7 +114,7 @@ export default buildConfig({
     // Only include migrations when explicitly running `payload migrate`
     ...(process.env.PAYLOAD_MIGRATING ? { prodMigrations: migrations } : {}),
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, Users],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -186,6 +189,16 @@ export default buildConfig({
       path: '/email/send',
       method: 'post',
       handler: emailSend,
+    },
+    {
+      path: '/batch/enrich',
+      method: 'post',
+      handler: batchEnrichHandler,
+    },
+    {
+      path: '/ingest',
+      method: 'post',
+      handler: unifiedIngestHandler,
     },
   ],
   plugins: [

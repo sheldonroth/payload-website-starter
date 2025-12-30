@@ -11,8 +11,51 @@ export const Categories: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'icon', 'parent', 'productCount'],
+    defaultColumns: ['name', 'icon', 'parent', 'productCount', 'inheritedFromParent'],
     group: 'Catalog',
+  },
+  hooks: {
+    beforeChange: [
+      // ============================================
+      // INHERIT HARMFUL INGREDIENTS FROM PARENT
+      // Child categories automatically inherit parent's harmful ingredients
+      // ============================================
+      async ({ data, req, operation }) => {
+        // Only inherit on create or when parent changes
+        if ((operation === 'create' || data?.parent) && data?.parent) {
+          try {
+            const parentId = typeof data.parent === 'number' ? data.parent : data.parent?.id;
+            if (!parentId) return data;
+
+            const parent = await req.payload.findByID({
+              collection: 'categories',
+              id: parentId,
+            });
+
+            if (parent) {
+              const parentData = parent as {
+                harmfulIngredients?: Array<{ ingredient: string; reason?: string }>;
+                qualityIndicators?: Array<{ indicator: string; description?: string }>;
+              };
+
+              // Inherit harmful ingredients if child has none
+              if (parentData.harmfulIngredients?.length && !data.harmfulIngredients?.length) {
+                data.harmfulIngredients = parentData.harmfulIngredients;
+                data.inheritedFromParent = true;
+              }
+
+              // Inherit quality indicators if child has none
+              if (parentData.qualityIndicators?.length && !data.qualityIndicators?.length) {
+                data.qualityIndicators = parentData.qualityIndicators;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to inherit from parent category:', error);
+          }
+        }
+        return data;
+      },
+    ],
   },
   fields: [
     {
@@ -171,6 +214,17 @@ export const Categories: CollectionConfig = {
       admin: {
         description: 'Lower numbers appear first',
         position: 'sidebar',
+      },
+    },
+    {
+      name: 'inheritedFromParent',
+      type: 'checkbox',
+      label: 'Inherited from Parent',
+      defaultValue: false,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Harmful ingredients inherited from parent category',
       },
     },
     // ============================================

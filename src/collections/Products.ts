@@ -1,5 +1,13 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
+import {
+    parseAndLinkIngredients,
+    evaluateVerdictRules,
+    detectConflicts,
+    hydrateCategory,
+    calculateFreshness,
+} from '../utilities/smart-automation'
+import { createAuditLog } from './AuditLog'
 
 /**
  * Field-level access control for premium content.
@@ -32,8 +40,8 @@ export const Products: CollectionConfig = {
     },
     admin: {
         useAsTitle: 'name',
-        defaultColumns: ['brand', 'name', 'category', 'verdict', 'status'],
-        listSearchableFields: ['name', 'brand', 'summary'],
+        defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
+        listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
         // Hide AI drafts from main product list - they show in "AI Suggestions" view
         baseListFilter: () => ({
@@ -42,7 +50,9 @@ export const Products: CollectionConfig = {
     },
     hooks: {
         beforeChange: [
-            // Auto-calculate overall score from sub-ratings
+            // ============================================
+            // HOOK 1: Auto-calculate overall score from sub-ratings
+            // ============================================
             ({ data }) => {
                 if (data?.ratings) {
                     const weights = {
@@ -66,60 +76,168 @@ export const Products: CollectionConfig = {
                 }
                 return data;
             },
-            // Auto-create category when publishing with pending category
+
+            // ============================================
+            // HOOK 2: AUTO-PARSE INGREDIENTS from raw text
+            // ============================================
             async ({ data, req, originalDoc }) => {
-                // Check if status is changing to published and there's a pending category
-                if (
-                    data?.status === 'published' &&
-                    data?.pendingCategoryName &&
-                    !data?.category
-                ) {
+                // Only parse if ingredientsRaw changed and ingredientsList is empty
+                const rawChanged = data?.ingredientsRaw !== originalDoc?.ingredientsRaw;
+                const hasNoLinks = !data?.ingredientsList?.length;
+
+                if (rawChanged && data?.ingredientsRaw && hasNoLinks) {
                     try {
-                        // Check if category already exists
-                        const existing = await req.payload.find({
-                            collection: 'categories',
-                            where: {
-                                name: { equals: data.pendingCategoryName },
-                            },
-                            limit: 1,
-                        });
+                        const parseResult = await parseAndLinkIngredients(
+                            data.ingredientsRaw,
+                            req.payload
+                        );
 
-                        let categoryId: number;
-
-                        if (existing.docs.length > 0) {
-                            categoryId = existing.docs[0].id as number;
-                        } else {
-                            // Create new category
-                            const newCategory = await req.payload.create({
-                                collection: 'categories',
-                                data: {
-                                    name: data.pendingCategoryName,
-                                    slug: data.pendingCategoryName
-                                        .toLowerCase()
-                                        .replace(/[^a-z0-9]+/g, '-')
-                                        .replace(/(^-|-$)/g, ''),
-                                },
-                            });
-                            categoryId = newCategory.id as number;
+                        // Auto-populate ingredientsList
+                        if (parseResult.linkedIds.length > 0) {
+                            data.ingredientsList = parseResult.linkedIds;
                         }
 
-                        // Link product to category and clear pending
-                        data.category = categoryId;
-                        data.pendingCategoryName = null;
+                        // Track unmatched ingredients
+                        if (parseResult.unmatched.length > 0) {
+                            data.unmatchedIngredients = parseResult.unmatched.map(name => ({ name }));
+                        }
+
+                        // Set auto-verdict from parsed ingredients
+                        if (parseResult.autoVerdict && !data.verdictOverride) {
+                            data.autoVerdict = parseResult.autoVerdict;
+                            if (!data.verdict || data.verdict === 'pending') {
+                                data.verdict = parseResult.autoVerdict;
+                            }
+                        }
+
+                        // Create audit log
+                        await createAuditLog(req.payload, {
+                            action: 'ai_ingredient_parsed',
+                            sourceType: 'system',
+                            targetCollection: 'products',
+                            targetId: originalDoc?.id,
+                            targetName: data.name,
+                            metadata: {
+                                matched: parseResult.linkedIds.length,
+                                unmatched: parseResult.unmatched,
+                                autoVerdict: parseResult.autoVerdict,
+                            },
+                            performedBy: (req.user as { id?: number })?.id,
+                        });
                     } catch (error) {
-                        console.error('Failed to auto-create category:', error);
+                        console.error('Auto-parse ingredients failed:', error);
                     }
                 }
                 return data;
             },
+
             // ============================================
-            // AUTO-VERDICT: Calculate verdict from ingredients
+            // HOOK 3: INSTANT CATEGORY HYDRATION
+            // ============================================
+            async ({ data, req }) => {
+                // If pendingCategoryName exists and no category set, hydrate immediately
+                if (data?.pendingCategoryName && !data?.category) {
+                    try {
+                        const result = await hydrateCategory(
+                            data.pendingCategoryName,
+                            req.payload,
+                            { aiSuggested: true }
+                        );
+
+                        data.category = result.categoryId;
+                        data.pendingCategoryName = null; // Clear pending
+
+                        if (result.created) {
+                            await createAuditLog(req.payload, {
+                                action: 'category_created',
+                                sourceType: 'system',
+                                targetCollection: 'categories',
+                                targetId: result.categoryId,
+                                targetName: data.pendingCategoryName,
+                                metadata: { parentId: result.parentId },
+                                performedBy: (req.user as { id?: number })?.id,
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Category hydration failed:', error);
+                        // Keep pendingCategoryName for retry
+                    }
+                }
+                return data;
+            },
+
+            // ============================================
+            // HOOK 4: VERDICT RULES ENGINE
+            // ============================================
+            async ({ data, req }) => {
+                // Evaluate VerdictRules
+                if (data?.ingredientsList?.length > 0 || data?.category) {
+                    try {
+                        const ingredientIds = (data.ingredientsList || []).map(
+                            (ing: number | { id: number }) => typeof ing === 'number' ? ing : ing.id
+                        );
+
+                        const ruleResult = await evaluateVerdictRules(
+                            {
+                                ingredientsList: ingredientIds,
+                                category: typeof data.category === 'number' ? data.category : data.category?.id,
+                                verdict: data.verdict,
+                            },
+                            req.payload
+                        );
+
+                        // Apply suggested verdict from rules (if no override)
+                        if (ruleResult.suggestedVerdict && !data.verdictOverride) {
+                            data.ruleApplied = ruleResult.evaluations
+                                .filter(e => e.matched)
+                                .map(e => e.ruleName)
+                                .join(', ');
+
+                            if (!data.verdict || data.verdict === 'pending') {
+                                data.verdict = ruleResult.suggestedVerdict;
+                            }
+                            data.autoVerdict = ruleResult.suggestedVerdict;
+                        }
+
+                        // Add warnings to conflicts
+                        if (ruleResult.warnings.length > 0) {
+                            const existingConflicts = (data.conflicts?.detected || []) as string[];
+                            data.conflicts = {
+                                detected: [...existingConflicts, ...ruleResult.warnings],
+                                lastChecked: new Date().toISOString(),
+                            };
+                        }
+
+                        // Log rule applications
+                        for (const evaluation of ruleResult.evaluations.filter(e => e.matched)) {
+                            await createAuditLog(req.payload, {
+                                action: 'rule_applied',
+                                sourceType: 'rule',
+                                sourceId: String(evaluation.ruleId),
+                                targetCollection: 'products',
+                                targetId: data.id,
+                                targetName: data.name,
+                                metadata: {
+                                    ruleName: evaluation.ruleName,
+                                    action: evaluation.action,
+                                },
+                                performedBy: (req.user as { id?: number })?.id,
+                            });
+                        }
+                    } catch (error) {
+                        console.error('VerdictRules evaluation failed:', error);
+                    }
+                }
+                return data;
+            },
+
+            // ============================================
+            // HOOK 5: AUTO-VERDICT from ingredients (existing + enhanced)
             // ============================================
             async ({ data, req }) => {
                 // Only calculate if ingredientsList is provided and not overridden
                 if (data?.ingredientsList?.length > 0 && !data?.verdictOverride) {
                     try {
-                        // Fetch the linked ingredients to check their verdicts
                         const ingredientIds = data.ingredientsList.map((ing: number | { id: number }) =>
                             typeof ing === 'number' ? ing : ing.id
                         );
@@ -136,17 +254,14 @@ export const Products: CollectionConfig = {
                             const ingVerdict = (ing as { verdict?: string }).verdict;
                             if (ingVerdict === 'avoid') {
                                 worstVerdict = 'avoid';
-                                break; // Can't get worse
+                                break;
                             } else if (ingVerdict === 'caution') {
                                 worstVerdict = 'caution';
-                                // Continue checking for worse
                             }
                         }
 
-                        // Set auto-verdict
                         data.autoVerdict = worstVerdict;
 
-                        // If no manual verdict set, use auto-verdict
                         if (!data.verdict || data.verdict === 'pending') {
                             data.verdict = worstVerdict;
                         }
@@ -156,54 +271,86 @@ export const Products: CollectionConfig = {
                 }
                 return data;
             },
-            // ============================================
-            // CONFLICT DETECTION: Warn on mismatched verdict
-            // ============================================
-            async ({ data, req }) => {
-                // Check for conflicts between verdict and ingredientsList
-                const conflicts: string[] = [];
 
-                if (data?.verdict === 'recommend' && data?.ingredientsList?.length > 0) {
-                    try {
-                        const ingredientIds = data.ingredientsList.map((ing: number | { id: number }) =>
-                            typeof ing === 'number' ? ing : ing.id
+            // ============================================
+            // HOOK 6: HARD GUARDRAILS - Block conflicting saves
+            // ============================================
+            async ({ data, req, originalDoc }) => {
+                const ingredientIds = (data?.ingredientsList || []).map(
+                    (ing: number | { id: number }) => typeof ing === 'number' ? ing : ing.id
+                );
+
+                const conflictResult = await detectConflicts(
+                    {
+                        verdict: data?.verdict,
+                        ingredientsList: ingredientIds,
+                        verdictOverride: data?.verdictOverride,
+                        category: typeof data?.category === 'number' ? data.category : data?.category?.id,
+                    },
+                    req.payload
+                );
+
+                // Store conflicts
+                if (conflictResult.hasConflicts) {
+                    data.conflicts = {
+                        detected: conflictResult.conflicts.map(c => `${c.severity === 'error' ? '🚫' : '⚠️'} ${c.message}`),
+                        lastChecked: new Date().toISOString(),
+                    };
+
+                    // Log conflict detection
+                    await createAuditLog(req.payload, {
+                        action: 'conflict_detected',
+                        sourceType: 'system',
+                        targetCollection: 'products',
+                        targetId: originalDoc?.id,
+                        targetName: data.name,
+                        metadata: { conflicts: conflictResult.conflicts },
+                        performedBy: (req.user as { id?: number })?.id,
+                    });
+
+                    // Block save if canSave is false AND trying to publish
+                    if (!conflictResult.canSave && data.status === 'published') {
+                        const errorConflicts = conflictResult.conflicts
+                            .filter(c => c.severity === 'error')
+                            .map(c => c.message);
+
+                        throw new Error(
+                            `Cannot publish: ${errorConflicts.join('. ')}. Enable "Override Auto-Verdict" to proceed.`
                         );
-
-                        const ingredients = await req.payload.find({
-                            collection: 'ingredients',
-                            where: { id: { in: ingredientIds } },
-                            limit: 100,
-                        });
-
-                        // Check for AVOID ingredients in a RECOMMEND product
-                        const avoidIngredients = ingredients.docs
-                            .filter((ing: { verdict?: string }) => ing.verdict === 'avoid')
-                            .map((ing: { name: string }) => ing.name);
-
-                        if (avoidIngredients.length > 0) {
-                            conflicts.push(`⚠️ Product marked RECOMMEND but contains AVOID ingredients: ${avoidIngredients.join(', ')}`);
-                        }
-
-                        // Check for CAUTION ingredients
-                        const cautionIngredients = ingredients.docs
-                            .filter((ing: { verdict?: string }) => ing.verdict === 'caution')
-                            .map((ing: { name: string }) => ing.name);
-
-                        if (cautionIngredients.length > 0) {
-                            conflicts.push(`⚠️ Product contains CAUTION ingredients: ${cautionIngredients.join(', ')}`);
-                        }
-                    } catch (error) {
-                        console.error('Conflict detection failed:', error);
                     }
-                }
-
-                // Store conflicts (don't block save, just log)
-                if (conflicts.length > 0) {
-                    data.conflicts = { detected: conflicts, lastChecked: new Date().toISOString() };
                 } else {
                     data.conflicts = null;
                 }
 
+                // Record override audit trail
+                if (data?.verdictOverride && !originalDoc?.verdictOverride) {
+                    data.verdictOverriddenBy = (req.user as { id?: number })?.id;
+                    data.verdictOverriddenAt = new Date().toISOString();
+
+                    await createAuditLog(req.payload, {
+                        action: 'manual_override',
+                        sourceType: 'manual',
+                        targetCollection: 'products',
+                        targetId: originalDoc?.id,
+                        targetName: data.name,
+                        before: { verdict: originalDoc?.verdict, autoVerdict: originalDoc?.autoVerdict },
+                        after: { verdict: data.verdict, verdictOverride: true },
+                        metadata: { reason: data.verdictOverrideReason },
+                        performedBy: (req.user as { id?: number })?.id,
+                    });
+                }
+
+                return data;
+            },
+
+            // ============================================
+            // HOOK 7: FRESHNESS MONITORING
+            // ============================================
+            ({ data }) => {
+                // Calculate freshness status
+                const lastTested = data?.testingInfo?.lastTestedDate;
+                const freshness = calculateFreshness(lastTested);
+                data.freshnessStatus = freshness.status;
                 return data;
             },
         ],
@@ -228,20 +375,18 @@ export const Products: CollectionConfig = {
             label: 'URL Slug',
             index: true,
             admin: {
-                hidden: true, // Auto-generated from brand + name
+                hidden: true,
             },
             hooks: {
                 beforeValidate: [
                     ({ value, data }) => {
                         if (value) return value;
-                        // Auto-generate slug from brand + name
                         const brand = data?.brand || '';
                         const name = data?.name || '';
                         const baseSlug = `${brand}-${name}`
                             .toLowerCase()
                             .replace(/[^a-z0-9]+/g, '-')
                             .replace(/(^-|-$)/g, '');
-                        // Add timestamp suffix to avoid duplicates
                         return baseSlug || `product-${Date.now()}`;
                     },
                 ],
@@ -263,7 +408,7 @@ export const Products: CollectionConfig = {
             label: 'Pending Category (AI Suggested)',
             admin: {
                 position: 'sidebar',
-                description: 'New category will be auto-created when published',
+                description: 'Will be auto-created immediately (hierarchical supported)',
                 condition: (data) => !!data?.pendingCategoryName,
             },
         },
@@ -284,7 +429,7 @@ export const Products: CollectionConfig = {
             label: 'Product Image',
         },
 
-        // === BINARY VERDICT SYSTEM (First Principles) ===
+        // === BINARY VERDICT SYSTEM ===
         {
             name: 'verdict',
             type: 'select',
@@ -298,7 +443,7 @@ export const Products: CollectionConfig = {
             ],
             admin: {
                 position: 'sidebar',
-                description: 'Binary verdict: do we recommend this product?',
+                description: 'Final verdict on this product',
             },
         },
         {
@@ -320,21 +465,57 @@ export const Products: CollectionConfig = {
             admin: {
                 position: 'sidebar',
                 readOnly: true,
-                description: 'System-calculated verdict based on ingredients',
+                description: 'System-calculated from ingredients + rules',
             },
         },
         {
             name: 'verdictOverride',
             type: 'checkbox',
             defaultValue: false,
+            label: 'Override Auto-Verdict',
             admin: {
                 position: 'sidebar',
-                description: 'Manual override of auto-verdict',
-                condition: (data) => data?.autoVerdict && data?.verdict !== data?.autoVerdict,
+                description: 'Enable to manually set verdict different from auto-calculated',
+            },
+        },
+        {
+            name: 'verdictOverrideReason',
+            type: 'textarea',
+            label: 'Override Reason',
+            admin: {
+                description: 'Required: explain why you are overriding the auto-verdict',
+                condition: (data) => data?.verdictOverride,
+            },
+        },
+        {
+            name: 'verdictOverriddenBy',
+            type: 'relationship',
+            relationTo: 'users',
+            admin: {
+                readOnly: true,
+                condition: (data) => data?.verdictOverride,
+            },
+        },
+        {
+            name: 'verdictOverriddenAt',
+            type: 'date',
+            admin: {
+                readOnly: true,
+                condition: (data) => data?.verdictOverride,
+            },
+        },
+        {
+            name: 'ruleApplied',
+            type: 'text',
+            label: 'VerdictRule Applied',
+            admin: {
+                readOnly: true,
+                description: 'Name of VerdictRule(s) that set the verdict',
+                condition: (data) => !!data?.ruleApplied,
             },
         },
 
-        // === INGREDIENTS (First Principles - Structured) ===
+        // === INGREDIENTS ===
         {
             name: 'ingredientsList',
             type: 'relationship',
@@ -342,7 +523,7 @@ export const Products: CollectionConfig = {
             hasMany: true,
             label: 'Linked Ingredients',
             admin: {
-                description: 'Structured ingredient links (enables cascade verdicts)',
+                description: 'Auto-populated from raw text, or manually link',
             },
         },
         {
@@ -350,11 +531,27 @@ export const Products: CollectionConfig = {
             type: 'textarea',
             label: 'Raw Ingredients Text',
             admin: {
-                description: 'Original ingredients text (for reference/parsing)',
+                description: 'Paste ingredients list - will auto-parse and link to Ingredients collection',
             },
         },
+        {
+            name: 'unmatchedIngredients',
+            type: 'array',
+            label: 'Unmatched Ingredients',
+            admin: {
+                description: 'Ingredients that could not be auto-matched (need manual research)',
+                condition: (data) => data?.unmatchedIngredients?.length > 0,
+            },
+            fields: [
+                {
+                    name: 'name',
+                    type: 'text',
+                    required: true,
+                },
+            ],
+        },
 
-        // === SOURCE TRACKING (First Principles - Provenance) ===
+        // === SOURCE TRACKING ===
         {
             name: 'upc',
             type: 'text',
@@ -382,24 +579,49 @@ export const Products: CollectionConfig = {
                 description: 'Video that this product was extracted from',
             },
         },
+        {
+            name: 'sourceCount',
+            type: 'number',
+            defaultValue: 1,
+            admin: {
+                position: 'sidebar',
+                description: 'Number of sources that mentioned this product',
+            },
+        },
 
-        // === CONFLICTS (First Principles - Guardrails) ===
+        // === CONFLICTS & GUARDRAILS ===
         {
             name: 'conflicts',
             type: 'json',
             admin: {
                 readOnly: true,
-                description: 'System-detected conflicts (e.g., AVOID ingredient in RECOMMEND product)',
+                description: 'System-detected conflicts (blocks publishing if unresolved)',
             },
         },
 
-        // === LEGACY BADGES (kept for backward compatibility, hidden) ===
+        // === FRESHNESS MONITORING ===
+        {
+            name: 'freshnessStatus',
+            type: 'select',
+            options: [
+                { label: '🟢 Fresh', value: 'fresh' },
+                { label: '🟡 Needs Review', value: 'needs_review' },
+                { label: '🔴 Stale', value: 'stale' },
+            ],
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'Auto-calculated from last tested date',
+            },
+        },
+
+        // === LEGACY BADGES (hidden) ===
         {
             name: 'badges',
             type: 'group',
             label: 'Legacy Badges',
             admin: {
-                condition: () => false, // Hide from UI
+                condition: () => false,
             },
             fields: [
                 { name: 'isBestInCategory', type: 'checkbox' },
@@ -409,7 +631,7 @@ export const Products: CollectionConfig = {
             ],
         },
 
-        // === LEGACY SCORES (kept for migration, hidden) ===
+        // === LEGACY SCORES (hidden) ===
         {
             name: 'overallScore',
             type: 'number',
@@ -627,7 +849,7 @@ export const Products: CollectionConfig = {
             ],
         },
 
-        // === LEGACY FIELDS (for backward compatibility) ===
+        // === LEGACY FIELDS (hidden) ===
         {
             name: 'isBestBuy',
             type: 'checkbox',

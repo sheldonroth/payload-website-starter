@@ -1,5 +1,7 @@
 import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { createAuditLog } from '../collections/AuditLog'
+import { hydrateCategory } from '../utilities/smart-automation'
 
 // Extract YouTube video ID from various URL formats
 function extractYouTubeVideoId(url: string): string | null {
@@ -268,18 +270,22 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
          * - To disable: remove the duplicate check block below and change status to 'draft'
          * ============================================================================ */
 
-        // Step 4: Create AI drafts in Payload (with duplicate detection)
+        // Step 4: Create AI drafts in Payload with CROSS-PLATFORM DEDUPLICATION + BIDIRECTIONAL LINKING
         const createdDrafts: { id: number; name: string; category: string; isNewCategory: boolean }[] = []
         const skippedDuplicates: string[] = []
+        const mergedProducts: { id: number; name: string; status: string }[] = []
+        const createdProductIds: number[] = []
 
         for (const product of products) {
             try {
-                // ⚠️ DUPLICATE CHECK: Only affects ai_draft status products
-                const existingAiDraft = await req.payload.find({
+                // ============================================
+                // CROSS-PLATFORM DEDUPLICATION
+                // Check ALL statuses, not just ai_draft
+                // ============================================
+                const existingProduct = await req.payload.find({
                     collection: 'products',
                     where: {
                         and: [
-                            { status: { equals: 'ai_draft' } },
                             { name: { equals: product.productName } },
                             ...(product.brandName ? [{ brand: { equals: product.brandName } }] : []),
                         ],
@@ -287,24 +293,59 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     limit: 1,
                 })
 
-                if (existingAiDraft.docs.length > 0) {
-                    skippedDuplicates.push(`${product.brandName || ''} ${product.productName}`.trim())
-                    continue // Skip this duplicate
+                if (existingProduct.docs.length > 0) {
+                    const existing = existingProduct.docs[0] as { id: number; name: string; status: string; sourceCount?: number }
+
+                    // If product exists in any status, update sourceCount and link to video
+                    await req.payload.update({
+                        collection: 'products',
+                        id: existing.id,
+                        data: {
+                            sourceCount: (existing.sourceCount || 1) + 1,
+                            ...(videoRecord ? { sourceVideo: videoRecord.id } : {}),
+                        } as Record<string, unknown>,
+                    })
+
+                    if (existing.status === 'ai_draft') {
+                        skippedDuplicates.push(`${product.brandName || ''} ${product.productName}`.trim())
+                    } else {
+                        mergedProducts.push({ id: existing.id, name: existing.name, status: existing.status })
+                    }
+                    createdProductIds.push(existing.id)
+                    continue
                 }
 
-                // Find existing category or leave null for new ones
+                // ============================================
+                // INSTANT CATEGORY HYDRATION
+                // Create hierarchical categories immediately
+                // ============================================
                 let categoryId: number | null = null
-                if (!product.isNewCategory) {
-                    const existingCat = categoriesResult.docs.find(
-                        (cat: { name: string; id: number }) =>
-                            cat.name.toLowerCase() === product.suggestedCategory.toLowerCase()
-                    )
-                    if (existingCat) {
-                        categoryId = existingCat.id as number
+                if (product.suggestedCategory) {
+                    if (product.isNewCategory) {
+                        // Create category hierarchy immediately
+                        try {
+                            const catResult = await hydrateCategory(
+                                product.suggestedCategory,
+                                req.payload,
+                                { aiSuggested: true, sourceVideoId: videoId || undefined }
+                            )
+                            categoryId = catResult.categoryId
+                        } catch (catError) {
+                            console.error('Category hydration failed:', catError)
+                        }
+                    } else {
+                        // Find existing category
+                        const existingCat = categoriesResult.docs.find(
+                            (cat: { name: string; id: number }) =>
+                                cat.name.toLowerCase() === product.suggestedCategory.toLowerCase()
+                        )
+                        if (existingCat) {
+                            categoryId = existingCat.id as number
+                        }
                     }
                 }
 
-                // Build product data object
+                // Build product data object with BIDIRECTIONAL LINKING
                 const productData: Record<string, unknown> = {
                     name: product.productName,
                     brand: product.brandName,
@@ -314,9 +355,17 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     verdict: product.sentimentScore >= 7 ? 'recommend' :
                         product.sentimentScore >= 4 ? 'caution' : 'avoid',
                     verdictReason: `AI-extracted from video. Sentiment: ${product.sentimentScore}/10.`,
+                    sourceUrl: videoUrl,
+                    sourceCount: 1,
                 }
+
+                // Add category (now hydrated immediately)
                 if (categoryId) productData.category = categoryId
-                if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
+
+                // Add source video link (BIDIRECTIONAL)
+                if (videoRecord) {
+                    productData.sourceVideo = videoRecord.id
+                }
 
                 // @ts-expect-error - Payload types require specific product shape but we're building dynamically
                 const created = await req.payload.create({
@@ -324,14 +373,54 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     data: productData,
                 })
 
+                const createdId = created.id as number
+                createdProductIds.push(createdId)
+
+                // Create audit log
+                await createAuditLog(req.payload, {
+                    action: 'ai_product_created',
+                    sourceType: 'youtube',
+                    sourceId: videoId || undefined,
+                    sourceUrl: videoUrl,
+                    targetCollection: 'products',
+                    targetId: createdId,
+                    targetName: product.productName,
+                    aiModel: 'gemini-2.0-flash',
+                    confidence: product.sentimentScore * 10,
+                    performedBy: (req.user as { id?: number })?.id,
+                    metadata: {
+                        analysisMethod,
+                        category: product.suggestedCategory,
+                        isNewCategory: product.isNewCategory,
+                    },
+                })
+
                 createdDrafts.push({
-                    id: created.id as number,
+                    id: createdId,
                     name: product.productName,
                     category: product.suggestedCategory,
                     isNewCategory: product.isNewCategory,
                 })
             } catch (error) {
                 console.error(`Error creating draft for ${product.productName}:`, error)
+            }
+        }
+
+        // ============================================
+        // UPDATE VIDEO WITH EXTRACTED PRODUCTS (Complete bidirectional link)
+        // ============================================
+        if (videoRecord && createdProductIds.length > 0) {
+            try {
+                await req.payload.update({
+                    collection: 'videos',
+                    id: videoRecord.id,
+                    data: {
+                        extractedProducts: createdProductIds,
+                        analyzedAt: new Date().toISOString(),
+                    },
+                })
+            } catch (error) {
+                console.error('Failed to update video with extracted products:', error)
             }
         }
 
@@ -342,7 +431,9 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             productsFound: products.length,
             products,
             draftsCreated: createdDrafts,
-            skippedDuplicates, // ⚠️ Products skipped due to duplicate detection
+            skippedDuplicates,
+            mergedProducts, // Products that already existed and were linked
+            videoRecord: videoRecord ? { id: videoRecord.id } : null,
             existingCategories,
         })
     } catch (error) {

@@ -1,5 +1,7 @@
+'use client'
+
 import { Banner } from '@payloadcms/ui/elements/Banner'
-import React from 'react'
+import React, { useState } from 'react'
 import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
 import PollGenerator from '../PollGenerator'
@@ -9,7 +11,6 @@ import ProductEnricher from '../ProductEnricher'
 import TikTokSync from '../TikTokSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
-import InboxDashboard from '../InboxDashboard'
 import ImageReview from '../ImageReview'
 import NewsletterExport from '../NewsletterExport'
 import EmailTester from '../EmailTester'
@@ -17,6 +18,57 @@ import EmailTester from '../EmailTester'
 import './index.scss'
 
 const baseClass = 'before-dashboard'
+
+// Collapsible Section Component
+const CollapsibleSection: React.FC<{
+  title: string
+  icon: string
+  children: React.ReactNode
+  defaultOpen?: boolean
+  variant?: 'default' | 'danger'
+  badge?: string
+}> = ({ title, icon, children, defaultOpen = true, variant = 'default', badge }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  return (
+    <div className={`${baseClass}__section`}>
+      <div className={`${baseClass}__section-header ${variant === 'danger' ? `${baseClass}__section-header--danger` : ''}`}>
+        <button
+          className={`${baseClass}__section-toggle`}
+          onClick={() => setIsOpen(!isOpen)}
+          type="button"
+        >
+          <span className={`chevron ${!isOpen ? 'chevron--collapsed' : ''}`}>
+            {isOpen ? '▼' : '▶'}
+          </span>
+          <h3>
+            <span>{icon}</span>
+            {title}
+            {badge && (
+              <span style={{
+                marginLeft: '8px',
+                padding: '2px 8px',
+                background: '#fef3c7',
+                color: '#92400e',
+                fontSize: '12px',
+                fontWeight: 600,
+                borderRadius: '4px',
+              }}>
+                {badge}
+              </span>
+            )}
+          </h3>
+        </button>
+      </div>
+      <div
+        className={`${baseClass}__section-content ${!isOpen ? `${baseClass}__section-content--collapsed` : ''}`}
+        style={{ maxHeight: isOpen ? '10000px' : '0' }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 
 const BeforeDashboard: React.FC = () => {
   return (
@@ -26,139 +78,82 @@ const BeforeDashboard: React.FC = () => {
       </Banner>
 
       {/* Quick Navigation */}
-      <div style={{ padding: '0 24px', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <a
-          href="/admin"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: '#1f2937',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 600,
-          }}
-        >
+      <nav className={`${baseClass}__nav`}>
+        <a href="/admin" className={`${baseClass}__nav-link ${baseClass}__nav-link--active`}>
           🏠 Home
         </a>
-        <a
-          href="/admin/collections/products"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: '#f3f4f6',
-            color: '#374151',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 500,
-          }}
-        >
+        <a href="/admin/collections/products" className={`${baseClass}__nav-link`}>
           📦 Products
         </a>
-        <a
-          href="/admin/collections/investigation-polls"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: '#f3f4f6',
-            color: '#374151',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 500,
-          }}
-        >
+        <a href="/admin/collections/investigation-polls" className={`${baseClass}__nav-link`}>
           🗳️ Polls
         </a>
-        <a
-          href="/admin/collections/categories"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: '#f3f4f6',
-            color: '#374151',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 500,
-          }}
-        >
+        <a href="/admin/collections/categories" className={`${baseClass}__nav-link`}>
           📂 Categories
         </a>
-        <a
-          href="#ai-tools-section"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '8px 16px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 600,
-          }}
-        >
+        <a href="/admin/collections/articles" className={`${baseClass}__nav-link`}>
+          📰 Articles
+        </a>
+        <a href="/admin/collections/videos" className={`${baseClass}__nav-link`}>
+          🎬 Videos
+        </a>
+        <a href="#ai-tools-section" className={`${baseClass}__nav-link ${baseClass}__nav-link--accent`}>
           🤖 AI Tools
         </a>
-      </div>
+        <a href="#admin-tools-section" className={`${baseClass}__nav-link`}>
+          ⚙️ Admin
+        </a>
+      </nav>
 
-      <p style={{ padding: '0 24px', color: '#6e6e73', marginBottom: '24px' }}>
-        Use the sidebar or quick links above to navigate.
+      <p className={`${baseClass}__help`}>
+        Use the sidebar or quick links above to navigate. Click section headers to collapse/expand.
       </p>
 
-      {/* InboxDashboard temporarily disabled - causing interactivity issues */}
-      {/* <InboxDashboard /> */}
-
-      <div style={{ padding: '0 24px' }}>
-        {/* AI Tools */}
-        <div id="ai-tools-section">
-          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>
-            🤖 AI Tools
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+      {/* Content Ingestion Tools */}
+      <div id="ai-tools-section">
+        <CollapsibleSection title="Content Ingestion" icon="📥" defaultOpen={true}>
+          <div className={`${baseClass}__grid`}>
             <VideoToDraft />
             <ChannelSync />
             <TikTokSync />
-            <ProductEnricher />
-            <SEOGenerator />
-            <PollGenerator />
-            <CategoryPollGenerator />
           </div>
+        </CollapsibleSection>
+      </div>
 
-          {/* Image Review Tool */}
-          <div style={{ marginTop: '16px' }}>
-            <ImageReview />
+      {/* Product Management Tools */}
+      <CollapsibleSection title="Product Management" icon="📦" defaultOpen={true}>
+        <div className={`${baseClass}__grid`}>
+          <ProductEnricher />
+          <SEOGenerator />
+        </div>
+      </CollapsibleSection>
+
+      {/* Community Tools */}
+      <CollapsibleSection title="Community & Polls" icon="🗳️" defaultOpen={false}>
+        <div className={`${baseClass}__grid`}>
+          <PollGenerator />
+          <CategoryPollGenerator />
+        </div>
+      </CollapsibleSection>
+
+      {/* Image Review */}
+      <CollapsibleSection title="Image Review" icon="🖼️" defaultOpen={true} badge="20 need images">
+        <ImageReview />
+      </CollapsibleSection>
+
+      {/* Admin Tools */}
+      <div id="admin-tools-section">
+        <CollapsibleSection title="Admin Tools" icon="⚠️" variant="danger" defaultOpen={false}>
+          <div className={`${baseClass}__grid`}>
+            <EmailTester />
+            <NewsletterExport />
+            <BackupDownload />
+            <AdminPurge />
           </div>
-        </div>
-
-        {/* Admin Tools */}
-        <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '32px', marginBottom: '16px', color: '#dc2626' }}>
-          ⚠️ Admin Tools
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-          <EmailTester />
-          <NewsletterExport />
-          <BackupDownload />
-          <AdminPurge />
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   )
 }
 
 export default BeforeDashboard
-

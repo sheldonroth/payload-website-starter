@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLog } from './AuditLog'
 
 export const InvestigationPolls: CollectionConfig = {
     slug: 'investigation-polls',
@@ -12,6 +13,150 @@ export const InvestigationPolls: CollectionConfig = {
         useAsTitle: 'title',
         defaultColumns: ['title', 'status', 'endDate', 'totalVotes'],
         group: 'Community',
+    },
+    hooks: {
+        afterChange: [
+            // ============================================
+            // POLL → INVESTIGATION PIPELINE
+            // When poll closes, auto-create investigation article
+            // ============================================
+            async ({ doc, previousDoc, req, operation }) => {
+                // Only trigger when status changes to 'closed'
+                if (
+                    operation === 'update' &&
+                    previousDoc?.status === 'active' &&
+                    doc?.status === 'closed'
+                ) {
+                    try {
+                        // Find the winning option
+                        const options = (doc.options || []) as Array<{
+                            name: string
+                            description?: string
+                            votes: number
+                        }>
+
+                        if (options.length === 0) return doc
+
+                        const winner = options.reduce((a, b) =>
+                            (b.votes || 0) > (a.votes || 0) ? b : a
+                        )
+
+                        // Find related products for this investigation
+                        const searchTerms = winner.name.toLowerCase().split(' ')
+                        const relatedProducts = await req.payload.find({
+                            collection: 'products',
+                            where: {
+                                or: searchTerms.map(term => ({
+                                    name: { contains: term },
+                                })),
+                            },
+                            limit: 10,
+                        })
+
+                        // Create investigation article draft
+                        const article = await req.payload.create({
+                            collection: 'articles',
+                            data: {
+                                title: `Investigation: ${winner.name}`,
+                                slug: `investigation-${winner.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+                                excerpt: `Community-requested investigation into ${winner.name}. ${doc.totalVotes || 0} community members voted in this poll. ${winner.description || ''}`,
+                                content: {
+                                    root: {
+                                        type: 'root',
+                                        version: 1,
+                                        direction: 'ltr' as const,
+                                        format: '' as const,
+                                        indent: 0,
+                                        children: [
+                                            {
+                                                type: 'heading',
+                                                tag: 'h2',
+                                                version: 1,
+                                                direction: 'ltr' as const,
+                                                format: '' as const,
+                                                indent: 0,
+                                                children: [{ text: `Why We're Investigating ${winner.name}`, type: 'text', version: 1 }],
+                                            },
+                                            {
+                                                type: 'paragraph',
+                                                version: 1,
+                                                direction: 'ltr' as const,
+                                                format: '' as const,
+                                                indent: 0,
+                                                textFormat: 0,
+                                                children: [{
+                                                    text: `This investigation was requested by our community through a poll that received ${doc.totalVotes || 0} votes.`,
+                                                    type: 'text',
+                                                    version: 1,
+                                                }],
+                                            },
+                                            {
+                                                type: 'paragraph',
+                                                version: 1,
+                                                direction: 'ltr' as const,
+                                                format: '' as const,
+                                                indent: 0,
+                                                textFormat: 0,
+                                                children: [{
+                                                    text: winner.description || 'More details coming soon.',
+                                                    type: 'text',
+                                                    version: 1,
+                                                }],
+                                            },
+                                        ],
+                                    },
+                                },
+                                category: 'investigation',
+                                status: 'draft',
+                                author: 'The Product Report Team',
+                                publishedAt: new Date().toISOString(),
+                                readTime: 5,
+                                relatedProducts: relatedProducts.docs.map(p => (p as { id: number }).id),
+                            },
+                        })
+
+                        // Create audit log
+                        await createAuditLog(req.payload, {
+                            action: 'article_generated',
+                            sourceType: 'system',
+                            sourceId: String(doc.id),
+                            targetCollection: 'articles',
+                            targetId: article.id as number,
+                            targetName: `Investigation: ${winner.name}`,
+                            metadata: {
+                                pollTitle: doc.title,
+                                winningOption: winner.name,
+                                totalVotes: doc.totalVotes,
+                                relatedProductsCount: relatedProducts.docs.length,
+                            },
+                            performedBy: (req.user as { id?: number })?.id,
+                        })
+
+                        // Log for notification
+                        console.log(`📰 Created investigation article for "${winner.name}" from poll "${doc.title}"`)
+
+                        // Also log poll closed
+                        await createAuditLog(req.payload, {
+                            action: 'poll_closed',
+                            sourceType: 'system',
+                            targetCollection: 'investigation-polls',
+                            targetId: doc.id as number,
+                            targetName: doc.title as string,
+                            metadata: {
+                                totalVotes: doc.totalVotes,
+                                winner: winner.name,
+                                options: options.map(o => ({ name: o.name, votes: o.votes })),
+                            },
+                            performedBy: (req.user as { id?: number })?.id,
+                        })
+                    } catch (error) {
+                        console.error('Failed to create investigation article:', error)
+                    }
+                }
+
+                return doc
+            },
+        ],
     },
     fields: [
         {

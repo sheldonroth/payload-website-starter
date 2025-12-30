@@ -1,14 +1,689 @@
-.before-dashboard {
-  padding: 24px;
+// ============================================
+// Dashboard Design System
+// ============================================
 
+// Color Variables
+$color-primary: #059669;
+$color-primary-light: #d1fae5;
+$color-primary-dark: #047857;
+
+$color-accent: #5c5ce0;
+$color-accent-light: #e0e7ff;
+
+$color-danger: #dc2626;
+$color-danger-light: #fef2f2;
+
+$color-warning: #f59e0b;
+$color-warning-light: #fef3c7;
+
+$color-success: #10b981;
+$color-success-light: #d1fae5;
+
+$color-gray-50: #f9fafb;
+$color-gray-100: #f3f4f6;
+$color-gray-200: #e5e7eb;
+$color-gray-300: #d1d5db;
+$color-gray-400: #9ca3af;
+$color-gray-500: #6b7280;
+$color-gray-600: #4b5563;
+$color-gray-700: #374151;
+$color-gray-800: #1f2937;
+$color-gray-900: #111827;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border Radius
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+
+// Shadows
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+// ============================================
+// Base Dashboard Styles
+// ============================================
+
+.before-dashboard {
+  padding: $spacing-lg;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  // Welcome Banner
   &__banner {
-    border-radius: 12px !important;
-    margin-bottom: 16px !important;
+    border-radius: $radius-lg !important;
+    margin-bottom: $spacing-md !important;
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%) !important;
+    border: none !important;
 
     h4 {
-      font-size: 18px !important;
-      font-weight: 600 !important;
+      font-size: 20px !important;
+      font-weight: 700 !important;
       margin: 0 !important;
+      letter-spacing: -0.3px;
+    }
+  }
+
+  // Quick Navigation
+  &__nav {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+    padding: 0;
+    margin-bottom: $spacing-md;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+    padding: $spacing-md 0;
+    border-bottom: 1px solid $color-gray-200;
+
+    &-link {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-xs;
+      padding: $spacing-sm $spacing-md;
+      background: $color-gray-100;
+      color: $color-gray-700;
+      text-decoration: none;
+      border-radius: $radius-sm;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+
+      &:hover {
+        background: $color-gray-200;
+        transform: translateY(-1px);
+      }
+
+      &--active {
+        background: $color-gray-800;
+        color: #fff;
+
+        &:hover {
+          background: $color-gray-900;
+        }
+      }
+
+      &--primary {
+        background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+        color: #fff;
+
+        &:hover {
+          opacity: 0.9;
+        }
+      }
+
+      &--accent {
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        color: #fff;
+
+        &:hover {
+          opacity: 0.9;
+        }
+      }
+    }
+  }
+
+  // Help Text
+  &__help {
+    color: $color-gray-500;
+    font-size: 14px;
+    margin-bottom: $spacing-lg;
+  }
+
+  // Section Headers
+  &__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-sm;
+    border-bottom: 2px solid $color-gray-200;
+
+    h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: $color-gray-800;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+    }
+
+    &--danger h3 {
+      color: $color-danger;
+    }
+  }
+
+  // Collapsible Section
+  &__section {
+    margin-bottom: $spacing-xl;
+
+    &-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      padding: $spacing-sm;
+      border-radius: $radius-sm;
+      transition: background 0.2s;
+
+      &:hover {
+        background: $color-gray-100;
+      }
+
+      .chevron {
+        transition: transform 0.2s;
+
+        &--collapsed {
+          transform: rotate(-90deg);
+        }
+      }
+    }
+
+    &-content {
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+
+      &--collapsed {
+        max-height: 0;
+      }
+    }
+  }
+
+  // Tool Grid
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: $spacing-md;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+// ============================================
+// Tool Card Component
+// ============================================
+
+.tool-card {
+  background: #fff;
+  border-radius: $radius-md;
+  border: 1px solid $color-gray-200;
+  padding: $spacing-lg;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: $color-gray-300;
+    box-shadow: $shadow-md;
+  }
+
+  // Card Header
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+
+    &--blue {
+      background: $color-accent-light;
+    }
+
+    &--green {
+      background: $color-primary-light;
+    }
+
+    &--orange {
+      background: $color-warning-light;
+    }
+
+    &--red {
+      background: $color-danger-light;
+    }
+
+    &--purple {
+      background: #f3e8ff;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: $color-gray-800;
+  }
+
+  &__description {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: $color-gray-500;
+    line-height: 1.4;
+  }
+
+  // Form Elements
+  &__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-gray-700;
+    margin-bottom: $spacing-sm;
+
+    .optional {
+      color: $color-gray-400;
+      font-weight: 400;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: $radius-sm;
+    border: 1px solid $color-gray-300;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.1);
+    }
+
+    &:disabled {
+      background: $color-gray-100;
+      cursor: not-allowed;
+    }
+
+    &::placeholder {
+      color: $color-gray-400;
+    }
+  }
+
+  &__select {
+    @extend .tool-card__input;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: $color-gray-400;
+    margin-top: $spacing-xs;
+  }
+
+  // Buttons
+  &__button {
+    width: 100%;
+    padding: 12px $spacing-md;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-sm;
+
+    &--primary {
+      background: $color-accent;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: darken($color-accent, 8%);
+        transform: translateY(-1px);
+      }
+    }
+
+    &--success {
+      background: $color-primary;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: $color-primary-dark;
+        transform: translateY(-1px);
+      }
+    }
+
+    &--danger {
+      background: $color-danger;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: darken($color-danger, 8%);
+      }
+    }
+
+    &--outline {
+      background: transparent;
+      border: 1px solid $color-gray-300;
+      color: $color-gray-700;
+
+      &:hover:not(:disabled) {
+        background: $color-gray-100;
+        border-color: $color-gray-400;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+  }
+
+  // Alerts
+  &__alert {
+    padding: $spacing-md;
+    border-radius: $radius-sm;
+    margin-top: $spacing-md;
+
+    &--success {
+      background: $color-success-light;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    &--error {
+      background: $color-danger-light;
+      border: 1px solid #fecaca;
+      color: $color-danger;
+    }
+
+    &--warning {
+      background: $color-warning-light;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+
+      &:not(:last-child) {
+        margin-bottom: $spacing-xs;
+      }
+    }
+  }
+
+  // Form Group
+  &__form-group {
+    margin-bottom: $spacing-md;
+
+    &:last-of-type {
+      margin-bottom: 0;
+    }
+  }
+
+  // Button Group
+  &__button-group {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+
+    .tool-card__button {
+      flex: 1;
+      min-width: 120px;
+    }
+  }
+
+  // Tab Navigation
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-md;
+    border-bottom: 1px solid $color-gray-200;
+    padding-bottom: $spacing-sm;
+  }
+
+  &__tab {
+    padding: $spacing-sm $spacing-md;
+    border: none;
+    background: transparent;
+    color: $color-gray-500;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: $radius-sm $radius-sm 0 0;
+    transition: all 0.2s;
+
+    &:hover {
+      color: $color-gray-700;
+      background: $color-gray-100;
+    }
+
+    &--active {
+      color: $color-primary;
+      background: $color-primary-light;
+    }
+  }
+
+  // Results List
+  &__results {
+    margin-top: $spacing-md;
+  }
+
+  &__result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md;
+    background: $color-gray-50;
+    border: 1px solid $color-gray-200;
+    border-radius: $radius-sm;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $color-gray-100;
+      border-color: $color-gray-300;
+    }
+
+    &:not(:last-child) {
+      margin-bottom: $spacing-sm;
+    }
+  }
+
+  &__result-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: $color-gray-800;
+  }
+
+  &__result-meta {
+    font-size: 12px;
+    color: $color-gray-500;
+    margin-top: 2px;
+  }
+
+  // Badge
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    background: $color-gray-100;
+    color: $color-gray-600;
+    border: 1px solid $color-gray-200;
+
+    &--new {
+      background: $color-accent-light;
+      color: #3730a3;
+      border-color: #a5b4fc;
+    }
+
+    &--success {
+      background: $color-success-light;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+  }
+}
+
+// ============================================
+// Image Review Grid
+// ============================================
+
+.image-review {
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: $spacing-md;
+  }
+
+  &__item {
+    background: $color-gray-50;
+    border: 1px solid $color-gray-200;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    text-align: center;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: $color-primary;
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  &__product-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: $color-gray-800;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__brand {
+    font-size: 12px;
+    color: $color-gray-500;
+    margin-bottom: $spacing-md;
+  }
+
+  &__button {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    background: $color-primary;
+    color: #fff;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: $color-primary-dark;
+    }
+  }
+}
+
+// ============================================
+// Stats Cards
+// ============================================
+
+.stats-card {
+  background: $color-gray-50;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  text-align: center;
+
+  &__value {
+    font-size: 24px;
+    font-weight: 700;
+    color: $color-gray-800;
+  }
+
+  &__label {
+    font-size: 12px;
+    color: $color-gray-500;
+    margin-top: $spacing-xs;
+  }
+}
+
+// ============================================
+// Loading States
+// ============================================
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.loading {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+// ============================================
+// Responsive Adjustments
+// ============================================
+
+@media (max-width: 640px) {
+  .before-dashboard {
+    padding: $spacing-md;
+
+    &__nav {
+      position: relative;
+      top: 0;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      padding-bottom: $spacing-md;
+      margin-bottom: $spacing-md;
+
+      &-link {
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .tool-card {
+    padding: $spacing-md;
+
+    &__button-group {
+      flex-direction: column;
+
+      .tool-card__button {
+        width: 100%;
+      }
     }
   }
 }

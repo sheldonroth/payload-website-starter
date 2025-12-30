@@ -410,6 +410,9 @@ export interface FolderInterface {
 export interface Category {
   id: number;
   name: string;
+  /**
+   * Auto-generated from name. Leave empty to auto-create.
+   */
   slug?: string | null;
   /**
    * Brief description for SEO and category pages

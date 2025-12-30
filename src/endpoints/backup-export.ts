@@ -10,6 +10,13 @@ export const backupExportHandler: PayloadHandler = async (req: PayloadRequest) =
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Security: Verify admin role - only admins can export all data
+    const userRole = (req.user as { role?: string }).role
+    const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+    if (userRole !== 'admin' && !isAdminFlag) {
+        return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
+    }
+
     try {
         const payload = req.payload
 

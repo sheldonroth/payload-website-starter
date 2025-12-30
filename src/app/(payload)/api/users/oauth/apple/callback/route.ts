@@ -5,15 +5,19 @@ import jwt from 'jsonwebtoken'
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.theproductreport.org'
 
-// Helper to create a session token for the user  
+// Helper to create a session token for the user
 async function createSessionToken(userId: string, email: string): Promise<string> {
+    if (!process.env.PAYLOAD_SECRET) {
+        throw new Error('PAYLOAD_SECRET environment variable is not set')
+    }
+
     const tokenPayload = {
         id: userId,
         email: email,
         collection: 'users',
     }
 
-    return jwt.sign(tokenPayload, process.env.PAYLOAD_SECRET || 'your-secret-key', {
+    return jwt.sign(tokenPayload, process.env.PAYLOAD_SECRET, {
         expiresIn: '7d',
     })
 }
