@@ -143,6 +143,8 @@ const TikTokSync: React.FC = () => {
                                     border: '1px solid #d1d1d6',
                                     fontSize: '14px',
                                     boxSizing: 'border-box',
+                                    color: '#1f2937',
+                                    backgroundColor: '#fff',
                                 }}
                             />
                         </div>
@@ -164,6 +166,8 @@ const TikTokSync: React.FC = () => {
                                         border: '1px solid #d1d1d6',
                                         fontSize: '14px',
                                         boxSizing: 'border-box',
+                                        color: '#1f2937',
+                                        backgroundColor: '#fff',
                                     }}
                                 />
                             </div>
@@ -174,7 +178,7 @@ const TikTokSync: React.FC = () => {
                                 <input
                                     type="range"
                                     min="1"
-                                    max="20"
+                                    max="50"
                                     value={maxVideos}
                                     onChange={(e) => setMaxVideos(Number(e.target.value))}
                                     style={{ width: '100%' }}
