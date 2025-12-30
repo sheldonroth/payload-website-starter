@@ -12,6 +12,7 @@ import * as migration_20251228_192023 from './20251228_192023';
 import * as migration_20251230_221025_audit_and_smart_automation from './20251230_221025_audit_and_smart_automation';
 import * as migration_20251230_fix_typos from './20251230_fix_typos';
 import * as migration_20251230_222500_add_conflicts from './20251230_222500_add_conflicts';
+import * as migration_20251230_223100_add_category_arrays from './20251230_223100_add_category_arrays';
 
 export const migrations = [
   {
@@ -83,5 +84,10 @@ export const migrations = [
     up: migration_20251230_222500_add_conflicts.up,
     down: migration_20251230_222500_add_conflicts.down,
     name: '20251230_222500_add_conflicts'
+  },
+  {
+    up: migration_20251230_223100_add_category_arrays.up,
+    down: migration_20251230_223100_add_category_arrays.down,
+    name: '20251230_223100_add_category_arrays'
   },
 ];

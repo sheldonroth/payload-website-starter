@@ -78,6 +78,7 @@ export interface Config {
     'sponsored-test-requests': SponsoredTestRequest;
     ingredients: Ingredient;
     'verdict-rules': VerdictRule;
+    'audit-log': AuditLog;
     users: User;
     redirects: Redirect;
     forms: Form;
@@ -107,6 +108,7 @@ export interface Config {
     'sponsored-test-requests': SponsoredTestRequestsSelect<false> | SponsoredTestRequestsSelect<true>;
     ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
     'verdict-rules': VerdictRulesSelect<false> | VerdictRulesSelect<true>;
+    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -461,6 +463,10 @@ export interface Category {
    * Lower numbers appear first
    */
   sortOrder?: number | null;
+  /**
+   * Harmful ingredients inherited from parent category
+   */
+  inheritedFromParent?: boolean | null;
   /**
    * Created by AI from video analysis
    */
@@ -983,7 +989,7 @@ export interface Product {
   slug?: string | null;
   category?: (number | null) | Category;
   /**
-   * New category will be auto-created when published
+   * Will be auto-created immediately (hierarchical supported)
    */
   pendingCategoryName?: string | null;
   /**
@@ -992,7 +998,7 @@ export interface Product {
   imageUrl?: string | null;
   image?: (number | null) | Media;
   /**
-   * Binary verdict: do we recommend this product?
+   * Final verdict on this product
    */
   verdict: 'recommend' | 'caution' | 'avoid' | 'pending';
   /**
@@ -1000,21 +1006,40 @@ export interface Product {
    */
   verdictReason?: string | null;
   /**
-   * System-calculated verdict based on ingredients
+   * System-calculated from ingredients + rules
    */
   autoVerdict?: ('recommend' | 'caution' | 'avoid') | null;
   /**
-   * Manual override of auto-verdict
+   * Enable to manually set verdict different from auto-calculated
    */
   verdictOverride?: boolean | null;
   /**
-   * Structured ingredient links (enables cascade verdicts)
+   * Required: explain why you are overriding the auto-verdict
+   */
+  verdictOverrideReason?: string | null;
+  verdictOverriddenBy?: (number | null) | User;
+  verdictOverriddenAt?: string | null;
+  /**
+   * Name of VerdictRule(s) that set the verdict
+   */
+  ruleApplied?: string | null;
+  /**
+   * Auto-populated from raw text, or manually link
    */
   ingredientsList?: (number | Ingredient)[] | null;
   /**
-   * Original ingredients text (for reference/parsing)
+   * Paste ingredients list - will auto-parse and link to Ingredients collection
    */
   ingredientsRaw?: string | null;
+  /**
+   * Ingredients that could not be auto-matched (need manual research)
+   */
+  unmatchedIngredients?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
   /**
    * Universal Product Code for barcode scanning
    */
@@ -1028,7 +1053,11 @@ export interface Product {
    */
   sourceVideo?: (number | null) | Video;
   /**
-   * System-detected conflicts (e.g., AVOID ingredient in RECOMMEND product)
+   * Number of sources that mentioned this product
+   */
+  sourceCount?: number | null;
+  /**
+   * System-detected conflicts (blocks publishing if unresolved)
    */
   conflicts?:
     | {
@@ -1039,6 +1068,10 @@ export interface Product {
     | number
     | boolean
     | null;
+  /**
+   * Auto-calculated from last tested date
+   */
+  freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
   badges?: {
     isBestInCategory?: boolean | null;
     isRecommended?: boolean | null;
@@ -1449,6 +1482,93 @@ export interface VerdictRule {
   createdAt: string;
 }
 /**
+ * Immutable audit trail of all AI and system actions
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log".
+ */
+export interface AuditLog {
+  id: number;
+  action:
+    | 'ai_product_created'
+    | 'ai_ingredient_parsed'
+    | 'ai_verdict_set'
+    | 'rule_applied'
+    | 'ingredient_cascade'
+    | 'manual_override'
+    | 'product_merged'
+    | 'category_created'
+    | 'image_enriched'
+    | 'poll_closed'
+    | 'article_generated'
+    | 'conflict_detected'
+    | 'freshness_check';
+  sourceType?: ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule') | null;
+  /**
+   * Video ID, URL, UPC, or rule ID
+   */
+  sourceId?: string | null;
+  sourceUrl?: string | null;
+  targetCollection?: ('products' | 'ingredients' | 'categories' | 'videos' | 'articles' | 'investigation-polls') | null;
+  targetId?: number | null;
+  /**
+   * Human-readable name for quick reference
+   */
+  targetName?: string | null;
+  /**
+   * State before the action (for updates)
+   */
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * State after the action
+   */
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Extra context (rule details, AI response, etc.)
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * e.g., gemini-2.0-flash
+   */
+  aiModel?: string | null;
+  /**
+   * AI confidence percentage if available
+   */
+  confidence?: number | null;
+  /**
+   * User who triggered this action (null for system)
+   */
+  performedBy?: (number | null) | User;
+  success?: boolean | null;
+  errorMessage?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -1681,6 +1801,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'verdict-rules';
         value: number | VerdictRule;
+      } | null)
+    | ({
+        relationTo: 'audit-log';
+        value: number | AuditLog;
       } | null)
     | ({
         relationTo: 'users';
@@ -1930,12 +2054,24 @@ export interface ProductsSelect<T extends boolean = true> {
   verdictReason?: T;
   autoVerdict?: T;
   verdictOverride?: T;
+  verdictOverrideReason?: T;
+  verdictOverriddenBy?: T;
+  verdictOverriddenAt?: T;
+  ruleApplied?: T;
   ingredientsList?: T;
   ingredientsRaw?: T;
+  unmatchedIngredients?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
   upc?: T;
   sourceUrl?: T;
   sourceVideo?: T;
+  sourceCount?: T;
   conflicts?: T;
+  freshnessStatus?: T;
   badges?:
     | T
     | {
@@ -2161,6 +2297,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   image?: T;
   featured?: T;
   sortOrder?: T;
+  inheritedFromParent?: T;
   aiSuggested?: T;
   aiSource?: T;
   harmfulIngredients?:
@@ -2272,6 +2409,29 @@ export interface VerdictRulesSelect<T extends boolean = true> {
   isActive?: T;
   priority?: T;
   appliedCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log_select".
+ */
+export interface AuditLogSelect<T extends boolean = true> {
+  action?: T;
+  sourceType?: T;
+  sourceId?: T;
+  sourceUrl?: T;
+  targetCollection?: T;
+  targetId?: T;
+  targetName?: T;
+  before?: T;
+  after?: T;
+  metadata?: T;
+  aiModel?: T;
+  confidence?: T;
+  performedBy?: T;
+  success?: T;
+  errorMessage?: T;
   updatedAt?: T;
   createdAt?: T;
 }
