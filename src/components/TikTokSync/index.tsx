@@ -178,7 +178,7 @@ const TikTokSync: React.FC = () => {
                                 <input
                                     type="range"
                                     min="1"
-                                    max="50"
+                                    max="100"
                                     value={maxVideos}
                                     onChange={(e) => setMaxVideos(Number(e.target.value))}
                                     style={{ width: '100%' }}
