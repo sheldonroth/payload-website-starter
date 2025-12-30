@@ -121,9 +121,13 @@ async function scrapeTikTokProfile(username: string, maxVideos: number = 10): Pr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             profiles: [cleanUsername],
+            profileScrapeSections: ['videos'],
+            profileSorting: 'latest',
             resultsPerPage: maxVideos,
             shouldDownloadVideos: false,
             shouldDownloadCovers: false,
+            shouldDownloadSubtitles: false,
+            shouldDownloadSlideshowImages: false,
         }),
     })
 
@@ -134,13 +138,22 @@ async function scrapeTikTokProfile(username: string, maxVideos: number = 10): Pr
 
     const data = await response.json()
 
-    // Extract video URLs from results
+    console.log('Apify TikTok response:', JSON.stringify(data).slice(0, 500))
+
+    // Extract video URLs from results - check multiple possible field names
     const videoUrls: string[] = []
     for (const item of data) {
-        if (item.webVideoUrl) {
-            videoUrls.push(item.webVideoUrl)
+        // Try different field names that Apify might use
+        const url = item.webVideoUrl || item.videoUrl || item.url ||
+                    (item.video && item.video.playAddr) ||
+                    `https://www.tiktok.com/@${item.authorMeta?.name}/video/${item.id}`
+
+        if (url && item.id) {
+            videoUrls.push(url)
         }
     }
+
+    console.log(`Found ${videoUrls.length} video URLs from ${data.length} items`)
 
     return videoUrls
 }
