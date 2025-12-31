@@ -11,7 +11,7 @@
 |----------|-------|
 | 🔴 Critical | 1 (FIXED) |
 | 🟠 High | 0 |
-| 🟡 Medium | 2 |
+| 🟡 Medium | 3 |
 | 🔵 Low | 1 |
 
 ---
@@ -94,6 +94,50 @@ Page renders with only header - no content area loads
 **Notes:**
 - Related to BUG-003 - both involve user-submissions collection
 - Collection is part of "Community" nav group
+
+---
+
+### BUG-005: Magic Input Fails on YouTube Channel URLs
+
+**Severity:** 🟡 Medium
+**Section:** AI Features / Magic Input
+**Component:** `/src/endpoints/unified-ingest.ts`
+
+**Steps to Reproduce:**
+1. Navigate to Admin Dashboard
+2. Locate the Magic Input field ("Paste any URL or barcode")
+3. Enter a YouTube channel URL: `https://www.youtube.com/@MassSpecEverything`
+4. Observe "Detected: YouTube Video" (incorrect detection)
+5. Click "Ingest"
+6. Error displays: "⚠️ Could not extract YouTube video ID"
+
+**Expected Behavior:**
+- Should detect as "YouTube Channel" (not Video)
+- Should route to Channel Analyzer, OR
+- Should display helpful error: "Channel URLs not supported in Magic Input. Use Channel Analyzer."
+
+**Actual Behavior:**
+- Incorrectly detects channel URL as "YouTube Video"
+- Fails with generic error about video ID extraction
+
+**Root Cause:**
+The `extractYouTubeVideoId()` function in `unified-ingest.ts` only supports these patterns:
+- `/watch?v=VIDEO_ID`
+- `youtu.be/VIDEO_ID`
+- `/embed/VIDEO_ID`
+- `/shorts/VIDEO_ID`
+
+Missing patterns for channel URLs:
+- `/@username`
+- `/channel/CHANNEL_ID`
+- `/c/channel_name`
+
+**Code Location:** `src/endpoints/unified-ingest.ts:65-77`
+
+**Recommended Fix:**
+1. Add channel URL detection to `detectInputType()` returning distinct type like 'youtube-channel'
+2. Route 'youtube-channel' type to Channel Analyzer, OR
+3. Return helpful error message explaining to use Channel Analyzer instead
 
 ---
 
