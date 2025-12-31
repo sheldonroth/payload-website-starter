@@ -98,31 +98,14 @@ export const Categories: CollectionConfig = {
     },
     {
       name: 'icon',
-      type: 'select',
+      type: 'text',
       label: 'Category Icon',
       defaultValue: 'search',
-      options: [
-        { label: '💊 Pill (Supplements)', value: 'pill' },
-        { label: '🍎 Apple (Food)', value: 'apple' },
-        { label: '👶 Baby (Baby & Kids)', value: 'baby' },
-        { label: '💧 Droplets (Water)', value: 'droplets' },
-        { label: '✨ Sparkles (Cosmetics)', value: 'sparkles' },
-        { label: '🐾 Paw Print (Pet Food)', value: 'pawprint' },
-        { label: '🏠 Home (Household)', value: 'home' },
-        { label: '🧴 Spray Can (Personal Care)', value: 'spraycan' },
-        { label: '🔬 Microscope (Lab/Science)', value: 'microscope' },
-        { label: '❤️ Heart (Health)', value: 'heart' },
-        { label: '🌿 Leaf (Organic/Natural)', value: 'leaf' },
-        { label: '☀️ Sun (Skincare/SPF)', value: 'sun' },
-        { label: '💪 Dumbbell (Fitness)', value: 'dumbbell' },
-        { label: '🧠 Brain (Mental Health)', value: 'brain' },
-        { label: '🍬 Candy (Chocolate/Sweets)', value: 'candy' },
-        { label: '🍪 Cookie (Snacks/Baked)', value: 'cookie' },
-        { label: '☕ Coffee (Beverages)', value: 'coffee' },
-        { label: '🔍 Search (Default)', value: 'search' },
-      ],
       admin: {
-        description: 'Auto-selected based on category name. You can override if needed.',
+        description: 'Auto-selected based on category name. Override with any Lucide icon name',
+        components: {
+          Field: '@/components/IconPreviewField',
+        },
       },
       hooks: {
         beforeValidate: [
@@ -133,16 +116,16 @@ export const Categories: CollectionConfig = {
             // Auto-select icon based on category name
             const name = (data?.name || '').toLowerCase();
 
-            // Keyword to icon mapping
+            // Keyword to icon mapping (using Lucide icon names)
             const iconKeywords: Record<string, string[]> = {
               'pill': ['supplement', 'vitamin', 'mineral', 'probiotic', 'capsule', 'tablet'],
               'apple': ['food', 'grocery', 'meal', 'nutrition', 'diet', 'eating', 'produce'],
               'baby': ['baby', 'kid', 'child', 'infant', 'toddler', 'children', 'nursery'],
-              'droplets': ['water', 'beverage', 'hydration', 'liquid'],
+              'droplets': ['water', 'hydration', 'liquid'],
               'sparkles': ['cosmetic', 'beauty', 'makeup', 'lipstick', 'foundation', 'mascara'],
-              'pawprint': ['pet', 'dog', 'cat', 'animal', 'veterinary'],
+              'paw-print': ['pet', 'dog', 'cat', 'animal', 'veterinary'],
               'home': ['home', 'house', 'cleaning', 'household', 'laundry', 'kitchen'],
-              'spraycan': ['personal care', 'hygiene', 'deodorant', 'soap', 'shampoo', 'body'],
+              'spray-can': ['personal care', 'hygiene', 'deodorant', 'soap', 'shampoo', 'body'],
               'heart': ['health', 'wellness', 'medical', 'cardio', 'heart'],
               'leaf': ['organic', 'natural', 'vegan', 'plant', 'herbal', 'eco', 'green'],
               'sun': ['skin', 'sunscreen', 'spf', 'uv', 'tanning', 'sun'],
@@ -152,6 +135,23 @@ export const Categories: CollectionConfig = {
               'candy': ['chocolate', 'candy', 'sweet', 'confection', 'cocoa', 'dessert', 'sugar', 'bar', 'treat'],
               'cookie': ['snack', 'cookie', 'biscuit', 'cracker', 'baked', 'pastry', 'chip'],
               'coffee': ['coffee', 'tea', 'drink', 'juice', 'soda', 'energy drink'],
+              'beef': ['meat', 'beef', 'steak', 'burger'],
+              'milk': ['dairy', 'milk', 'cheese', 'yogurt'],
+              'wine': ['alcohol', 'wine', 'beer', 'spirits', 'liquor'],
+              'salad': ['salad', 'vegetable', 'greens'],
+              'pizza': ['pizza', 'fast food'],
+              'sandwich': ['sandwich', 'bread', 'deli'],
+              'fish': ['fish', 'seafood', 'salmon', 'tuna'],
+              'egg': ['egg', 'breakfast'],
+              'ice-cream-cone': ['ice cream', 'frozen', 'gelato'],
+              'popcorn': ['popcorn', 'movie snack'],
+              'cherry': ['fruit', 'berry', 'berries'],
+              'carrot': ['vegetable', 'veggie'],
+              'wheat': ['grain', 'wheat', 'bread', 'flour', 'cereal'],
+              'cup-soda': ['soda', 'soft drink', 'cola', 'sparkling'],
+              'glass-water': ['water', 'beverage'],
+              'beer': ['beer', 'ale', 'lager'],
+              'martini': ['cocktail', 'martini', 'mixed drink'],
             };
 
             // Find best matching icon
@@ -171,6 +171,7 @@ export const Categories: CollectionConfig = {
       type: 'relationship',
       relationTo: 'categories',
       label: 'Parent Category',
+      index: true, // Added for query performance
       admin: {
         description: 'Create sub-categories (e.g., Electronics > Smartphones)',
       },

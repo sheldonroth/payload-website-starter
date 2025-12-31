@@ -398,6 +398,7 @@ export const Products: CollectionConfig = {
             relationTo: 'categories',
             required: false,
             hasMany: false,
+            index: true, // Added for query performance
             admin: {
                 position: 'sidebar',
             },
@@ -435,6 +436,7 @@ export const Products: CollectionConfig = {
             type: 'select',
             required: true,
             defaultValue: 'pending',
+            index: true, // Added for query performance
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
                 { label: '⚠️ CAUTION', value: 'caution' },
@@ -589,6 +591,46 @@ export const Products: CollectionConfig = {
             },
         },
 
+        // === AI EXTRACTION METADATA ===
+        {
+            name: 'aiConfidence',
+            type: 'select',
+            options: [
+                { label: '🟢 High', value: 'high' },
+                { label: '🟡 Medium', value: 'medium' },
+                { label: '🔴 Low', value: 'low' },
+            ],
+            admin: {
+                position: 'sidebar',
+                description: 'AI confidence in extraction accuracy',
+                condition: (data) => data?.status === 'ai_draft',
+            },
+        },
+        {
+            name: 'aiSourceType',
+            type: 'select',
+            options: [
+                { label: 'Transcript', value: 'transcript' },
+                { label: 'Video Analysis', value: 'video_watching' },
+                { label: 'Profile Scrape', value: 'profile' },
+                { label: 'Manual Entry', value: 'manual' },
+            ],
+            admin: {
+                position: 'sidebar',
+                description: 'How the AI extracted this product',
+                condition: (data) => data?.status === 'ai_draft',
+            },
+        },
+        {
+            name: 'aiMentions',
+            type: 'number',
+            admin: {
+                position: 'sidebar',
+                description: 'Times mentioned in source video',
+                condition: (data) => data?.status === 'ai_draft',
+            },
+        },
+
         // === CONFLICTS & GUARDRAILS ===
         {
             name: 'conflicts',
@@ -659,6 +701,7 @@ export const Products: CollectionConfig = {
             name: 'status',
             type: 'select',
             label: 'Review Status',
+            index: true, // Added for query performance
             options: [
                 { label: '🤖 AI Draft', value: 'ai_draft' },
                 { label: '📝 Draft', value: 'draft' },
