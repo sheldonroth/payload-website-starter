@@ -17,6 +17,7 @@ import * as migration_20251230_224500_fix_missing_unmatched_ingredients from './
 import * as migration_20251230_225500_fix_locked_documents_rels from './20251230_225500_fix_locked_documents_rels';
 import * as migration_20251231_000000_add_missing_ai_columns from './20251231_000000_add_missing_ai_columns';
 import * as migration_20251231_010000_fix_locked_documents_global_slug from './20251231_010000_fix_locked_documents_global_slug';
+import * as migration_20251231_203700_add_price_history_id from './20251231_203700_add_price_history_id';
 
 export const migrations = [
   {
@@ -114,4 +115,10 @@ export const migrations = [
     down: migration_20251231_010000_fix_locked_documents_global_slug.down,
     name: '20251231_010000_fix_locked_documents_global_slug'
   },
+  {
+    up: migration_20251231_203700_add_price_history_id.up,
+    down: migration_20251231_203700_add_price_history_id.down,
+    name: '20251231_203700_add_price_history_id'
+  },
 ];
+
