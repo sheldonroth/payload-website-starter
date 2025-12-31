@@ -336,7 +336,7 @@ export const Products: CollectionConfig = {
                     try {
                         // Get affiliate tag from SiteSettings
                         const siteSettings = await req.payload.findGlobal({
-                            slug: 'site-settings',
+                            slug: 'site-settings' as any,
                         })
                         const affiliateTag = (siteSettings as { affiliateSettings?: { amazonAffiliateTag?: string } })
                             ?.affiliateSettings?.amazonAffiliateTag
