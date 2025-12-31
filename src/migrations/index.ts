@@ -16,6 +16,7 @@ import * as migration_20251230_223100_add_category_arrays from './20251230_22310
 import * as migration_20251230_224500_fix_missing_unmatched_ingredients from './20251230_224500_fix_missing_unmatched_ingredients';
 import * as migration_20251230_225500_fix_locked_documents_rels from './20251230_225500_fix_locked_documents_rels';
 import * as migration_20251231_000000_add_missing_ai_columns from './20251231_000000_add_missing_ai_columns';
+import * as migration_20251231_010000_fix_locked_documents_global_slug from './20251231_010000_fix_locked_documents_global_slug';
 
 export const migrations = [
   {
@@ -107,5 +108,10 @@ export const migrations = [
     up: migration_20251231_000000_add_missing_ai_columns.up,
     down: migration_20251231_000000_add_missing_ai_columns.down,
     name: '20251231_000000_add_missing_ai_columns'
+  },
+  {
+    up: migration_20251231_010000_fix_locked_documents_global_slug.up,
+    down: migration_20251231_010000_fix_locked_documents_global_slug.down,
+    name: '20251231_010000_fix_locked_documents_global_slug'
   },
 ];
