@@ -80,6 +80,10 @@ export interface Config {
     'verdict-rules': VerdictRule;
     'audit-log': AuditLog;
     users: User;
+    'price-history': PriceHistory;
+    brands: Brand;
+    'regulatory-changes': RegulatoryChange;
+    'user-submissions': UserSubmission;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -110,6 +114,10 @@ export interface Config {
     'verdict-rules': VerdictRulesSelect<false> | VerdictRulesSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
+    brands: BrandsSelect<false> | BrandsSelect<true>;
+    'regulatory-changes': RegulatoryChangesSelect<false> | RegulatoryChangesSelect<true>;
+    'user-submissions': UserSubmissionsSelect<false> | UserSubmissionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -1063,20 +1071,6 @@ export interface Product {
    * Auto-calculated from last tested date
    */
   freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
-  badges?: {
-    isBestInCategory?: boolean | null;
-    isRecommended?: boolean | null;
-    isBestValue?: boolean | null;
-    isEditorsChoice?: boolean | null;
-  };
-  overallScore?: number | null;
-  rankInCategory?: number | null;
-  ratings?: {
-    performance?: number | null;
-    reliability?: number | null;
-    valueForMoney?: number | null;
-    features?: number | null;
-  };
   status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
   priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
   pros?:
@@ -1132,8 +1126,6 @@ export interface Product {
      */
     updateNotes?: string | null;
   };
-  isBestBuy?: boolean | null;
-  isRecommended?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1560,6 +1552,347 @@ export interface AuditLog {
   createdAt: string;
 }
 /**
+ * Historical price and size data for shrinkflation/skimpflation detection
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "price-history".
+ */
+export interface PriceHistory {
+  id: number;
+  /**
+   * The product this price record is for
+   */
+  product: number | Product;
+  /**
+   * Price in USD (e.g., 4.99)
+   */
+  price: number;
+  /**
+   * Sale price if on sale
+   */
+  salePrice?: number | null;
+  /**
+   * Price per oz/unit for comparison
+   */
+  pricePerUnit?: number | null;
+  /**
+   * Package size as displayed (e.g., "12 oz", "500ml")
+   */
+  size?: string | null;
+  /**
+   * Normalized size in oz for comparison
+   */
+  sizeNormalized?: number | null;
+  /**
+   * Number of units in package (for multipacks)
+   */
+  unitCount?: number | null;
+  retailer: 'amazon' | 'walmart' | 'target' | 'costco' | 'kroger' | 'whole_foods' | 'instacart' | 'manual';
+  /**
+   * URL where price was captured
+   */
+  sourceUrl?: string | null;
+  capturedAt: string;
+  /**
+   * Ingredient list at time of capture (for skimpflation detection)
+   */
+  ingredientsSnapshot?: string | null;
+  /**
+   * Number of ingredients at capture time
+   */
+  ingredientCount?: number | null;
+  /**
+   * System detected an anomaly in this record
+   */
+  anomalyDetected?: boolean | null;
+  anomalyType?: ('price_increase' | 'shrinkflation' | 'skimpflation' | 'double_whammy') | null;
+  /**
+   * Detailed anomaly analysis data
+   */
+  anomalyDetails?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Brand database with trust scoring and parent company tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands".
+ */
+export interface Brand {
+  id: number;
+  /**
+   * Primary brand name (e.g., "Cheerios", "Tide")
+   */
+  name: string;
+  /**
+   * Other names or spellings for this brand
+   */
+  aliases?:
+    | {
+        alias: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * URL-friendly slug
+   */
+  slug?: string | null;
+  /**
+   * Parent corporation (e.g., "General Mills", "Procter & Gamble")
+   */
+  parentCompany?: string | null;
+  /**
+   * Calculated trust score (0-100)
+   */
+  trustScore?: number | null;
+  trustGrade?: ('A' | 'B' | 'C' | 'D' | 'F') | null;
+  trustScoreLastCalculated?: string | null;
+  /**
+   * Individual factors contributing to trust score
+   */
+  scoreBreakdown?: {
+    /**
+     * Score based on ingredient safety across products
+     */
+    ingredientQuality?: number | null;
+    /**
+     * Score based on recall frequency and severity
+     */
+    recallHistory?: number | null;
+    /**
+     * Score based on ingredient disclosure practices
+     */
+    transparency?: number | null;
+    /**
+     * Score based on formulation consistency (no skimpflation)
+     */
+    consistency?: number | null;
+    /**
+     * Score based on response to issues/complaints
+     */
+    responsiveness?: number | null;
+  };
+  /**
+   * Total products from this brand in database
+   */
+  productCount?: number | null;
+  /**
+   * Products with AVOID verdict
+   */
+  avoidCount?: number | null;
+  /**
+   * Total recalls associated with this brand
+   */
+  recallCount?: number | null;
+  /**
+   * Historical recalls associated with this brand
+   */
+  recalls?:
+    | {
+        recallNumber: string;
+        date?: string | null;
+        reason?: string | null;
+        severity?: ('class_i' | 'class_ii' | 'class_iii') | null;
+        source?: ('fda' | 'cpsc' | 'usda' | 'voluntary') | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Official brand website
+   */
+  website?: string | null;
+  logo?: (number | null) | Media;
+  /**
+   * Brief description of the brand
+   */
+  description?: string | null;
+  /**
+   * Product categories this brand operates in
+   */
+  categories?: (number | Category)[] | null;
+  /**
+   * Internal notes about this brand
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Regulatory updates that affect ingredients or products
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "regulatory-changes".
+ */
+export interface RegulatoryChange {
+  id: number;
+  /**
+   * Short descriptive title for this regulatory change
+   */
+  title: string;
+  /**
+   * Official reference number (e.g., FDA-2024-N-1234)
+   */
+  referenceId?: string | null;
+  source:
+    | 'fda'
+    | 'usda'
+    | 'epa'
+    | 'prop65'
+    | 'efsa'
+    | 'eu_commission'
+    | 'health_canada'
+    | 'who_iarc'
+    | 'codex'
+    | 'other';
+  /**
+   * Link to official regulatory document
+   */
+  sourceUrl?: string | null;
+  changeType: 'ban' | 'restriction' | 'limit' | 'labeling' | 'warning' | 'approval' | 'review' | 'guideline';
+  severity?: ('critical' | 'high' | 'medium' | 'low') | null;
+  /**
+   * When the change was announced
+   */
+  announcedDate?: string | null;
+  /**
+   * When the change takes effect
+   */
+  effectiveDate?: string | null;
+  /**
+   * Deadline for industry compliance
+   */
+  complianceDeadline?: string | null;
+  /**
+   * Ingredients directly affected by this regulation
+   */
+  affectedIngredients?: (number | Ingredient)[] | null;
+  /**
+   * Product categories this regulation applies to
+   */
+  affectedCategories?: (number | Category)[] | null;
+  /**
+   * Substances mentioned that may not be in our ingredient database yet
+   */
+  affectedSubstances?:
+    | {
+        name: string;
+        casNumber?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Plain-language summary of the regulatory change
+   */
+  summary?: string | null;
+  /**
+   * How this affects products in our database
+   */
+  impact?: string | null;
+  recommendedAction?: ('update_avoid' | 'add_warning' | 'review' | 'monitor' | 'none') | null;
+  status: 'pending' | 'analyzing' | 'published' | 'actioned' | 'dismissed';
+  /**
+   * Article generated from this regulatory change
+   */
+  generatedArticle?: (number | null) | Article;
+  /**
+   * Raw data from source API/scrape
+   */
+  rawData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * User-submitted product scans, tips, and reports
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-submissions".
+ */
+export interface UserSubmission {
+  id: number;
+  type: 'product_scan' | 'tip' | 'reaction_report' | 'correction' | 'product_request';
+  /**
+   * Email for follow-up and points tracking
+   */
+  submitterEmail?: string | null;
+  /**
+   * Display name (optional)
+   */
+  submitterName?: string | null;
+  /**
+   * For spam prevention
+   */
+  submitterIp?: string | null;
+  /**
+   * Existing product this submission relates to
+   */
+  product?: (number | null) | Product;
+  images?:
+    | {
+        image: number | Media;
+        imageType?: ('front' | 'back' | 'ingredients' | 'nutrition' | 'barcode' | 'other') | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * User-provided description or details
+   */
+  content?: string | null;
+  /**
+   * UPC/EAN barcode if scanned
+   */
+  barcode?: string | null;
+  reactionDetails?: {
+    symptoms?: ('skin' | 'digestive' | 'headache' | 'allergic' | 'behavioral' | 'other')[] | null;
+    severity?: ('mild' | 'moderate' | 'severe' | 'medical') | null;
+    suspectedIngredient?: string | null;
+  };
+  /**
+   * AI-extracted data from images
+   */
+  extractedData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * AI confidence in extraction (0-100)
+   */
+  aiConfidence?: number | null;
+  status: 'pending' | 'reviewing' | 'verified' | 'rejected' | 'duplicate' | 'spam';
+  /**
+   * Internal notes from review
+   */
+  moderatorNotes?: string | null;
+  pointsAwarded?: number | null;
+  /**
+   * Feature this submission (bonus points)
+   */
+  featured?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -1800,6 +2133,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'price-history';
+        value: number | PriceHistory;
+      } | null)
+    | ({
+        relationTo: 'brands';
+        value: number | Brand;
+      } | null)
+    | ({
+        relationTo: 'regulatory-changes';
+        value: number | RegulatoryChange;
+      } | null)
+    | ({
+        relationTo: 'user-submissions';
+        value: number | UserSubmission;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2066,24 +2415,6 @@ export interface ProductsSelect<T extends boolean = true> {
   aiMentions?: T;
   conflicts?: T;
   freshnessStatus?: T;
-  badges?:
-    | T
-    | {
-        isBestInCategory?: T;
-        isRecommended?: T;
-        isBestValue?: T;
-        isEditorsChoice?: T;
-      };
-  overallScore?: T;
-  rankInCategory?: T;
-  ratings?:
-    | T
-    | {
-        performance?: T;
-        reliability?: T;
-        valueForMoney?: T;
-        features?: T;
-      };
   status?: T;
   priceRange?: T;
   pros?:
@@ -2118,8 +2449,6 @@ export interface ProductsSelect<T extends boolean = true> {
         versionTested?: T;
         updateNotes?: T;
       };
-  isBestBuy?: T;
-  isRecommended?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2475,6 +2804,143 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "price-history_select".
+ */
+export interface PriceHistorySelect<T extends boolean = true> {
+  product?: T;
+  price?: T;
+  salePrice?: T;
+  pricePerUnit?: T;
+  size?: T;
+  sizeNormalized?: T;
+  unitCount?: T;
+  retailer?: T;
+  sourceUrl?: T;
+  capturedAt?: T;
+  ingredientsSnapshot?: T;
+  ingredientCount?: T;
+  anomalyDetected?: T;
+  anomalyType?: T;
+  anomalyDetails?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands_select".
+ */
+export interface BrandsSelect<T extends boolean = true> {
+  name?: T;
+  aliases?:
+    | T
+    | {
+        alias?: T;
+        id?: T;
+      };
+  slug?: T;
+  parentCompany?: T;
+  trustScore?: T;
+  trustGrade?: T;
+  trustScoreLastCalculated?: T;
+  scoreBreakdown?:
+    | T
+    | {
+        ingredientQuality?: T;
+        recallHistory?: T;
+        transparency?: T;
+        consistency?: T;
+        responsiveness?: T;
+      };
+  productCount?: T;
+  avoidCount?: T;
+  recallCount?: T;
+  recalls?:
+    | T
+    | {
+        recallNumber?: T;
+        date?: T;
+        reason?: T;
+        severity?: T;
+        source?: T;
+        id?: T;
+      };
+  website?: T;
+  logo?: T;
+  description?: T;
+  categories?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "regulatory-changes_select".
+ */
+export interface RegulatoryChangesSelect<T extends boolean = true> {
+  title?: T;
+  referenceId?: T;
+  source?: T;
+  sourceUrl?: T;
+  changeType?: T;
+  severity?: T;
+  announcedDate?: T;
+  effectiveDate?: T;
+  complianceDeadline?: T;
+  affectedIngredients?: T;
+  affectedCategories?: T;
+  affectedSubstances?:
+    | T
+    | {
+        name?: T;
+        casNumber?: T;
+        id?: T;
+      };
+  summary?: T;
+  impact?: T;
+  recommendedAction?: T;
+  status?: T;
+  generatedArticle?: T;
+  rawData?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-submissions_select".
+ */
+export interface UserSubmissionsSelect<T extends boolean = true> {
+  type?: T;
+  submitterEmail?: T;
+  submitterName?: T;
+  submitterIp?: T;
+  product?: T;
+  images?:
+    | T
+    | {
+        image?: T;
+        imageType?: T;
+        id?: T;
+      };
+  content?: T;
+  barcode?: T;
+  reactionDetails?:
+    | T
+    | {
+        symptoms?: T;
+        severity?: T;
+        suspectedIngredient?: T;
+      };
+  extractedData?: T;
+  aiConfidence?: T;
+  status?: T;
+  moderatorNotes?: T;
+  pointsAwarded?: T;
+  featured?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
