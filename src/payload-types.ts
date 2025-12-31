@@ -421,30 +421,9 @@ export interface Category {
    */
   description?: string | null;
   /**
-   * Auto-selected based on category name. You can override if needed.
+   * Auto-selected based on category name. Override with any Lucide icon name
    */
-  icon?:
-    | (
-        | 'pill'
-        | 'apple'
-        | 'baby'
-        | 'droplets'
-        | 'sparkles'
-        | 'pawprint'
-        | 'home'
-        | 'spraycan'
-        | 'microscope'
-        | 'heart'
-        | 'leaf'
-        | 'sun'
-        | 'dumbbell'
-        | 'brain'
-        | 'candy'
-        | 'cookie'
-        | 'coffee'
-        | 'search'
-      )
-    | null;
+  icon?: string | null;
   /**
    * Create sub-categories (e.g., Electronics > Smartphones)
    */
@@ -1056,6 +1035,18 @@ export interface Product {
    * Number of sources that mentioned this product
    */
   sourceCount?: number | null;
+  /**
+   * AI confidence in extraction accuracy
+   */
+  aiConfidence?: ('high' | 'medium' | 'low') | null;
+  /**
+   * How the AI extracted this product
+   */
+  aiSourceType?: ('transcript' | 'video_watching' | 'profile' | 'manual') | null;
+  /**
+   * Times mentioned in source video
+   */
+  aiMentions?: number | null;
   /**
    * System-detected conflicts (blocks publishing if unresolved)
    */
@@ -2070,6 +2061,9 @@ export interface ProductsSelect<T extends boolean = true> {
   sourceUrl?: T;
   sourceVideo?: T;
   sourceCount?: T;
+  aiConfidence?: T;
+  aiSourceType?: T;
+  aiMentions?: T;
   conflicts?: T;
   freshnessStatus?: T;
   badges?:
