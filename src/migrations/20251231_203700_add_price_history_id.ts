@@ -2,50 +2,63 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postg
 
 /**
  * Comprehensive migration to add ALL missing columns to payload_locked_documents_rels
- * Based on the query error, these columns are expected:
- * - price_history_id
- * - brands_id
- * - regulatory_changes_id
- * - user_submissions_id
- * - payload_folders_id
  */
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
-  // Add all potentially missing columns to payload_locked_documents_rels
-  const columns = [
-    'price_history_id',
-    'brands_id',
-    'regulatory_changes_id',
-    'user_submissions_id',
-    'payload_folders_id'
-  ];
+  // Add price_history_id
+  await db.execute(sql`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "price_history_id" integer;
+    EXCEPTION
+      WHEN duplicate_column THEN null;
+    END $$;
+  `)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_price_history_id_idx" ON "payload_locked_documents_rels" USING btree ("price_history_id")`)
 
-  for (const column of columns) {
-    await db.execute(sql.raw(`
-      DO $$ BEGIN
-        ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "${column}" integer;
-      EXCEPTION
-        WHEN duplicate_column THEN null;
-      END $$;
-    `));
+  // Add brands_id
+  await db.execute(sql`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "brands_id" integer;
+    EXCEPTION
+      WHEN duplicate_column THEN null;
+    END $$;
+  `)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_brands_id_idx" ON "payload_locked_documents_rels" USING btree ("brands_id")`)
 
-    // Add index for each column
-    await db.execute(sql.raw(`
-      CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_${column}_idx" 
-      ON "payload_locked_documents_rels" USING btree ("${column}")
-    `));
-  }
+  // Add regulatory_changes_id
+  await db.execute(sql`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "regulatory_changes_id" integer;
+    EXCEPTION
+      WHEN duplicate_column THEN null;
+    END $$;
+  `)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_regulatory_changes_id_idx" ON "payload_locked_documents_rels" USING btree ("regulatory_changes_id")`)
+
+  // Add user_submissions_id
+  await db.execute(sql`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "user_submissions_id" integer;
+    EXCEPTION
+      WHEN duplicate_column THEN null;
+    END $$;
+  `)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_user_submissions_id_idx" ON "payload_locked_documents_rels" USING btree ("user_submissions_id")`)
+
+  // Add payload_folders_id
+  await db.execute(sql`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "payload_folders_id" integer;
+    EXCEPTION
+      WHEN duplicate_column THEN null;
+    END $$;
+  `)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_payload_folders_id_idx" ON "payload_locked_documents_rels" USING btree ("payload_folders_id")`)
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
-  const columns = [
-    'price_history_id',
-    'brands_id',
-    'regulatory_changes_id',
-    'user_submissions_id',
-    'payload_folders_id'
-  ];
-
-  for (const column of columns) {
-    await db.execute(sql.raw(`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "${column}"`));
-  }
+  await db.execute(sql`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "price_history_id"`)
+  await db.execute(sql`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "brands_id"`)
+  await db.execute(sql`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "regulatory_changes_id"`)
+  await db.execute(sql`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "user_submissions_id"`)
+  await db.execute(sql`ALTER TABLE "payload_locked_documents_rels" DROP COLUMN IF EXISTS "payload_folders_id"`)
 }
