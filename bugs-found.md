@@ -11,7 +11,7 @@
 |----------|-------|
 | 🔴 Critical | 1 (FIXED) |
 | 🟠 High | 0 |
-| 🟡 Medium | 3 |
+| 🟡 Medium | 3 (1 FIXED) |
 | 🔵 Low | 1 |
 
 ---
@@ -97,11 +97,12 @@ Page renders with only header - no content area loads
 
 ---
 
-### BUG-005: Magic Input Fails on YouTube Channel URLs
+### BUG-005: Magic Input Fails on YouTube Channel URLs ✅ FIXED
 
 **Severity:** 🟡 Medium
 **Section:** AI Features / Magic Input
 **Component:** `/src/endpoints/unified-ingest.ts`
+**Status:** ✅ RESOLVED
 
 **Steps to Reproduce:**
 1. Navigate to Admin Dashboard
@@ -138,6 +139,14 @@ Missing patterns for channel URLs:
 1. Add channel URL detection to `detectInputType()` returning distinct type like 'youtube-channel'
 2. Route 'youtube-channel' type to Channel Analyzer, OR
 3. Return helpful error message explaining to use Channel Analyzer instead
+
+**Resolution:**
+- Added `youtube_channel` input type to backend (`unified-ingest.ts`)
+- Added `isYouTubeChannelUrl()` helper function to detect channel URL patterns
+- Updated `detectInputType()` to return `youtube_channel` for channel URLs
+- Frontend now displays "YouTube Channel" badge for channel URLs
+- Helpful error message guides users to Channel Analyzer tool
+- **Resolution Date:** 2025-12-31
 
 ---
 
