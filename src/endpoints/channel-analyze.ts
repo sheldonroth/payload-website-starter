@@ -1,5 +1,6 @@
 import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface YouTubeVideo {
     id: string
@@ -29,6 +30,8 @@ interface ExtractedProduct {
     summary: string
     sourceVideoId?: string
     sourceVideoTitle?: string
+    confidence: 'high' | 'medium' | 'low'
+    mentionCount: number
 }
 
 // Generate system prompt with existing categories
@@ -66,13 +69,15 @@ Output ONLY a valid JSON object with this exact schema:
   "products": [
     {
       "productName": "string",
-      "brandName": "string", 
+      "brandName": "string",
       "suggestedCategory": "string (use 'Parent > Child' format, e.g., 'Food & Beverage > Sports Drinks')",
       "isNewCategory": boolean (true if this is a NEW category not in the existing list),
       "sentimentScore": number,
       "pros": ["string"],
       "cons": ["string"],
-      "summary": "string (2 sentences max)"
+      "summary": "string (2 sentences max)",
+      "confidence": "high" | "medium" | "low" (how confident are you in this extraction?),
+      "mentionCount": number (how many times was this product mentioned?)
     }
   ]
 }`
@@ -159,6 +164,13 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
     // Check if user is authenticated
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
     }
 
     if (!process.env.GEMINI_API_KEY) {
@@ -259,6 +271,45 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
             results.videosProcessed++
             results.productsFound += products.length
 
+            // Find or create video record for source linking
+            let videoRecord: { id: number } | null = null
+            try {
+                const existingVideos = await payload.find({
+                    collection: 'videos',
+                    where: { youtubeVideoId: { equals: videoId } },
+                    limit: 1,
+                })
+
+                if (existingVideos.docs.length > 0) {
+                    videoRecord = existingVideos.docs[0] as { id: number }
+                    // Update analyzed timestamp
+                    await payload.update({
+                        collection: 'videos',
+                        id: videoRecord.id,
+                        data: {
+                            analyzedAt: new Date().toISOString(),
+                            transcript: transcript || undefined,
+                        },
+                    })
+                } else {
+                    // Create new video record
+                    const newVideo = await payload.create({
+                        collection: 'videos',
+                        data: {
+                            title: videoTitle,
+                            youtubeVideoId: videoId,
+                            status: 'draft',
+                            transcript: transcript || undefined,
+                            analyzedAt: new Date().toISOString(),
+                            isAutoImported: true,
+                        },
+                    })
+                    videoRecord = { id: newVideo.id as number }
+                }
+            } catch (videoErr) {
+                console.error('Failed to create/update video record:', videoErr)
+            }
+
             /* ⚠️⚠️⚠️ AI DUPLICATE DETECTION - See video-analyze.ts for full documentation ⚠️⚠️⚠️ */
 
             // Create drafts for each product (with duplicate detection)
@@ -309,9 +360,14 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
                         verdict: product.sentimentScore >= 7 ? 'recommend' :
                             product.sentimentScore >= 4 ? 'caution' : 'avoid',
                         verdictReason: `AI-extracted from video. Sentiment: ${product.sentimentScore}/10.`,
+                        // AI extraction metadata
+                        aiConfidence: product.confidence || 'medium',
+                        aiSourceType: 'transcript',
+                        aiMentions: product.mentionCount || 1,
                     }
                     if (categoryId) productData.category = categoryId
                     if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
+                    if (videoRecord) productData.sourceVideo = videoRecord.id
 
                     // @ts-expect-error - Payload types require specific product shape but we're building dynamically
                     const created = await payload.create({
@@ -327,22 +383,21 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
                         category: product.suggestedCategory,
                         isNewCategory: product.isNewCategory,
                     })
-                } catch (error) {
-                    results.errors.push(`Failed to create draft for ${product.productName}`)
+                } catch (err) {
+                    results.errors.push(`Failed to create draft for ${product.productName}: ${err}`)
                 }
             }
         }
 
         return Response.json({
             success: true,
+            message: `Analyzed ${results.videosProcessed} videos`,
             ...results,
-            message: `Processed ${results.videosProcessed} videos, found ${results.productsFound} products, created ${results.draftsCreated} drafts`,
         })
     } catch (error) {
         console.error('Channel analyze error:', error)
-        return Response.json(
-            { error: error instanceof Error ? error.message : 'Analysis failed' },
-            { status: 500 }
-        )
+        return Response.json({ error: 'Failed to analyze channel' }, { status: 500 })
     }
 }
+
+export default channelAnalyzeHandler

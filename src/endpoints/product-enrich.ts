@@ -1,4 +1,5 @@
 import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface ProductInfo {
     imageUrl: string | null
@@ -216,6 +217,13 @@ async function downloadAndUploadImage(
 export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
     }
 
     if (!process.env.GEMINI_API_KEY) {

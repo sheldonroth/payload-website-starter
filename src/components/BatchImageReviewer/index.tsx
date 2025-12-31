@@ -22,7 +22,8 @@ const BatchImageReviewer: React.FC = () => {
     const fetchProducts = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch('/api/products?limit=100&sort=-updatedAt&depth=0')
+            // Only fetch products that are NOT ai_draft (manually created or approved from AI extractor)
+            const res = await fetch('/api/products?limit=100&sort=-updatedAt&depth=0&where[status][not_equals]=ai_draft')
             const data = await res.json()
             const mapped = (data.docs || []).map((p: any) => ({
                 id: p.id,
@@ -189,6 +190,8 @@ const BatchImageReviewer: React.FC = () => {
                         fontSize: '13px',
                         flex: 1,
                         minWidth: '150px',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 />
                 <select
@@ -199,7 +202,8 @@ const BatchImageReviewer: React.FC = () => {
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '13px',
-                        background: '#fff',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 >
                     <option value="without">❌ Without Image</option>

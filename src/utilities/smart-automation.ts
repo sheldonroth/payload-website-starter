@@ -47,11 +47,40 @@ export async function parseAndLinkIngredients(
         return result
     }
 
-    // Split by common delimiters
-    const rawNames = rawText
-        .split(/[,;]/)
+    // Pre-process text for better parsing
+    let processedText = rawText
+        // Normalize common abbreviations
+        .replace(/\bvit\.?\s*/gi, 'vitamin ')
+        .replace(/\bvits\.?\s*/gi, 'vitamins ')
+        .replace(/\bmg\b/gi, '')
+        .replace(/\bg\b/gi, '')
+        // Handle "and/or" patterns
+        .replace(/\band\/or\b/gi, ',')
+        .replace(/\bor\b/gi, ',')
+        // Handle "contains X% or less of:" patterns
+        .replace(/contains?\s*\d+%?\s*(or less)?\s*(of)?:?/gi, '')
+        // Remove asterisks and other markers
+        .replace(/[*†‡#]+/g, '')
+        // Normalize whitespace
+        .replace(/\s+/g, ' ')
+
+    // Split by common delimiters (comma, semicolon, period followed by capital)
+    const rawNames = processedText
+        .split(/[,;]|(?<=\.)\s+(?=[A-Z])/)
         .map(s => s.trim())
         .filter(s => s.length > 1)
+        // Flatten parenthetical ingredients like "Sugar (Cane Sugar, Brown Sugar)"
+        .flatMap(s => {
+            // Check if has nested ingredients in parentheses
+            const parenMatch = s.match(/^(.+?)\s*\(([^)]+)\)$/)
+            if (parenMatch) {
+                const main = parenMatch[1].trim()
+                const nested = parenMatch[2].split(/[,;]/).map(n => n.trim()).filter(n => n.length > 1)
+                // Return main ingredient plus any nested ones
+                return [main, ...nested]
+            }
+            return [s]
+        })
 
     // Fetch all ingredients with aliases for matching
     const allIngredients = await payload.find({
@@ -95,11 +124,33 @@ export async function parseAndLinkIngredients(
     let worstVerdict: 'recommend' | 'caution' | 'avoid' = 'recommend'
 
     for (const rawName of rawNames) {
-        const normalized = rawName.toLowerCase().trim()
+        // Comprehensive normalization
+        let normalized = rawName.toLowerCase().trim()
             // Remove common suffixes like percentages, parenthetical notes
             .replace(/\s*\([^)]*\)/g, '')
-            .replace(/\s*\d+%?$/g, '')
+            .replace(/\s*\d+\.?\d*%?$/g, '')
+            // Remove common descriptors
+            .replace(/\b(organic|natural|pure|raw|refined|unrefined|hydrolyzed|hydrogenated|partially|modified)\b/gi, '')
+            // Normalize color/dye names
+            .replace(/\b(red|blue|yellow|green)\s*#?\s*(\d+)/gi, '$1 $2')
+            .replace(/\bfd&c\s*/gi, '')
+            .replace(/\bd&c\s*/gi, '')
+            // Normalize vitamin names
+            .replace(/\bascorbic acid\b/gi, 'vitamin c')
+            .replace(/\btocopherol\b/gi, 'vitamin e')
+            .replace(/\bretinol\b/gi, 'vitamin a')
+            .replace(/\bthiamine?\b/gi, 'vitamin b1')
+            .replace(/\briboflavin\b/gi, 'vitamin b2')
+            .replace(/\bniacin\b/gi, 'vitamin b3')
+            .replace(/\bpyridoxine?\b/gi, 'vitamin b6')
+            .replace(/\bcobalamin\b/gi, 'vitamin b12')
+            .replace(/\bfolic acid\b/gi, 'folate')
+            // Clean up whitespace
+            .replace(/\s+/g, ' ')
             .trim()
+
+        // Skip if too short after normalization
+        if (normalized.length < 2) continue
 
         // Try exact match
         let match = ingredientMap.get(normalized)
