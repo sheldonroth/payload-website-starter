@@ -2,6 +2,8 @@
 
 import { Banner } from '@payloadcms/ui/elements/Banner'
 import React, { useState } from 'react'
+import MagicInput from '../MagicInput'
+import AIDraftInbox from '../AIDraftInbox'
 import VideoToDraft from '../VideoToDraft'
 import ChannelSync from '../ChannelSync'
 import PollGenerator from '../PollGenerator'
@@ -109,16 +111,24 @@ const BeforeDashboard: React.FC = () => {
         Use the sidebar or quick links above to navigate. Click section headers to collapse/expand.
       </p>
 
-      {/* Content Ingestion Tools */}
+      {/* Magic Input - Primary Ingestion */}
       <div id="ai-tools-section">
-        <CollapsibleSection title="Content Ingestion" icon="📥" defaultOpen={true}>
-          <div className={`${baseClass}__grid`}>
-            <VideoToDraft />
-            <ChannelSync />
-            <TikTokSync />
-          </div>
-        </CollapsibleSection>
+        <MagicInput />
       </div>
+
+      {/* AI Draft Inbox - Review Queue */}
+      <CollapsibleSection title="AI Draft Inbox" icon="&#x1F4E5;" defaultOpen={true}>
+        <AIDraftInbox />
+      </CollapsibleSection>
+
+      {/* Legacy Content Ingestion Tools (collapsed by default) */}
+      <CollapsibleSection title="Advanced Ingestion" icon="&#x1F4E5;" defaultOpen={false}>
+        <div className={`${baseClass}__grid`}>
+          <VideoToDraft />
+          <ChannelSync />
+          <TikTokSync />
+        </div>
+      </CollapsibleSection>
 
       {/* Product Management Tools */}
       <CollapsibleSection title="Product Management" icon="📦" defaultOpen={true}>

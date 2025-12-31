@@ -51,34 +51,7 @@ export const Products: CollectionConfig = {
     hooks: {
         beforeChange: [
             // ============================================
-            // HOOK 1: Auto-calculate overall score from sub-ratings
-            // ============================================
-            ({ data }) => {
-                if (data?.ratings) {
-                    const weights = {
-                        performance: 0.30,
-                        reliability: 0.25,
-                        valueForMoney: 0.25,
-                        features: 0.20,
-                    };
-
-                    const performance = data.ratings.performance || 0;
-                    const reliability = data.ratings.reliability || 0;
-                    const valueForMoney = data.ratings.valueForMoney || 0;
-                    const features = data.ratings.features || 0;
-
-                    data.overallScore = Math.round(
-                        (performance * weights.performance) +
-                        (reliability * weights.reliability) +
-                        (valueForMoney * weights.valueForMoney) +
-                        (features * weights.features)
-                    );
-                }
-                return data;
-            },
-
-            // ============================================
-            // HOOK 2: AUTO-PARSE INGREDIENTS from raw text
+            // HOOK 1: AUTO-PARSE INGREDIENTS from raw text
             // ============================================
             async ({ data, req, originalDoc }) => {
                 // Only parse if ingredientsRaw changed and ingredientsList is empty
@@ -657,45 +630,6 @@ export const Products: CollectionConfig = {
             },
         },
 
-        // === LEGACY BADGES (hidden) ===
-        {
-            name: 'badges',
-            type: 'group',
-            label: 'Legacy Badges',
-            admin: {
-                condition: () => false,
-            },
-            fields: [
-                { name: 'isBestInCategory', type: 'checkbox' },
-                { name: 'isRecommended', type: 'checkbox' },
-                { name: 'isBestValue', type: 'checkbox' },
-                { name: 'isEditorsChoice', type: 'checkbox' },
-            ],
-        },
-
-        // === LEGACY SCORES (hidden) ===
-        {
-            name: 'overallScore',
-            type: 'number',
-            admin: { hidden: true },
-        },
-        {
-            name: 'rankInCategory',
-            type: 'number',
-            admin: { hidden: true },
-        },
-        {
-            name: 'ratings',
-            type: 'group',
-            admin: { condition: () => false },
-            fields: [
-                { name: 'performance', type: 'number' },
-                { name: 'reliability', type: 'number' },
-                { name: 'valueForMoney', type: 'number' },
-                { name: 'features', type: 'number' },
-            ],
-        },
-
         // === STATUS & WORKFLOW ===
         {
             name: 'status',
@@ -892,16 +826,5 @@ export const Products: CollectionConfig = {
             ],
         },
 
-        // === LEGACY FIELDS (hidden) ===
-        {
-            name: 'isBestBuy',
-            type: 'checkbox',
-            admin: { hidden: true },
-        },
-        {
-            name: 'isRecommended',
-            type: 'checkbox',
-            admin: { hidden: true },
-        },
     ],
 }

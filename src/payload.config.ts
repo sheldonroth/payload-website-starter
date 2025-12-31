@@ -46,6 +46,8 @@ import { adminLinkVideosHandler } from './endpoints/admin-link-videos'
 import { adminCategoryCleanupHandler } from './endpoints/admin-category-cleanup'
 import { cronJobsHandler } from './endpoints/cron-jobs'
 import { bulkOperationsHandler } from './endpoints/bulk-operations'
+import { labelDecodeHandler } from './endpoints/label-decode'
+import { recallWatchdogHandler } from './endpoints/recall-watchdog'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -228,6 +230,16 @@ export default buildConfig({
       path: '/ingest',
       method: 'post',
       handler: unifiedIngestHandler,
+    },
+    {
+      path: '/label/decode',
+      method: 'post',
+      handler: labelDecodeHandler,
+    },
+    {
+      path: '/recall/check',
+      method: 'post',
+      handler: recallWatchdogHandler,
     },
   ],
   plugins: [
