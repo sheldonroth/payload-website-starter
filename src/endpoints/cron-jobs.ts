@@ -1,5 +1,6 @@
 import type { PayloadHandler } from 'payload'
 import { runFreshnessCheck, cleanupStaleAIDrafts } from '../jobs/freshness-check'
+import { sendWeeklyDigest } from '../jobs/weekly-digest'
 
 /**
  * Cron Jobs Endpoint
@@ -8,6 +9,7 @@ import { runFreshnessCheck, cleanupStaleAIDrafts } from '../jobs/freshness-check
  * Available jobs:
  * - freshness: Check product freshness status
  * - cleanup: Remove stale AI drafts (30+ days old)
+ * - weekly-digest: Send weekly digest emails (scheduled Tuesdays 10 AM UTC)
  * - all: Run all jobs
  */
 export const cronJobsHandler: PayloadHandler = async (req) => {
@@ -44,6 +46,13 @@ export const cronJobsHandler: PayloadHandler = async (req) => {
             const cleanupResult = await cleanupStaleAIDrafts(req.payload)
             results.cleanup = cleanupResult
             ;(results.jobsRun as string[]).push('cleanup')
+        }
+
+        // Run weekly digest (only when explicitly called, not with 'all')
+        if (job === 'weekly-digest') {
+            const digestResult = await sendWeeklyDigest(req.payload)
+            results.weeklyDigest = digestResult
+            ;(results.jobsRun as string[]).push('weekly-digest')
         }
 
         return Response.json({
