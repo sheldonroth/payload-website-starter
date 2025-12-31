@@ -60,6 +60,7 @@ import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
 import { populateBrandsHandler } from './endpoints/populate-brands'
 import { productRequestsListHandler, productRequestsCreateHandler, productRequestVoteHandler } from './endpoints/product-requests'
 import { userWatchlistGetHandler, userWatchlistAddHandler, userWatchlistRemoveHandler, checkWatchlistConflictsHandler } from './endpoints/user-watchlist'
+import { productAlternativesHandler } from './endpoints/product-alternatives'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -329,6 +330,12 @@ export default buildConfig({
       path: '/users/me/watchlist/check',
       method: 'post',
       handler: checkWatchlistConflictsHandler,
+    },
+    // Product Alternatives (Find Safe Alternative)
+    {
+      path: '/products/alternatives',
+      method: 'get',
+      handler: productAlternativesHandler,
     },
   ],
   plugins: [
