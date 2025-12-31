@@ -57,6 +57,7 @@ import { regulatoryMonitorHandler } from './endpoints/regulatory-monitor'
 import { crowdsourceSubmitHandler, crowdsourceLeaderboardHandler } from './endpoints/crowdsource-submit'
 import { contentAmplifyHandler } from './endpoints/content-amplify'
 import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
+import { populateBrandsHandler } from './endpoints/populate-brands'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -193,6 +194,11 @@ export default buildConfig({
       path: '/admin/category-cleanup',
       method: 'post',
       handler: adminCategoryCleanupHandler,
+    },
+    {
+      path: '/admin/populate-brands',
+      method: 'post',
+      handler: populateBrandsHandler,
     },
     {
       path: '/cron/jobs',
