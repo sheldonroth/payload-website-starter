@@ -20,6 +20,10 @@ import { Ingredients } from './collections/Ingredients'
 import { VerdictRules } from './collections/VerdictRules'
 import { AuditLog } from './collections/AuditLog'
 import { Users } from './collections/Users'
+import { PriceHistory } from './collections/PriceHistory'
+import { Brands } from './collections/Brands'
+import { RegulatoryChanges } from './collections/RegulatoryChanges'
+import { UserSubmissions } from './collections/UserSubmissions'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -48,6 +52,11 @@ import { cronJobsHandler } from './endpoints/cron-jobs'
 import { bulkOperationsHandler } from './endpoints/bulk-operations'
 import { labelDecodeHandler } from './endpoints/label-decode'
 import { recallWatchdogHandler } from './endpoints/recall-watchdog'
+import { skimpflationDetectorHandler } from './endpoints/skimpflation-detector'
+import { regulatoryMonitorHandler } from './endpoints/regulatory-monitor'
+import { crowdsourceSubmitHandler, crowdsourceLeaderboardHandler } from './endpoints/crowdsource-submit'
+import { contentAmplifyHandler } from './endpoints/content-amplify'
+import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -125,7 +134,7 @@ export default buildConfig({
     // Only include migrations when explicitly running `payload migrate`
     ...(process.env.PAYLOAD_MIGRATING ? { prodMigrations: migrations } : {}),
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -240,6 +249,41 @@ export default buildConfig({
       path: '/recall/check',
       method: 'post',
       handler: recallWatchdogHandler,
+    },
+    {
+      path: '/skimpflation/check',
+      method: 'post',
+      handler: skimpflationDetectorHandler,
+    },
+    {
+      path: '/regulatory/monitor',
+      method: 'post',
+      handler: regulatoryMonitorHandler,
+    },
+    {
+      path: '/crowdsource/submit',
+      method: 'post',
+      handler: crowdsourceSubmitHandler,
+    },
+    {
+      path: '/crowdsource/leaderboard',
+      method: 'get',
+      handler: crowdsourceLeaderboardHandler,
+    },
+    {
+      path: '/content/amplify',
+      method: 'post',
+      handler: contentAmplifyHandler,
+    },
+    {
+      path: '/brand/trust',
+      method: 'post',
+      handler: brandTrustHandler,
+    },
+    {
+      path: '/brand/sync',
+      method: 'post',
+      handler: brandSyncHandler,
     },
   ],
   plugins: [

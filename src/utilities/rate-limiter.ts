@@ -116,6 +116,12 @@ export const RateLimits = {
         maxRequests: 100,
         windowMs: 60 * 1000, // 100 per minute
     },
+
+    // Login/OAuth attempts
+    LOGIN: {
+        maxRequests: 10,
+        windowMs: 60 * 1000, // 10 per minute
+    },
 }
 
 /**

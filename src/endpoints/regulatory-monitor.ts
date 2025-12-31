@@ -1,0 +1,442 @@
+import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
+import { createAuditLog } from '../collections/AuditLog'
+
+/**
+ * Regulatory Monitor Endpoint
+ * POST /api/regulatory/monitor
+ *
+ * Monitors regulatory sources for ingredient/product-related changes:
+ * - FDA Federal Register
+ * - California Prop 65 List
+ * - EU EFSA Journal (abstracts)
+ *
+ * Can be triggered manually or via cron job.
+ */
+
+interface RegulatoryUpdate {
+    source: string
+    referenceId: string
+    title: string
+    summary?: string
+    effectiveDate?: string
+    url: string
+    substances?: string[]
+    changeType: string
+}
+
+interface MonitorResult {
+    success: boolean
+    source: string
+    updatesFound: number
+    newRecordsCreated: number
+    updates: RegulatoryUpdate[]
+    errors: string[]
+}
+
+/**
+ * Fetch FDA Federal Register entries related to food safety
+ */
+async function fetchFDAFederalRegister(): Promise<RegulatoryUpdate[]> {
+    const updates: RegulatoryUpdate[] = []
+
+    try {
+        // FDA Federal Register API
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const dateStr = thirtyDaysAgo.toISOString().split('T')[0]
+
+        const response = await fetch(
+            `https://www.federalregister.gov/api/v1/documents.json?` +
+            `conditions[agencies][]=food-and-drug-administration&` +
+            `conditions[publication_date][gte]=${dateStr}&` +
+            `conditions[type][]=Rule&conditions[type][]=Proposed+Rule&` +
+            `per_page=50`,
+            { headers: { 'User-Agent': 'ProductReportCMS/1.0' } }
+        )
+
+        if (!response.ok) {
+            console.error('FDA Federal Register API error:', response.status)
+            return []
+        }
+
+        const data = await response.json()
+
+        for (const doc of data.results || []) {
+            // Filter for food/ingredient related entries
+            const title = (doc.title || '').toLowerCase()
+            const abstract = (doc.abstract || '').toLowerCase()
+
+            const isRelevant =
+                title.includes('food') ||
+                title.includes('ingredient') ||
+                title.includes('additive') ||
+                title.includes('color') ||
+                title.includes('substance') ||
+                abstract.includes('food safety') ||
+                abstract.includes('dietary')
+
+            if (isRelevant) {
+                updates.push({
+                    source: 'fda',
+                    referenceId: doc.document_number || '',
+                    title: doc.title || '',
+                    summary: doc.abstract,
+                    effectiveDate: doc.effective_on,
+                    url: doc.html_url || `https://www.federalregister.gov/documents/${doc.document_number}`,
+                    changeType: doc.type === 'Rule' ? 'regulation' : 'proposal',
+                })
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch FDA Federal Register:', error)
+    }
+
+    return updates
+}
+
+/**
+ * Check California Prop 65 list for new additions
+ * Note: OEHHA doesn't have a public API, so this checks their data file
+ */
+async function fetchProp65Updates(): Promise<RegulatoryUpdate[]> {
+    const updates: RegulatoryUpdate[] = []
+
+    try {
+        // OEHHA publishes a downloadable list - we'd need to parse it
+        // For now, check the news/press releases page
+        const response = await fetch(
+            'https://oehha.ca.gov/proposition-65/proposition-65-list',
+            { headers: { 'User-Agent': 'ProductReportCMS/1.0' } }
+        )
+
+        if (!response.ok) {
+            console.error('Prop 65 page error:', response.status)
+            return []
+        }
+
+        const html = await response.text()
+
+        // Look for recent additions mentioned in page
+        // This is a simplified check - production would parse the full list
+        const recentAdditions = html.match(/Added to the list[^<]*(\d{1,2}\/\d{1,2}\/\d{4})[^<]*:([^<]+)/gi)
+
+        if (recentAdditions) {
+            for (const match of recentAdditions.slice(0, 10)) {
+                const dateMatch = match.match(/(\d{1,2}\/\d{1,2}\/\d{4})/)
+                const substanceMatch = match.match(/:(.+)$/i)
+
+                if (substanceMatch) {
+                    updates.push({
+                        source: 'prop65',
+                        referenceId: `prop65-${dateMatch?.[1] || 'unknown'}`,
+                        title: `Prop 65 Addition: ${substanceMatch[1].trim()}`,
+                        effectiveDate: dateMatch?.[1],
+                        url: 'https://oehha.ca.gov/proposition-65/proposition-65-list',
+                        substances: [substanceMatch[1].trim()],
+                        changeType: 'warning',
+                    })
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch Prop 65 updates:', error)
+    }
+
+    return updates
+}
+
+/**
+ * Fetch EU EFSA Journal entries
+ */
+async function fetchEFSAJournal(): Promise<RegulatoryUpdate[]> {
+    const updates: RegulatoryUpdate[] = []
+
+    try {
+        // EFSA provides RSS feeds for their journal
+        const response = await fetch(
+            'https://efsa.onlinelibrary.wiley.com/action/showFeed?jc=18314732&type=etoc',
+            { headers: { 'User-Agent': 'ProductReportCMS/1.0' } }
+        )
+
+        if (!response.ok) {
+            console.error('EFSA Journal error:', response.status)
+            return []
+        }
+
+        const xml = await response.text()
+
+        // Simple XML parsing for RSS items
+        const items = xml.match(/<item>[\s\S]*?<\/item>/gi) || []
+
+        for (const item of items.slice(0, 20)) {
+            const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/i) ||
+                              item.match(/<title>(.*?)<\/title>/i)
+            const linkMatch = item.match(/<link>(.*?)<\/link>/i)
+            const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/i) ||
+                             item.match(/<description>(.*?)<\/description>/i)
+            const dateMatch = item.match(/<pubDate>(.*?)<\/pubDate>/i)
+
+            const title = titleMatch?.[1] || ''
+
+            // Filter for food safety related articles
+            const isRelevant =
+                title.toLowerCase().includes('food') ||
+                title.toLowerCase().includes('additive') ||
+                title.toLowerCase().includes('contaminant') ||
+                title.toLowerCase().includes('pesticide') ||
+                title.toLowerCase().includes('safety assessment')
+
+            if (isRelevant && titleMatch && linkMatch) {
+                updates.push({
+                    source: 'efsa',
+                    referenceId: linkMatch[1].split('/').pop() || '',
+                    title,
+                    summary: descMatch?.[1]?.replace(/<[^>]+>/g, '').substring(0, 500),
+                    effectiveDate: dateMatch?.[1] ? new Date(dateMatch[1]).toISOString().split('T')[0] : undefined,
+                    url: linkMatch[1],
+                    changeType: 'guideline',
+                })
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch EFSA Journal:', error)
+    }
+
+    return updates
+}
+
+/**
+ * Match regulatory update to ingredients in our database
+ */
+async function matchToIngredients(
+    update: RegulatoryUpdate,
+    payload: Payload
+): Promise<number[]> {
+    const matchedIds: number[] = []
+
+    // Get all substances mentioned
+    const substances = update.substances || []
+
+    // Also try to extract from title/summary
+    const text = `${update.title} ${update.summary || ''}`.toLowerCase()
+
+    // Search our ingredients for matches
+    if (substances.length > 0 || text.length > 50) {
+        const ingredients = await payload.find({
+            collection: 'ingredients',
+            limit: 1000,
+        })
+
+        for (const ing of ingredients.docs) {
+            const ingredient = ing as { id: number; name: string; aliases?: Array<{ alias: string }> }
+            const names = [ingredient.name.toLowerCase()]
+
+            // Add aliases
+            if (ingredient.aliases) {
+                for (const a of ingredient.aliases) {
+                    names.push(a.alias.toLowerCase())
+                }
+            }
+
+            // Check if any name appears in update
+            for (const name of names) {
+                if (
+                    substances.some(s => s.toLowerCase().includes(name)) ||
+                    text.includes(name)
+                ) {
+                    matchedIds.push(ingredient.id)
+                    break
+                }
+            }
+        }
+    }
+
+    return matchedIds
+}
+
+export const regulatoryMonitorHandler: PayloadHandler = async (req: PayloadRequest) => {
+    // Verify authentication
+    const authHeader = req.headers.get('authorization')
+    const cronSecret = process.env.CRON_SECRET
+
+    const isAuthenticated = req.user ||
+        (cronSecret && authHeader === `Bearer ${cronSecret}`)
+
+    if (!isAuthenticated) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        const body = await req.json?.()
+        const { sources = ['fda', 'prop65', 'efsa'] } = body || {}
+
+        const results: MonitorResult[] = []
+
+        // Fetch from each source
+        for (const source of sources) {
+            const result: MonitorResult = {
+                success: true,
+                source,
+                updatesFound: 0,
+                newRecordsCreated: 0,
+                updates: [],
+                errors: [],
+            }
+
+            let updates: RegulatoryUpdate[] = []
+
+            switch (source) {
+                case 'fda':
+                    updates = await fetchFDAFederalRegister()
+                    break
+                case 'prop65':
+                    updates = await fetchProp65Updates()
+                    break
+                case 'efsa':
+                    updates = await fetchEFSAJournal()
+                    break
+                default:
+                    result.errors.push(`Unknown source: ${source}`)
+            }
+
+            result.updatesFound = updates.length
+            result.updates = updates
+
+            // Store new updates in database
+            for (const update of updates) {
+                // Check if already exists
+                const existing = await (req.payload.find as Function)({
+                    collection: 'regulatory-changes',
+                    where: {
+                        referenceId: { equals: update.referenceId },
+                    },
+                    limit: 1,
+                })
+
+                if (existing.totalDocs === 0) {
+                    // Match to ingredients
+                    const affectedIngredients = await matchToIngredients(update, req.payload)
+
+                    try {
+                        await (req.payload.create as Function)({
+                            collection: 'regulatory-changes',
+                            data: {
+                                title: update.title,
+                                referenceId: update.referenceId,
+                                source: update.source,
+                                sourceUrl: update.url,
+                                changeType: update.changeType === 'regulation' ? 'ban' :
+                                           update.changeType === 'proposal' ? 'review' :
+                                           update.changeType === 'warning' ? 'warning' : 'guideline',
+                                summary: update.summary,
+                                effectiveDate: update.effectiveDate,
+                                affectedIngredients,
+                                affectedSubstances: update.substances?.map(name => ({ name })),
+                                status: 'pending',
+                                rawData: update,
+                            },
+                        })
+                        result.newRecordsCreated++
+                    } catch (error) {
+                        result.errors.push(`Failed to store ${update.referenceId}: ${error instanceof Error ? error.message : 'unknown'}`)
+                    }
+                }
+            }
+
+            results.push(result)
+        }
+
+        // Create audit log
+        const totalNew = results.reduce((sum, r) => sum + r.newRecordsCreated, 0)
+        const totalFound = results.reduce((sum, r) => sum + r.updatesFound, 0)
+
+        await createAuditLog(req.payload, {
+            action: 'freshness_check',
+            sourceType: 'system',
+            metadata: {
+                type: 'regulatory_monitor',
+                sources,
+                updatesFound: totalFound,
+                newRecordsCreated: totalNew,
+            },
+        })
+
+        console.log(`Regulatory Monitor: Found ${totalFound} updates, created ${totalNew} new records`)
+
+        return Response.json({
+            success: true,
+            results,
+            summary: {
+                sourcesChecked: sources.length,
+                totalUpdatesFound: totalFound,
+                totalNewRecords: totalNew,
+            },
+        })
+    } catch (error) {
+        console.error('Regulatory Monitor error:', error)
+        return Response.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Monitor failed',
+        }, { status: 500 })
+    }
+}
+
+/**
+ * Cron job wrapper
+ */
+export async function runRegulatoryMonitor(payload: Payload): Promise<{
+    success: boolean
+    updatesFound: number
+    newRecords: number
+}> {
+    try {
+        const fda = await fetchFDAFederalRegister()
+        const prop65 = await fetchProp65Updates()
+        const efsa = await fetchEFSAJournal()
+
+        const allUpdates = [...fda, ...prop65, ...efsa]
+        let newRecords = 0
+
+        for (const update of allUpdates) {
+            const existing = await (payload.find as Function)({
+                collection: 'regulatory-changes',
+                where: { referenceId: { equals: update.referenceId } },
+                limit: 1,
+            })
+
+            if (existing.totalDocs === 0) {
+                const affectedIngredients = await matchToIngredients(update, payload)
+
+                await (payload.create as Function)({
+                    collection: 'regulatory-changes',
+                    data: {
+                        title: update.title,
+                        referenceId: update.referenceId,
+                        source: update.source,
+                        sourceUrl: update.url,
+                        changeType: 'guideline',
+                        summary: update.summary,
+                        effectiveDate: update.effectiveDate,
+                        affectedIngredients,
+                        status: 'pending',
+                        rawData: update,
+                    },
+                })
+                newRecords++
+            }
+        }
+
+        return {
+            success: true,
+            updatesFound: allUpdates.length,
+            newRecords,
+        }
+    } catch (error) {
+        console.error('Regulatory monitor cron failed:', error)
+        return {
+            success: false,
+            updatesFound: 0,
+            newRecords: 0,
+        }
+    }
+}
