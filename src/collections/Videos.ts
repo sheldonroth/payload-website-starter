@@ -1,13 +1,41 @@
 import type { CollectionConfig } from 'payload'
 
+/**
+ * Check if a YouTube video is a Short by testing the /shorts/ URL
+ * Returns true if the video is a Short, false otherwise
+ */
+async function isYouTubeShort(videoId: string): Promise<boolean> {
+    try {
+        const response = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+            method: 'HEAD',
+            redirect: 'manual',
+        })
+        return response.status === 200
+    } catch {
+        return false
+    }
+}
+
 export const Videos: CollectionConfig = {
     slug: 'videos',
     access: {
         read: () => true,
     },
+    hooks: {
+        beforeChange: [
+            async ({ data, operation }) => {
+                // Auto-detect videoType from YouTube if we have a video ID and it's not set
+                if (data.youtubeVideoId && (!data.videoType || operation === 'create')) {
+                    const isShort = await isYouTubeShort(data.youtubeVideoId)
+                    data.videoType = isShort ? 'short' : 'longform'
+                }
+                return data
+            },
+        ],
+    },
     admin: {
         useAsTitle: 'title',
-        defaultColumns: ['title', 'youtubeVideoId', 'category', 'status', 'sortOrder'],
+        defaultColumns: ['title', 'youtubeVideoId', 'videoType', 'category', 'status', 'sortOrder'],
         group: 'Catalog',
     },
     fields: [

@@ -1246,6 +1246,10 @@ export interface Video {
   viewCount?: number | null;
   isFeatured?: boolean | null;
   /**
+   * Shorts will appear in the mobile Browse tab
+   */
+  videoType?: ('short' | 'longform') | null;
+  /**
    * Was this video imported from YouTube automatically?
    */
   isAutoImported?: boolean | null;
@@ -2501,6 +2505,7 @@ export interface VideosSelect<T extends boolean = true> {
   sortOrder?: T;
   viewCount?: T;
   isFeatured?: T;
+  videoType?: T;
   isAutoImported?: T;
   youtubeImportedAt?: T;
   transcript?: T;

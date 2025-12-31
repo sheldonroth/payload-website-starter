@@ -40,6 +40,25 @@ function parseDuration(duration: string): number {
     return hours * 3600 + minutes * 60 + seconds
 }
 
+/**
+ * Check if a YouTube video is a Short by testing the /shorts/ URL
+ * Returns true if the video is a Short, false otherwise
+ */
+async function isYouTubeShort(videoId: string): Promise<boolean> {
+    try {
+        // Make a HEAD request to the shorts URL
+        const response = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+            method: 'HEAD',
+            redirect: 'manual', // Don't follow redirects
+        })
+        // If 200, it's a Short. If 303 redirect, it's not.
+        return response.status === 200
+    } catch {
+        // On error, fall back to false (not a short)
+        return false
+    }
+}
+
 export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) => {
     try {
         const { payload } = req
@@ -132,6 +151,10 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
 
             if (existing.docs.length > 0) {
                 // Update existing video
+                // Detect if it's a YouTube Short using the /shorts/ URL check
+                const isShort = await isYouTubeShort(video.id)
+                const videoType = isShort ? 'short' : 'longform'
+
                 await payload.update({
                     collection: 'videos',
                     id: existing.docs[0].id,
@@ -140,11 +163,16 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
                         description: video.snippet.description,
                         thumbnailUrl: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high?.url,
                         duration,
+                        videoType, // Auto-detected from YouTube
                         youtubeImportedAt: new Date().toISOString(),
                     },
                 })
             } else {
                 // Create new video
+                // Detect if it's a YouTube Short using the /shorts/ URL check
+                const isShort = await isYouTubeShort(video.id)
+                const videoType = isShort ? 'short' : 'longform'
+
                 await payload.create({
                     collection: 'videos',
                     data: {
@@ -153,6 +181,7 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
                         description: video.snippet.description,
                         thumbnailUrl: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high?.url,
                         duration,
+                        videoType, // Auto-detected from YouTube
                         status: 'published',
                         isAutoImported: true,
                         youtubeImportedAt: new Date().toISOString(),
