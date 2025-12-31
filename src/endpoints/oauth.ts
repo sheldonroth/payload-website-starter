@@ -1,5 +1,6 @@
 import type { Endpoint } from 'payload'
 import jwt from 'jsonwebtoken'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
  * OAuth Endpoints for Apple and Google Sign-In
@@ -71,6 +72,13 @@ const googleOAuthCallback: Endpoint = {
     path: '/users/oauth/google/callback',
     method: 'get',
     handler: async (req) => {
+        // SECURITY: Rate limit OAuth callbacks to prevent brute force attacks
+        const rateLimitKey = getRateLimitKey(req as unknown as Request)
+        const rateLimit = checkRateLimit(rateLimitKey, RateLimits.LOGIN)
+        if (!rateLimit.allowed) {
+            return Response.redirect(`${FRONTEND_URL}/login?error=rate_limited`)
+        }
+
         const url = new URL(req.url || '', 'http://localhost')
         const code = url.searchParams.get('code')
         const error = url.searchParams.get('error')
@@ -223,6 +231,13 @@ const appleOAuthCallback: Endpoint = {
     path: '/users/oauth/apple/callback',
     method: 'post',
     handler: async (req) => {
+        // SECURITY: Rate limit OAuth callbacks to prevent brute force attacks
+        const rateLimitKey = getRateLimitKey(req as unknown as Request)
+        const rateLimit = checkRateLimit(rateLimitKey, RateLimits.LOGIN)
+        if (!rateLimit.allowed) {
+            return Response.redirect(`${FRONTEND_URL}/login?error=rate_limited`)
+        }
+
         try {
             const body = req.text ? await req.text() : ''
             const params = new URLSearchParams(body)
