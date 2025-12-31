@@ -326,6 +326,55 @@ export const Products: CollectionConfig = {
                 data.freshnessStatus = freshness.status;
                 return data;
             },
+
+            // ============================================
+            // HOOK 8: AUTO-GENERATE AFFILIATE LINKS
+            // ============================================
+            async ({ data, req }) => {
+                // If amazonAsin exists, ensure there's an Amazon affiliate link
+                if (data?.amazonAsin) {
+                    try {
+                        // Get affiliate tag from SiteSettings
+                        const siteSettings = await req.payload.findGlobal({
+                            slug: 'site-settings',
+                        })
+                        const affiliateTag = (siteSettings as { affiliateSettings?: { amazonAffiliateTag?: string } })
+                            ?.affiliateSettings?.amazonAffiliateTag
+
+                        // Generate affiliate URL
+                        const asin = data.amazonAsin.toUpperCase()
+                        const affiliateUrl = affiliateTag
+                            ? `https://www.amazon.com/dp/${asin}?tag=${affiliateTag}`
+                            : `https://www.amazon.com/dp/${asin}`
+
+                        // Check if Amazon link already exists in purchaseLinks
+                        const existingLinks = data.purchaseLinks || []
+                        const amazonLinkIndex = existingLinks.findIndex(
+                            (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
+                        )
+
+                        const amazonLink = {
+                            retailer: 'Amazon',
+                            url: affiliateUrl,
+                            price: existingLinks[amazonLinkIndex]?.price || '', // Keep existing price if any
+                            isAffiliate: !!affiliateTag,
+                        }
+
+                        if (amazonLinkIndex >= 0) {
+                            // Update existing Amazon link
+                            existingLinks[amazonLinkIndex] = amazonLink
+                        } else {
+                            // Add new Amazon link
+                            existingLinks.unshift(amazonLink) // Add to beginning
+                        }
+
+                        data.purchaseLinks = existingLinks
+                    } catch (error) {
+                        console.error('Failed to generate affiliate link:', error)
+                    }
+                }
+                return data
+            },
         ],
     },
     fields: [
@@ -535,6 +584,22 @@ export const Products: CollectionConfig = {
             label: 'UPC/Barcode',
             admin: {
                 description: 'Universal Product Code for barcode scanning',
+            },
+        },
+        {
+            name: 'amazonAsin',
+            type: 'text',
+            label: 'Amazon ASIN',
+            index: true,
+            admin: {
+                description: 'Amazon Standard Identification Number (10 characters). Used to auto-generate affiliate links.',
+            },
+            validate: (value: string | null | undefined) => {
+                if (!value) return true
+                if (!/^[A-Z0-9]{10}$/i.test(value)) {
+                    return 'ASIN must be exactly 10 alphanumeric characters'
+                }
+                return true
             },
         },
         {

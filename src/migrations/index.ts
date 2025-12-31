@@ -23,6 +23,8 @@ import * as migration_20251231_205500_emergency_column_fix from './20251231_2055
 import * as migration_20251231_210000_create_brands_user_submissions from './20251231_210000_create_brands_user_submissions';
 import * as migration_20251231_220000_product_slug_unique from './20251231_220000_product_slug_unique';
 import * as migration_20251231_230000_add_pages_blocks_stats from './20251231_230000_add_pages_blocks_stats';
+import * as migration_20250101_000000_add_amazon_asin from './20250101_000000_add_amazon_asin';
+import * as migration_20250101_000100_add_voting_to_user_submissions from './20250101_000100_add_voting_to_user_submissions';
 
 export const migrations = [
   {
@@ -149,5 +151,15 @@ export const migrations = [
     up: migration_20251231_230000_add_pages_blocks_stats.up,
     down: migration_20251231_230000_add_pages_blocks_stats.down,
     name: '20251231_230000_add_pages_blocks_stats'
+  },
+  {
+    up: migration_20250101_000000_add_amazon_asin.up,
+    down: migration_20250101_000000_add_amazon_asin.down,
+    name: '20250101_000000_add_amazon_asin'
+  },
+  {
+    up: migration_20250101_000100_add_voting_to_user_submissions.up,
+    down: migration_20250101_000100_add_voting_to_user_submissions.down,
+    name: '20250101_000100_add_voting_to_user_submissions'
   },
 ];

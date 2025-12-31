@@ -263,6 +263,64 @@ export const UserSubmissions: CollectionConfig = {
             },
         },
 
+        // === PRODUCT REQUEST FIELDS ===
+        {
+            name: 'productRequestDetails',
+            type: 'group',
+            label: 'Product Request Details',
+            admin: {
+                condition: (data) => data?.type === 'product_request',
+            },
+            fields: [
+                {
+                    name: 'requestedProductName',
+                    type: 'text',
+                    label: 'Product Name',
+                    required: true,
+                },
+                {
+                    name: 'requestedBrand',
+                    type: 'text',
+                    label: 'Brand',
+                },
+                {
+                    name: 'productUrl',
+                    type: 'text',
+                    label: 'Product URL',
+                    admin: {
+                        description: 'Link to product page (Amazon, retailer, etc.)',
+                    },
+                },
+                {
+                    name: 'reasonForRequest',
+                    type: 'textarea',
+                    label: 'Why do you want this reviewed?',
+                },
+            ],
+        },
+
+        // === VOTING (for product requests) ===
+        {
+            name: 'voteCount',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Number of community votes',
+                condition: (data) => data?.type === 'product_request',
+            },
+        },
+        {
+            name: 'voters',
+            type: 'json',
+            defaultValue: [],
+            admin: {
+                position: 'sidebar',
+                description: 'Array of user IDs who voted',
+                condition: (data) => data?.type === 'product_request',
+            },
+        },
+
         // === GAMIFICATION ===
         {
             name: 'pointsAwarded',

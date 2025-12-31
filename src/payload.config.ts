@@ -58,7 +58,9 @@ import { crowdsourceSubmitHandler, crowdsourceLeaderboardHandler } from './endpo
 import { contentAmplifyHandler } from './endpoints/content-amplify'
 import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
 import { populateBrandsHandler } from './endpoints/populate-brands'
+import { productRequestsListHandler, productRequestsCreateHandler, productRequestVoteHandler } from './endpoints/product-requests'
 import { YouTubeSettings } from './globals/YouTubeSettings'
+import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -142,7 +144,7 @@ export default buildConfig({
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '',
     process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
   ].filter(Boolean) as string[],
-  globals: [Header, Footer, YouTubeSettings],
+  globals: [Header, Footer, YouTubeSettings, SiteSettings],
   endpoints: [
     ...oauthEndpoints,
     {
@@ -199,6 +201,22 @@ export default buildConfig({
       path: '/admin/populate-brands',
       method: 'post',
       handler: populateBrandsHandler,
+    },
+    // Product Request Queue
+    {
+      path: '/product-requests',
+      method: 'get',
+      handler: productRequestsListHandler,
+    },
+    {
+      path: '/product-requests',
+      method: 'post',
+      handler: productRequestsCreateHandler,
+    },
+    {
+      path: '/product-requests/vote',
+      method: 'post',
+      handler: productRequestVoteHandler,
     },
     {
       path: '/cron/jobs',
