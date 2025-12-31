@@ -1,5 +1,6 @@
 import type { PayloadHandler, PayloadRequest, Payload, Where } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface GoogleSearchResponse {
     items?: Array<{
@@ -131,6 +132,13 @@ async function downloadAndUploadImage(
 export const batchEnrichHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BATCH_OPERATIONS)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
     }
 
     try {

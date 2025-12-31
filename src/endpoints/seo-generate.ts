@@ -1,4 +1,5 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface SEOOutput {
     metaTitle: string
@@ -67,6 +68,13 @@ export const seoGenerateHandler: PayloadHandler = async (req: PayloadRequest) =>
     // Check if user is authenticated
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
     }
 
     if (!process.env.GEMINI_API_KEY) {

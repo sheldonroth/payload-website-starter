@@ -2,6 +2,12 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 
+interface SourceVideo {
+    id: number
+    title: string
+    youtubeVideoId: string
+}
+
 interface AIProduct {
     id: number
     name: string
@@ -11,6 +17,11 @@ interface AIProduct {
     imageUrl?: string
     status: string
     createdAt: string
+    sourceVideo?: SourceVideo | number
+    sourceUrl?: string
+    aiConfidence?: 'high' | 'medium' | 'low'
+    aiSourceType?: 'transcript' | 'video_watching' | 'profile' | 'manual'
+    aiMentions?: number
 }
 
 const AIProductSuggestions: React.FC = () => {
@@ -96,6 +107,12 @@ const AIProductSuggestions: React.FC = () => {
         if (!cat) return 'Uncategorized'
         if (typeof cat === 'string') return cat
         return cat.name || 'Unknown'
+    }
+
+    const getSourceVideo = (video: AIProduct['sourceVideo']): SourceVideo | null => {
+        if (!video) return null
+        if (typeof video === 'number') return null
+        return video
     }
 
     const formatDate = (dateString: string) => {
@@ -251,9 +268,48 @@ const AIProductSuggestions: React.FC = () => {
                                     >
                                         {getCategoryName(product.category)}
                                     </span>
+                                    {/* Confidence Badge */}
+                                    {product.aiConfidence && (
+                                        <span
+                                            style={{
+                                                padding: '2px 8px',
+                                                background: product.aiConfidence === 'high' ? '#dcfce7' :
+                                                           product.aiConfidence === 'medium' ? '#fef3c7' : '#fee2e2',
+                                                color: product.aiConfidence === 'high' ? '#166534' :
+                                                       product.aiConfidence === 'medium' ? '#92400e' : '#dc2626',
+                                                fontSize: '10px',
+                                                fontWeight: 600,
+                                                borderRadius: '4px',
+                                            }}
+                                        >
+                                            {product.aiConfidence === 'high' ? 'High' :
+                                             product.aiConfidence === 'medium' ? 'Medium' : 'Low'} confidence
+                                        </span>
+                                    )}
+                                    {/* Source Type Badge */}
+                                    {product.aiSourceType && (
+                                        <span
+                                            style={{
+                                                padding: '2px 8px',
+                                                background: '#f3f4f6',
+                                                color: '#6b7280',
+                                                fontSize: '10px',
+                                                borderRadius: '4px',
+                                            }}
+                                        >
+                                            {product.aiSourceType === 'transcript' ? 'Transcript' :
+                                             product.aiSourceType === 'video_watching' ? 'Video' :
+                                             product.aiSourceType === 'profile' ? 'Profile' : 'Manual'}
+                                        </span>
+                                    )}
                                 </div>
                                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>
                                     {product.brand}
+                                    {product.aiMentions && product.aiMentions > 1 && (
+                                        <span style={{ marginLeft: '8px', color: '#9ca3af', fontSize: '11px' }}>
+                                            ({product.aiMentions}x mentioned)
+                                        </span>
+                                    )}
                                 </p>
                                 <p
                                     style={{
@@ -267,6 +323,67 @@ const AIProductSuggestions: React.FC = () => {
                                 >
                                     {product.summary || 'No summary'}
                                 </p>
+                                {/* Source Video/URL Link */}
+                                {(() => {
+                                    const video = getSourceVideo(product.sourceVideo)
+                                    if (video) {
+                                        return (
+                                            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                <a
+                                                    href={`https://www.youtube.com/watch?v=${video.youtubeVideoId}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: '#dc2626',
+                                                        textDecoration: 'none',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                    }}
+                                                >
+                                                    ▶ Watch on YouTube
+                                                </a>
+                                                <a
+                                                    href={`/admin/collections/videos/${video.id}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: '#6b7280',
+                                                        textDecoration: 'none',
+                                                    }}
+                                                >
+                                                    (View in CMS)
+                                                </a>
+                                            </div>
+                                        )
+                                    }
+                                    if (product.sourceUrl) {
+                                        const isTikTok = product.sourceUrl.includes('tiktok.com')
+                                        return (
+                                            <div style={{ marginTop: '6px' }}>
+                                                <a
+                                                    href={product.sourceUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: isTikTok ? '#000' : '#3b82f6',
+                                                        textDecoration: 'none',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                    }}
+                                                >
+                                                    {isTikTok ? '🎵 Watch on TikTok' : '🔗 View Source'}
+                                                </a>
+                                            </div>
+                                        )
+                                    }
+                                    return null
+                                })()}
                             </div>
 
                             {/* Date */}

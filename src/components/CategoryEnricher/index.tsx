@@ -109,7 +109,8 @@ const CategoryEnricher: React.FC = () => {
                         borderRadius: '6px',
                         border: '1px solid #d1d5db',
                         fontSize: '14px',
-                        background: '#fff',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 >
                     <option value="">Select a category...</option>

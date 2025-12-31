@@ -39,7 +39,8 @@ const SEOGenerator: React.FC = () => {
         const fetchProducts = async () => {
             setStep('loading')
             try {
-                const response = await fetch('/api/products?limit=50&sort=-createdAt')
+                // Exclude ai_draft products - only show manually created or approved products
+                const response = await fetch('/api/products?limit=50&sort=-createdAt&where[status][not_equals]=ai_draft')
                 const data = await response.json()
                 setProducts(data.docs || [])
                 setStep('idle')

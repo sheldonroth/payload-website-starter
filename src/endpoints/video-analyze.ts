@@ -2,6 +2,8 @@ import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
 import { hydrateCategory } from '../utilities/smart-automation'
+import { findPotentialDuplicates, calculateDuplicateScore } from '../utilities/fuzzy-match'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 // Extract YouTube video ID from various URL formats
 function extractYouTubeVideoId(url: string): string | null {
@@ -92,6 +94,8 @@ interface ExtractedProduct {
     pros: string[]
     cons: string[]
     summary: string
+    confidence: 'high' | 'medium' | 'low'
+    mentionCount: number
 }
 
 // Generate system prompt with existing categories
@@ -129,13 +133,15 @@ Output ONLY a valid JSON object with this exact schema:
   "products": [
     {
       "productName": "string",
-      "brandName": "string", 
+      "brandName": "string",
       "suggestedCategory": "string (use 'Parent > Child' format, e.g., 'Food & Beverage > Sports Drinks')",
       "isNewCategory": boolean (true if this is a NEW category not in the existing list),
       "sentimentScore": number,
       "pros": ["string"],
       "cons": ["string"],
-      "summary": "string (2 sentences max)"
+      "summary": "string (2 sentences max)",
+      "confidence": "high" | "medium" | "low" (how confident are you in this extraction? high=clearly reviewed, medium=mentioned but brief, low=unclear/inferred),
+      "mentionCount": number (how many times was this product mentioned or discussed?)
     }
   ]
 }`
@@ -181,6 +187,13 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
+    }
+
     // Check for API key
     if (!process.env.GEMINI_API_KEY) {
         return Response.json({ error: 'Gemini API key not configured' }, { status: 500 })
@@ -218,7 +231,7 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             // Check if video already exists
             const existingVideos = await req.payload.find({
                 collection: 'videos',
-                where: { youtubeId: { equals: videoId } },
+                where: { youtubeVideoId: { equals: videoId } },
                 limit: 1,
             })
 
@@ -235,6 +248,27 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                             analyzedAt: new Date().toISOString(),
                         },
                     })
+                }
+            } else {
+                // Create a new video record if one doesn't exist
+                try {
+                    const newVideo = await req.payload.create({
+                        collection: 'videos',
+                        data: {
+                            title: `Video ${videoId}`, // Will be updated with actual title if available
+                            youtubeVideoId: videoId,
+                            status: 'draft',
+                            transcript: transcript || undefined,
+                            transcriptUpdatedAt: transcript ? new Date().toISOString() : undefined,
+                            analyzedAt: new Date().toISOString(),
+                            isAutoImported: true,
+                        },
+                    })
+                    videoRecord = { id: newVideo.id as number }
+                    console.log(`Created video record ${newVideo.id} for ${videoId}`)
+                } catch (videoErr) {
+                    console.error('Failed to create video record:', videoErr)
+                    // Continue without video record - products will still be created
                 }
             }
         }
@@ -279,35 +313,30 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
         for (const product of products) {
             try {
                 // ============================================
-                // CROSS-PLATFORM DEDUPLICATION
-                // Check ALL statuses, not just ai_draft
+                // CROSS-PLATFORM DEDUPLICATION with FUZZY MATCHING
+                // Check ALL statuses using smart duplicate detection
                 // ============================================
-                const existingProduct = await req.payload.find({
-                    collection: 'products',
-                    where: {
-                        and: [
-                            { name: { equals: product.productName } },
-                            ...(product.brandName ? [{ brand: { equals: product.brandName } }] : []),
-                        ],
-                    },
-                    limit: 1,
-                })
+                const duplicates = await findPotentialDuplicates(
+                    { name: product.productName, brand: product.brandName },
+                    req.payload,
+                    { threshold: 0.75, limit: 1 }
+                )
 
-                if (existingProduct.docs.length > 0) {
-                    const existing = existingProduct.docs[0] as { id: number; name: string; status: string; sourceCount?: number }
+                if (duplicates.length > 0) {
+                    const existing = duplicates[0]
 
                     // If product exists in any status, update sourceCount and link to video
                     await req.payload.update({
                         collection: 'products',
                         id: existing.id,
                         data: {
-                            sourceCount: (existing.sourceCount || 1) + 1,
+                            sourceCount: ((await req.payload.findByID({ collection: 'products', id: existing.id }) as any).sourceCount || 1) + 1,
                             ...(videoRecord ? { sourceVideo: videoRecord.id } : {}),
                         } as Record<string, unknown>,
                     })
 
                     if (existing.status === 'ai_draft') {
-                        skippedDuplicates.push(`${product.brandName || ''} ${product.productName}`.trim())
+                        skippedDuplicates.push(`${product.brandName || ''} ${product.productName}`.trim() + ` (${Math.round(existing.score * 100)}% match)`)
                     } else {
                         mergedProducts.push({ id: existing.id, name: existing.name, status: existing.status })
                     }
@@ -357,6 +386,10 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     verdictReason: `AI-extracted from video. Sentiment: ${product.sentimentScore}/10.`,
                     sourceUrl: videoUrl,
                     sourceCount: 1,
+                    // AI extraction metadata
+                    aiConfidence: product.confidence || 'medium',
+                    aiSourceType: analysisMethod === 'transcript' ? 'transcript' : 'video_watching',
+                    aiMentions: product.mentionCount || 1,
                 }
 
                 // Add category (now hydrated immediately)

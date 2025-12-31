@@ -20,7 +20,8 @@ const ImageReview: React.FC = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch('/api/products?limit=50&sort=-updatedAt&depth=0')
+                // Exclude ai_draft products - only show manually created or approved products
+                const res = await fetch('/api/products?limit=50&sort=-updatedAt&depth=0&where[status][not_equals]=ai_draft')
                 const data = await res.json()
 
                 // Filter to only products without images

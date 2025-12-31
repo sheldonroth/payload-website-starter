@@ -29,8 +29,7 @@ const AdminNavLinks: React.FC = () => {
                             marginBottom: '4px',
                         }}
                     >
-                        <span>🤖</span>
-                        <span>AI Suggestions</span>
+                        AI Suggestions
                     </Link>
                     <Link
                         href="/admin/suggested-categories"
@@ -43,10 +42,25 @@ const AdminNavLinks: React.FC = () => {
                             textDecoration: 'none',
                             color: '#d4d4d8',
                             fontSize: '14px',
+                            marginBottom: '4px',
                         }}
                     >
-                        <span>📂</span>
-                        <span>Suggested Categories</span>
+                        Suggested Categories
+                    </Link>
+                    <Link
+                        href="/admin/analytics"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                        }}
+                    >
+                        Analytics
                     </Link>
                 </div>
             </div>

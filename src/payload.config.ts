@@ -42,6 +42,10 @@ import { categoryEnrichHandler } from './endpoints/category-enrich'
 import { emailSend } from './endpoints/email-send'
 import { batchEnrichHandler } from './endpoints/batch-enrich'
 import { unifiedIngestHandler } from './endpoints/unified-ingest'
+import { adminLinkVideosHandler } from './endpoints/admin-link-videos'
+import { adminCategoryCleanupHandler } from './endpoints/admin-category-cleanup'
+import { cronJobsHandler } from './endpoints/cron-jobs'
+import { bulkOperationsHandler } from './endpoints/bulk-operations'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -69,6 +73,10 @@ export default buildConfig({
         'suggested-categories': {
           Component: '@/components/SuggestedCategories',
           path: '/suggested-categories',
+        },
+        'analytics': {
+          Component: '@/components/AnalyticsDashboard',
+          path: '/analytics',
         },
       },
       // Sidebar nav links
@@ -165,6 +173,26 @@ export default buildConfig({
       path: '/admin/purge',
       method: 'post',
       handler: adminPurgeHandler,
+    },
+    {
+      path: '/admin/link-videos',
+      method: 'post',
+      handler: adminLinkVideosHandler,
+    },
+    {
+      path: '/admin/category-cleanup',
+      method: 'post',
+      handler: adminCategoryCleanupHandler,
+    },
+    {
+      path: '/cron/jobs',
+      method: 'post',
+      handler: cronJobsHandler,
+    },
+    {
+      path: '/bulk/operations',
+      method: 'post',
+      handler: bulkOperationsHandler,
     },
     {
       path: '/tiktok/analyze',

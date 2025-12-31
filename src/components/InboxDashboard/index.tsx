@@ -38,8 +38,8 @@ const InboxDashboard: React.FC = () => {
                 const videoRes = await fetch('/api/videos?where[status][equals]=pending&limit=0')
                 const videoData = await videoRes.json()
 
-                // Fetch recent products
-                const recentRes = await fetch('/api/products?limit=6&sort=-updatedAt&depth=0')
+                // Fetch recent products (exclude ai_draft)
+                const recentRes = await fetch('/api/products?limit=6&sort=-updatedAt&depth=0&where[status][not_equals]=ai_draft')
                 const recentData = await recentRes.json()
 
                 setCounts({

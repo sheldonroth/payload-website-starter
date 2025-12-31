@@ -104,7 +104,8 @@ const EmailTester: React.FC = () => {
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '13px',
-                        background: '#fff',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 >
                     {templates.map(t => (
@@ -133,6 +134,8 @@ const EmailTester: React.FC = () => {
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '13px',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 />
                 <datalist id="user-emails">
@@ -158,6 +161,8 @@ const EmailTester: React.FC = () => {
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '13px',
+                        color: '#1f2937',
+                        backgroundColor: '#fff',
                     }}
                 />
             </div>

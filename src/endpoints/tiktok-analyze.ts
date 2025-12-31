@@ -1,4 +1,5 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /* ============================================================================
  * TikTok Video Analyzer
@@ -25,6 +26,8 @@ interface ExtractedProduct {
     pros: string[]
     cons: string[]
     summary: string
+    confidence: 'high' | 'medium' | 'low'
+    mentionCount: number
 }
 
 // Generate system prompt with existing categories (same as video-analyze)
@@ -56,13 +59,15 @@ Output ONLY a valid JSON object:
   "products": [
     {
       "productName": "string",
-      "brandName": "string", 
+      "brandName": "string",
       "suggestedCategory": "string (use 'Parent > Child' format)",
       "isNewCategory": boolean,
       "sentimentScore": number,
       "pros": ["string"],
       "cons": ["string"],
-      "summary": "string (2 sentences max)"
+      "summary": "string (2 sentences max)",
+      "confidence": "high" | "medium" | "low" (how confident are you in this extraction?),
+      "mentionCount": number (how many times was this product mentioned?)
     }
   ]
 }`
@@ -161,6 +166,13 @@ async function scrapeTikTokProfile(username: string, maxVideos: number = 10): Pr
 export const tiktokAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
     }
 
     if (!process.env.GEMINI_API_KEY) {
@@ -280,6 +292,11 @@ export const tiktokAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) 
                         verdict: product.sentimentScore >= 7 ? 'recommend' :
                             product.sentimentScore >= 4 ? 'caution' : 'avoid',
                         verdictReason: `AI-extracted from TikTok. Sentiment: ${product.sentimentScore}/10.`,
+                        sourceUrl: url, // Link to source TikTok video
+                        // AI extraction metadata
+                        aiConfidence: product.confidence || 'medium',
+                        aiSourceType: 'profile',
+                        aiMentions: product.mentionCount || 1,
                     }
                     if (categoryId) productData.category = categoryId
                     if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
