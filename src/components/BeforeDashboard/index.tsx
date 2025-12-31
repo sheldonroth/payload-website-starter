@@ -11,6 +11,7 @@ import CategoryPollGenerator from '../CategoryPollGenerator'
 import SEOGenerator from '../SEOGenerator'
 import ProductEnricher from '../ProductEnricher'
 import TikTokSync from '../TikTokSync'
+import YouTubeSync from '../YouTubeSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import ImageReview from '../ImageReview'
@@ -124,6 +125,7 @@ const BeforeDashboard: React.FC = () => {
       {/* Legacy Content Ingestion Tools (collapsed by default) */}
       <CollapsibleSection title="Advanced Ingestion" icon="&#x1F4E5;" defaultOpen={false}>
         <div className={`${baseClass}__grid`}>
+          <YouTubeSync />
           <VideoToDraft />
           <ChannelSync />
           <TikTokSync />

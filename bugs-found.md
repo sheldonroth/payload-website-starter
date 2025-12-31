@@ -11,7 +11,7 @@
 |----------|-------|
 | 🔴 Critical | 1 (FIXED) |
 | 🟠 High | 0 |
-| 🟡 Medium | 1 |
+| 🟡 Medium | 2 |
 | 🔵 Low | 1 |
 
 ---
@@ -66,6 +66,34 @@ Returns `{"errors":[{"message":"Something went wrong."}]}`
 **Notes:**
 - Other collections (products, categories, videos) work fine
 - Brands collection config looks correct in code
+- Admin UI also shows blank page for this collection
+
+---
+
+### BUG-004: User Submissions Admin Page Blank
+
+**Severity:** 🟡 Medium
+**Section:** Admin UI / Collections
+**URL:** `/admin/collections/user-submissions`
+
+**Steps to Reproduce:**
+1. Navigate to Admin → Community → User Submissions
+2. Observe blank page (only header visible)
+
+**Expected Behavior:**
+Should show list view with search, columns, filters, and create button
+
+**Actual Behavior:**
+Page renders with only header - no content area loads
+
+**Possible Cause:**
+- Similar to Brands issue - likely database schema mismatch
+- Missing columns in user_submissions table
+- This explains why BUG-003 (Leaderboard API) fails
+
+**Notes:**
+- Related to BUG-003 - both involve user-submissions collection
+- Collection is part of "Community" nav group
 
 ---
 

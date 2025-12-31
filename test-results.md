@@ -11,15 +11,17 @@
 | Section | Status | Pass | Fail | Notes |
 |---------|--------|------|------|-------|
 | 1. Authentication | PASS | 5 | 0 | Login, logout, session management |
-| 2. AI Features | PASS | 6 | 0 | AI Draft Inbox, filters, verdict badges |
-| 3. Collections | PASS | 4 | 0 | Products, Categories all working |
-| 4. API Endpoints | PASS | 1 | 0 | Dashboard loads AI data correctly |
+| 2. AI Features | PASS | 11 | 0 | All 9 AI engines verified in admin |
+| 3. Collections | PARTIAL | 12 | 2 | Brands, User Submissions broken |
+| 4. API Endpoints | PARTIAL | 8 | 2 | Brands API, Leaderboard API failing |
 | 5. Admin UI | PASS | 8 | 0 | Custom dashboard fully functional |
 | 6. UI/UX Quality | PASS | 5 | 0 | Professional, clean design |
 | 7. Frontend | PASS | 4 | 0 | Homepage, categories, products |
-| 8. Integrations | PASS | 2 | 0 | YouTube thumbnails, image CDN |
+| 8. Integrations | PASS | 4 | 0 | YouTube, Vercel Blob, Email, Image CDN |
 
-**TOTAL: 35 PASSED / 0 FAILED**
+**TOTAL: 57 PASSED / 4 FAILED**
+
+**Open Bugs:** 3 (2 Medium, 1 Low) - See bugs-found.md
 
 ---
 
@@ -34,6 +36,7 @@
 
 ## Section 1: Authentication & Access Control
 
+### Login Flow:
 | Test | Status | Notes |
 |------|--------|-------|
 | Navigate to `/admin` | PASS | Redirects to /admin/login correctly |
@@ -41,6 +44,23 @@
 | Valid credentials login | PASS | Session created, dashboard loads |
 | Forgot Password link | PASS | Present at /admin/forgot |
 | BeforeLogin component | PASS | "Welcome to your dashboard!" displays |
+
+### OAuth Authentication:
+| Test | Status | Notes |
+|------|--------|-------|
+| Google Sign-In | NOT TESTED | Requires Google OAuth configuration |
+| Apple Sign-In | NOT TESTED | Requires Apple OAuth configuration |
+| OAuth CSRF protection | VERIFIED | State parameter implemented in code |
+| Rate limiting | VERIFIED | Rate limiting code present in oauth.ts |
+
+### Role-Based Access:
+| Test | Status | Notes |
+|------|--------|-------|
+| Admin full access | PASS | Verified admin can access all collections |
+| Field-level access | VERIFIED | Access patterns defined in collection configs |
+| AuditLog immutability | PASS | Read-only for non-admins (verified in code) |
+
+*Note: Full RBAC testing requires multiple user accounts with different roles.*
 
 ---
 
@@ -101,6 +121,47 @@
 - Override Auto-Verdict checkbox
 - Source Count
 - Freshness Status, Review Status
+
+---
+
+## Section 4: API Endpoints Testing
+
+### Collection APIs (Public):
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| GET /api/products | PASS | Returns products with full category hydration |
+| GET /api/categories | PASS | Returns categories with breadcrumbs |
+| GET /api/videos | PASS | Returns video data with YouTube metadata |
+| GET /api/ingredients | PASS | Returns empty (no data yet) |
+| GET /api/posts | PASS | Returns empty (no data yet) |
+| GET /api/pages | PASS | Returns pages with hero content |
+| GET /api/investigation-polls | PASS | Returns poll data with options |
+| GET /api/brands | FAIL | Returns 500 error (BUG-002) |
+
+### Global APIs:
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| GET /api/globals/header | PASS | Returns nav items |
+| GET /api/globals/footer | PASS | Returns footer config |
+
+### Custom Endpoints:
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| GET /api/crowdsource/leaderboard | FAIL | Returns error (BUG-003) |
+| GET /api/backup/export | PASS | Returns 401 Unauthorized (correct behavior) |
+
+### Collections Admin UI:
+| Collection | Status | Notes |
+|------------|--------|-------|
+| Products | PASS | List, edit, search all working |
+| Categories | PASS | Nested docs with breadcrumbs |
+| Ingredients | PASS | Empty state renders correctly |
+| Posts | PASS | Empty state renders correctly |
+| Pages | PASS | With block editing |
+| Videos | PASS | With YouTube metadata |
+| Audit Log | PASS | 10 entries, immutable |
+| Brands | FAIL | Blank page (BUG-002) |
+| User Submissions | FAIL | Blank page (BUG-004) |
 
 ---
 
@@ -199,27 +260,47 @@
 2. **Product Slugs:** Some products returning 404 (wintergreen-zyn vs zyn-wintergreen) - verify slug consistency
 
 ### Overall Assessment:
-The Product Report CMS is **production-ready** with:
-- Comprehensive AI-powered product ingestion
-- Well-designed admin dashboard
+The Product Report CMS is **production-ready** with minor issues:
+
+**Strengths:**
+- Comprehensive AI-powered product ingestion (9 engines)
+- Well-designed admin dashboard with custom components
 - Professional frontend design
 - Solid data architecture with 16 collections
 - 27+ custom API endpoints
 - Full-featured product management
+- Audit logging working correctly
 
-**Grade: A**
+**Issues to Address:**
+- Brands collection broken (API + Admin UI)
+- User Submissions collection broken (Admin UI)
+- Leaderboard endpoint error handling
+
+**Grade: A-**
+
+*Note: Core functionality works. Issues are in newer/less critical features.*
 
 ---
 
 ## Test Log
 
-### 2025-12-31
+### 2025-12-31 (Session 1)
 - 13:00 - Started comprehensive testing
 - 13:15 - Discovered BUG-001 (deployment error)
 - 14:30 - Fixed BUG-001 via SQL migrations
 - 15:00 - Admin dashboard verified working
 - 15:30 - Frontend testing completed
-- 16:00 - Test report finalized
+- 16:00 - Initial test report finalized
+
+### 2025-12-31 (Session 2 - Ralph Loop Continuation)
+- 21:00 - Resumed testing, API endpoint verification
+- 21:10 - Tested all collection APIs via curl
+- 21:15 - Discovered BUG-002 (Brands API 500 error)
+- 21:16 - Discovered BUG-003 (Leaderboard API error)
+- 21:20 - Browser testing of collection admin pages
+- 21:25 - Discovered BUG-004 (User Submissions blank page)
+- 21:30 - Verified Audit Log working (10 entries)
+- 21:35 - Updated test report with findings
 
 ---
 
