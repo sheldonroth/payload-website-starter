@@ -20,6 +20,7 @@ import * as migration_20251231_010000_fix_locked_documents_global_slug from './2
 import * as migration_20251231_203700_add_price_history_id from './20251231_203700_add_price_history_id';
 import * as migration_20251231_204500_add_video_type from './20251231_204500_add_video_type';
 import * as migration_20251231_205500_emergency_column_fix from './20251231_205500_emergency_column_fix';
+import * as migration_20251231_210000_create_brands_user_submissions from './20251231_210000_create_brands_user_submissions';
 
 export const migrations = [
   {
@@ -131,5 +132,10 @@ export const migrations = [
     up: migration_20251231_205500_emergency_column_fix.up,
     down: migration_20251231_205500_emergency_column_fix.down,
     name: '20251231_205500_emergency_column_fix'
+  },
+  {
+    up: migration_20251231_210000_create_brands_user_submissions.up,
+    down: migration_20251231_210000_create_brands_user_submissions.down,
+    name: '20251231_210000_create_brands_user_submissions'
   },
 ];

@@ -11,8 +11,10 @@
 |----------|-------|
 | 🔴 Critical | 1 (FIXED) |
 | 🟠 High | 0 |
-| 🟡 Medium | 3 (1 FIXED) |
-| 🔵 Low | 1 |
+| 🟡 Medium | 3 (ALL FIXED) |
+| 🔵 Low | 1 (FIXED) |
+
+**ALL BUGS FIXED** - Migration `20251231_210000_create_brands_user_submissions` creates the missing tables.
 
 ---
 
@@ -42,58 +44,45 @@
 
 ## Medium Priority Bugs
 
-### BUG-002: Brands API Returns 500 Error
+### BUG-002: Brands API Returns 500 Error ✅ FIXED
 
 **Severity:** 🟡 Medium
 **Section:** API Endpoints
 **Endpoint:** `GET /api/brands`
+**Status:** ✅ RESOLVED
 
-**Steps to Reproduce:**
-1. Call `curl https://payload-website-starter-smoky-sigma.vercel.app/api/brands`
-2. Observe 500 error response
+**Root Cause:** Missing `brands` database table - collection was defined but never had a migration created.
 
-**Expected Behavior:**
-Should return brands list or empty array with standard pagination
+**Solution:** Created migration `20251231_210000_create_brands_user_submissions` that creates:
+- `brands` table with all fields
+- `brands_aliases` array table
+- `brands_recalls` array table
+- `brands_rels` relationship table
+- Required enum types and foreign key constraints
 
-**Actual Behavior:**
-Returns `{"errors":[{"message":"Something went wrong."}]}`
-
-**Possible Cause:**
-- Database schema mismatch for brands table
-- Missing migration for brands collection
-- Column type mismatch
-
-**Notes:**
-- Other collections (products, categories, videos) work fine
-- Brands collection config looks correct in code
-- Admin UI also shows blank page for this collection
+**Resolution Date:** 2025-12-31
 
 ---
 
-### BUG-004: User Submissions Admin Page Blank
+### BUG-004: User Submissions Admin Page Blank ✅ FIXED
 
 **Severity:** 🟡 Medium
 **Section:** Admin UI / Collections
 **URL:** `/admin/collections/user-submissions`
+**Status:** ✅ RESOLVED
 
-**Steps to Reproduce:**
-1. Navigate to Admin → Community → User Submissions
-2. Observe blank page (only header visible)
+**Root Cause:** Missing `user_submissions` database table - collection was defined but never had a migration created.
 
-**Expected Behavior:**
-Should show list view with search, columns, filters, and create button
+**Solution:** Created migration `20251231_210000_create_brands_user_submissions` that creates:
+- `user_submissions` table with all fields
+- `user_submissions_images` array table
+- `user_submissions_reaction_details_symptoms` array table
+- Required enum types and foreign key constraints
 
-**Actual Behavior:**
-Page renders with only header - no content area loads
-
-**Possible Cause:**
-- Similar to Brands issue - likely database schema mismatch
-- Missing columns in user_submissions table
-- This explains why BUG-003 (Leaderboard API) fails
+**Resolution Date:** 2025-12-31
 
 **Notes:**
-- Related to BUG-003 - both involve user-submissions collection
-- Collection is part of "Community" nav group
+- This also fixes BUG-003 (Leaderboard API) which queries the user-submissions collection
 
 ---
 
@@ -152,30 +141,21 @@ Missing patterns for channel URLs:
 
 ## Low Priority Bugs
 
-### BUG-003: Leaderboard API Returns Error
+### BUG-003: Leaderboard API Returns Error ✅ FIXED
 
 **Severity:** 🔵 Low
 **Section:** API Endpoints / Crowdsource
 **Endpoint:** `GET /api/crowdsource/leaderboard`
+**Status:** ✅ RESOLVED
 
-**Steps to Reproduce:**
-1. Call `curl https://payload-website-starter-smoky-sigma.vercel.app/api/crowdsource/leaderboard`
-2. Observe error response
+**Root Cause:** Missing `user_submissions` database table - the leaderboard API queries this collection.
 
-**Expected Behavior:**
-Should return leaderboard data or empty array
+**Solution:** Fixed by migration `20251231_210000_create_brands_user_submissions` which creates the user_submissions table.
 
-**Actual Behavior:**
-Returns `{"success":false,"error":"Failed to load leaderboard"}`
-
-**Possible Cause:**
-- Query on user-submissions collection failing
-- Missing `status` field in user-submissions
-- No verified submissions exist yet (edge case handling needed)
+**Resolution Date:** 2025-12-31
 
 **Notes:**
-- Low priority as feature is not yet in production use
-- Error handling could be improved to return empty array instead of error
+- Fixed as part of BUG-004 fix (both require user_submissions table)
 
 ---
 
