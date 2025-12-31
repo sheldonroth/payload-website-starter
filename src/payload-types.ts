@@ -225,7 +225,7 @@ export interface Page {
       | null;
     media?: (number | null) | Media;
   };
-  layout: (CallToActionBlock | ContentBlock | MediaBlock | ArchiveBlock | FormBlock)[];
+  layout: (CallToActionBlock | ContentBlock | MediaBlock | ArchiveBlock | FormBlock | StatsBlock)[];
   meta?: {
     title?: string | null;
     /**
@@ -964,6 +964,27 @@ export interface Form {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "StatsBlock".
+ */
+export interface StatsBlock {
+  heading?: string | null;
+  stats?:
+    | {
+        label: string;
+        valueType?: ('manual' | 'products' | 'users' | 'categories' | 'videos' | 'brands') | null;
+        manualValue?: string | null;
+        suffix?: string | null;
+        icon?: ('flask' | 'users' | 'shield' | 'check' | 'star' | 'chart') | null;
+        id?: string | null;
+      }[]
+    | null;
+  backgroundColor?: ('default' | 'dark' | 'primary') | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'stats';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2252,6 +2273,7 @@ export interface PagesSelect<T extends boolean = true> {
         mediaBlock?: T | MediaBlockSelect<T>;
         archive?: T | ArchiveBlockSelect<T>;
         formBlock?: T | FormBlockSelect<T>;
+        stats?: T | StatsBlockSelect<T>;
       };
   meta?:
     | T
@@ -2348,6 +2370,26 @@ export interface FormBlockSelect<T extends boolean = true> {
   form?: T;
   enableIntro?: T;
   introContent?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "StatsBlock_select".
+ */
+export interface StatsBlockSelect<T extends boolean = true> {
+  heading?: T;
+  stats?:
+    | T
+    | {
+        label?: T;
+        valueType?: T;
+        manualValue?: T;
+        suffix?: T;
+        icon?: T;
+        id?: T;
+      };
+  backgroundColor?: T;
   id?: T;
   blockName?: T;
 }
