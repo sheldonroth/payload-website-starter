@@ -117,6 +117,20 @@ export const Videos: CollectionConfig = {
             },
         },
         {
+            name: 'videoType',
+            type: 'select',
+            label: 'Video Type',
+            options: [
+                { label: 'Short (Vertical, <60s)', value: 'short' },
+                { label: 'Longform (Horizontal)', value: 'longform' },
+            ],
+            defaultValue: 'longform',
+            admin: {
+                position: 'sidebar',
+                description: 'Shorts will appear in the mobile Browse tab',
+            },
+        },
+        {
             name: 'isAutoImported',
             type: 'checkbox',
             label: 'Auto-Imported',
