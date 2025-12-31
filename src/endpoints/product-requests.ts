@@ -137,7 +137,7 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
                 voteCount: 1, // Creator's vote counts
                 voters: [String(req.user.id)],
                 status: 'pending',
-            },
+            } as any,
         })
 
         return Response.json({
@@ -242,7 +242,7 @@ export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequ
             data: {
                 voters: newVoters,
                 voteCount: newVoteCount,
-            },
+            } as any,
         })
 
         return Response.json({
