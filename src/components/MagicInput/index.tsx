@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 
 interface IngestResult {
-    inputType: 'youtube' | 'tiktok' | 'amazon' | 'product_page' | 'barcode' | 'unknown'
+    inputType: 'youtube' | 'youtube_channel' | 'tiktok' | 'amazon' | 'product_page' | 'barcode' | 'unknown'
     success: boolean
     productsFound?: number
     draftsCreated?: number
@@ -15,6 +15,9 @@ interface IngestResult {
         existingProductId?: number
         skippedDuplicates?: string[]
         mergedProducts?: Array<{ id: number; name: string; status: string }>
+        detectedType?: string
+        detectedValue?: string
+        hint?: string
     }
 }
 
@@ -22,6 +25,7 @@ type IngestStep = 'idle' | 'detecting' | 'ingesting' | 'done' | 'error'
 
 const INPUT_TYPE_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
     youtube: { icon: '📺', label: 'YouTube Video', color: '#ff0000' },
+    youtube_channel: { icon: '📺', label: 'YouTube Channel', color: '#cc0000' },
     tiktok: { icon: '🎵', label: 'TikTok Video', color: '#000000' },
     amazon: { icon: '📦', label: 'Amazon Product', color: '#ff9900' },
     product_page: { icon: '🛒', label: 'Product Page', color: '#10b981' },
@@ -29,10 +33,25 @@ const INPUT_TYPE_CONFIG: Record<string, { icon: string; label: string; color: st
     unknown: { icon: '❓', label: 'Unknown', color: '#9ca3af' },
 }
 
+// Check if YouTube URL is a channel URL (not a video)
+function isYouTubeChannelUrl(url: string): boolean {
+    const channelPatterns = [
+        /youtube\.com\/@[\w.-]+/i,           // @username format
+        /youtube\.com\/channel\/UC[\w-]+/i,  // /channel/UCxxxx format
+        /youtube\.com\/c\/[\w.-]+/i,         // /c/channelname format
+        /youtube\.com\/user\/[\w.-]+/i,      // /user/username format (legacy)
+    ]
+    return channelPatterns.some(pattern => pattern.test(url))
+}
+
 function detectInputType(input: string): string {
     const trimmed = input.trim().toLowerCase()
 
-    if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) return 'youtube'
+    // YouTube - check for channel URLs first
+    if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
+        if (isYouTubeChannelUrl(input)) return 'youtube_channel'
+        return 'youtube'
+    }
     if (trimmed.includes('tiktok.com') || trimmed.includes('vm.tiktok.com')) return 'tiktok'
     if (trimmed.includes('amazon.com') || trimmed.includes('amzn.to') || trimmed.includes('amzn.com')) return 'amazon'
     if (trimmed.includes('walmart.com') || trimmed.includes('target.com') || trimmed.includes('iherb.com')) return 'product_page'
