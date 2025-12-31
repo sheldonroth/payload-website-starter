@@ -25,6 +25,7 @@ import * as migration_20251231_220000_product_slug_unique from './20251231_22000
 import * as migration_20251231_230000_add_pages_blocks_stats from './20251231_230000_add_pages_blocks_stats';
 import * as migration_20250101_000000_add_amazon_asin from './20250101_000000_add_amazon_asin';
 import * as migration_20250101_000100_add_voting_to_user_submissions from './20250101_000100_add_voting_to_user_submissions';
+import * as migration_20250101_000200_add_ingredient_watchlist from './20250101_000200_add_ingredient_watchlist';
 
 export const migrations = [
   {
@@ -161,5 +162,10 @@ export const migrations = [
     up: migration_20250101_000100_add_voting_to_user_submissions.up,
     down: migration_20250101_000100_add_voting_to_user_submissions.down,
     name: '20250101_000100_add_voting_to_user_submissions'
+  },
+  {
+    up: migration_20250101_000200_add_ingredient_watchlist.up,
+    down: migration_20250101_000200_add_ingredient_watchlist.down,
+    name: '20250101_000200_add_ingredient_watchlist'
   },
 ];

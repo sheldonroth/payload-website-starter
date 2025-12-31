@@ -59,6 +59,7 @@ import { contentAmplifyHandler } from './endpoints/content-amplify'
 import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
 import { populateBrandsHandler } from './endpoints/populate-brands'
 import { productRequestsListHandler, productRequestsCreateHandler, productRequestVoteHandler } from './endpoints/product-requests'
+import { userWatchlistGetHandler, userWatchlistAddHandler, userWatchlistRemoveHandler, checkWatchlistConflictsHandler } from './endpoints/user-watchlist'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -307,6 +308,27 @@ export default buildConfig({
       path: '/brand/sync',
       method: 'post',
       handler: brandSyncHandler,
+    },
+    // User Watchlist Endpoints
+    {
+      path: '/users/me/watchlist',
+      method: 'get',
+      handler: userWatchlistGetHandler,
+    },
+    {
+      path: '/users/me/watchlist',
+      method: 'post',
+      handler: userWatchlistAddHandler,
+    },
+    {
+      path: '/users/me/watchlist',
+      method: 'delete',
+      handler: userWatchlistRemoveHandler,
+    },
+    {
+      path: '/users/me/watchlist/check',
+      method: 'post',
+      handler: checkWatchlistConflictsHandler,
     },
   ],
   plugins: [

@@ -332,6 +332,28 @@ export const Users: CollectionConfig = {
       },
     },
     // ============================================
+    // Ingredient Watchlist (personal avoid list)
+    // ============================================
+    {
+      name: 'ingredientWatchlist',
+      type: 'json',
+      defaultValue: [],
+      admin: {
+        description: 'Ingredients this user wants to avoid. Structure: [{ ingredientId, ingredientName, reason?, dateAdded }]',
+      },
+    },
+    // ============================================
+    // Email Preferences
+    // ============================================
+    {
+      name: 'weeklyDigestEnabled',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: {
+        description: 'Receive weekly digest emails with new products and community highlights',
+      },
+    },
+    // ============================================
     // Free Unlock System (PLG)
     // ============================================
     {
