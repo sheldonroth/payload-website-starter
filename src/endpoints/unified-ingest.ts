@@ -129,6 +129,13 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // SECURITY: Verify admin or editor role - ingestion creates products
+    const userRole = (req.user as { role?: string }).role
+    const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+    if (userRole !== 'admin' && userRole !== 'product_editor' && !isAdminFlag) {
+        return Response.json({ error: 'Forbidden: Admin or Editor access required' }, { status: 403 })
+    }
+
     try {
         const body = await req.json?.()
         const { input, autoCreate = true } = body || {}

@@ -26,7 +26,13 @@ async function createSessionToken(userId: string, email: string): Promise<string
         collection: 'users',
     }
 
-    return jwt.sign(payload, process.env.PAYLOAD_SECRET || 'your-secret-key', {
+    // SECURITY: Require PAYLOAD_SECRET - never use fallback
+    const secret = process.env.PAYLOAD_SECRET
+    if (!secret) {
+        throw new Error('PAYLOAD_SECRET environment variable is required for JWT signing')
+    }
+
+    return jwt.sign(payload, secret, {
         expiresIn: '7d',
     })
 }
@@ -156,11 +162,27 @@ const googleOAuthCallback: Endpoint = {
             // Create session token
             const token = await createSessionToken(String(user.id), user.email)
 
-            // Redirect to frontend with token
+            // SECURITY: Set token in HttpOnly cookie instead of URL parameter
+            // This prevents token exposure in browser history, server logs, and referer headers
             const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`)
-            redirectUrl.searchParams.set('token', token)
 
-            return Response.redirect(redirectUrl.toString())
+            const isProduction = process.env.NODE_ENV === 'production'
+            const cookieOptions = [
+                `payload-token=${token}`,
+                'HttpOnly',
+                isProduction ? 'Secure' : '',
+                'SameSite=Lax',
+                'Path=/',
+                'Max-Age=604800', // 7 days
+            ].filter(Boolean).join('; ')
+
+            return new Response(null, {
+                status: 302,
+                headers: {
+                    'Location': redirectUrl.toString(),
+                    'Set-Cookie': cookieOptions,
+                },
+            })
         } catch (err) {
             console.error('Google OAuth error:', err)
             return Response.redirect(`${FRONTEND_URL}/login?error=oauth_failed`)
@@ -284,11 +306,26 @@ const appleOAuthCallback: Endpoint = {
             // Create session token
             const token = await createSessionToken(String(user.id), user.email)
 
-            // Redirect to frontend with token
+            // SECURITY: Set token in HttpOnly cookie instead of URL parameter
             const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`)
-            redirectUrl.searchParams.set('token', token)
 
-            return Response.redirect(redirectUrl.toString())
+            const isProduction = process.env.NODE_ENV === 'production'
+            const cookieOptions = [
+                `payload-token=${token}`,
+                'HttpOnly',
+                isProduction ? 'Secure' : '',
+                'SameSite=Lax',
+                'Path=/',
+                'Max-Age=604800', // 7 days
+            ].filter(Boolean).join('; ')
+
+            return new Response(null, {
+                status: 302,
+                headers: {
+                    'Location': redirectUrl.toString(),
+                    'Set-Cookie': cookieOptions,
+                },
+            })
         } catch (err) {
             console.error('Apple OAuth error:', err)
             return Response.redirect(`${FRONTEND_URL}/login?error=oauth_failed`)

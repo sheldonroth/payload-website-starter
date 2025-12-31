@@ -190,6 +190,13 @@ export const emailSend: PayloadHandler = async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // SECURITY: Only admins can send arbitrary emails (prevents phishing/spam)
+        const userRole = (req.user as { role?: string }).role
+        const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+        if (userRole !== 'admin' && !isAdminFlag) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
+        }
+
         const body = await req.json?.()
         const { template, email, name } = body || {}
 

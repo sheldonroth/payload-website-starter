@@ -1,15 +1,18 @@
 import type { CollectionConfig } from 'payload'
 
 import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
+import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 
 export const Articles: CollectionConfig = {
     slug: 'articles',
     access: {
-        create: authenticated,
-        delete: authenticated,
+        // SECURITY: Only admins/editors can create articles
+        create: isEditorOrAdmin,
+        // SECURITY: Only admins can delete articles (prevents unauthorized deletion)
+        delete: isAdmin,
         read: anyone,
-        update: authenticated,
+        // SECURITY: Only admins/editors can update articles
+        update: isEditorOrAdmin,
     },
     admin: {
         useAsTitle: 'title',

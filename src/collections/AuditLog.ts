@@ -9,8 +9,20 @@ import type { CollectionConfig } from 'payload'
 export const AuditLog: CollectionConfig = {
     slug: 'audit-log',
     access: {
-        read: ({ req }) => !!req.user,
-        create: () => true, // System can always create
+        // SECURITY: Only admins can read audit logs (contains sensitive operations)
+        read: ({ req }) => {
+            if (!req.user) return false
+            const role = (req.user as { role?: string }).role
+            const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+            return role === 'admin' || isAdminFlag === true
+        },
+        // SECURITY: Only allow internal system creates (not from API)
+        create: ({ req }) => {
+            // Allow if called internally (no user context or admin user)
+            if (!req.user) return true // System calls
+            const role = (req.user as { role?: string }).role
+            return role === 'admin'
+        },
         update: () => false, // Immutable logs
         delete: ({ req }) => !!(req.user as { isAdmin?: boolean })?.isAdmin,
     },

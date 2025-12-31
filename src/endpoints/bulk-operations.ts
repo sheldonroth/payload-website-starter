@@ -17,6 +17,13 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // SECURITY: Verify admin or editor role - bulk operations require elevated privileges
+    const userRole = (req.user as { role?: string }).role
+    const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+    if (userRole !== 'admin' && userRole !== 'product_editor' && !isAdminFlag) {
+        return Response.json({ error: 'Forbidden: Admin or Editor access required' }, { status: 403 })
+    }
+
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
     const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BATCH_OPERATIONS)

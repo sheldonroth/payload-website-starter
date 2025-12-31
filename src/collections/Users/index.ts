@@ -1,7 +1,58 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldHook } from 'payload'
 
 import { authenticated } from '../../access/authenticated'
 import { isSelfOrAdmin } from '../../access/isSelfOrAdmin'
+
+/**
+ * SECURITY: Enforce default role for new users
+ * Prevents privilege escalation via role injection during signup
+ * CVE-FIX: Shadow Admin Attack Prevention
+ */
+const enforceDefaultRole: FieldHook = ({ data, req, operation }) => {
+  // During create (signup), always enforce 'user' role
+  if (operation === 'create') {
+    // Only admins creating users via admin panel can set roles
+    const requestingUser = req?.user as { role?: string } | undefined
+    if (!requestingUser || requestingUser.role !== 'admin') {
+      return 'user'
+    }
+  }
+
+  // During update, only admins can change roles
+  if (operation === 'update' && data?.role !== undefined) {
+    const requestingUser = req?.user as { role?: string } | undefined
+    if (!requestingUser || requestingUser.role !== 'admin') {
+      // Return undefined to keep existing value
+      return undefined
+    }
+  }
+
+  return data?.role
+}
+
+/**
+ * SECURITY: Enforce isAdmin=false for non-admins
+ * Prevents privilege escalation via isAdmin flag injection
+ */
+const enforceIsAdminFlag: FieldHook = ({ data, req, operation }) => {
+  // During create, only admins can set isAdmin=true
+  if (operation === 'create') {
+    const requestingUser = req?.user as { role?: string } | undefined
+    if (!requestingUser || requestingUser.role !== 'admin') {
+      return false
+    }
+  }
+
+  // During update, only admins can change isAdmin
+  if (operation === 'update' && data?.isAdmin !== undefined) {
+    const requestingUser = req?.user as { role?: string } | undefined
+    if (!requestingUser || requestingUser.role !== 'admin') {
+      return undefined
+    }
+  }
+
+  return data?.isAdmin
+}
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -91,6 +142,9 @@ export const Users: CollectionConfig = {
         { label: 'Product Editor (Add/Edit Only)', value: 'product_editor' },
         { label: 'User (Public)', value: 'user' },
       ],
+      hooks: {
+        beforeChange: [enforceDefaultRole],
+      },
       admin: {
         position: 'sidebar',
         description: 'User role determines CMS permissions. Product Editors can add/edit products and categories but cannot delete.',
@@ -100,6 +154,9 @@ export const Users: CollectionConfig = {
       name: 'isAdmin',
       type: 'checkbox',
       defaultValue: false,
+      hooks: {
+        beforeChange: [enforceIsAdminFlag],
+      },
       admin: {
         position: 'sidebar',
         description: 'Legacy admin flag - use role field instead',
