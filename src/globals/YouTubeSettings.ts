@@ -10,6 +10,15 @@ export const YouTubeSettings: GlobalConfig = {
     },
     fields: [
         {
+            name: 'syncButton',
+            type: 'ui',
+            admin: {
+                components: {
+                    Field: '@/components/YouTubeSync',
+                },
+            },
+        },
+        {
             name: 'channelId',
             type: 'text',
             label: 'YouTube Channel ID',

@@ -9,39 +9,28 @@
 
 | Severity | Count |
 |----------|-------|
-| 🔴 Critical | 1 |
+| 🔴 Critical | 1 (FIXED) |
 | 🟠 High | 0 |
-| 🟡 Medium | 0 |
-| 🔵 Low | 0 |
+| 🟡 Medium | 1 |
+| 🔵 Low | 1 |
 
 ---
 
 ## Critical Bugs (Blocking)
 
-### BUG-001: Vercel Deployment Server Error
+### BUG-001: Vercel Deployment Server Error ✅ FIXED
 
 **Severity:** 🔴 Critical
 **Section:** Deployment / Infrastructure
-**URL:** https://payload-website-starter-smoky-sigma.vercel.app/admin
-**Steps to Reproduce:**
-1. Navigate to https://payload-website-starter-smoky-sigma.vercel.app/admin
-2. Page shows server-side error
+**Status:** ✅ RESOLVED
 
-**Expected Behavior:**
-Admin login page or dashboard should load
-
-**Actual Behavior:**
-"Application error: a server-side exception has occurred while loading payload-website-starter-smoky-sigma.vercel.app (see the server logs for more information)."
-Digest: 3912625169
-
-**Screenshot:** Captured - white page with error message
-
-**Impact:** BLOCKING - Cannot proceed with any admin panel testing until resolved
+**Root Cause:** Missing columns in `payload_locked_documents__rels` table
+**Solution:** Added 20 FK columns via direct SQL in Neon Console
+**Resolution Date:** 2025-12-31
 
 **Notes:**
-- Error appears to be a Next.js server-side rendering error
-- Need to check Vercel function logs for root cause
-- Digest ID: 3912625169 can be used to trace in logs
+- Column `price_history_id` and other FK columns were missing
+- Fixed via migration: `20251231_205500_emergency_column_fix`
 
 ---
 
@@ -53,13 +42,59 @@ Digest: 3912625169
 
 ## Medium Priority Bugs
 
-*None found yet*
+### BUG-002: Brands API Returns 500 Error
+
+**Severity:** 🟡 Medium
+**Section:** API Endpoints
+**Endpoint:** `GET /api/brands`
+
+**Steps to Reproduce:**
+1. Call `curl https://payload-website-starter-smoky-sigma.vercel.app/api/brands`
+2. Observe 500 error response
+
+**Expected Behavior:**
+Should return brands list or empty array with standard pagination
+
+**Actual Behavior:**
+Returns `{"errors":[{"message":"Something went wrong."}]}`
+
+**Possible Cause:**
+- Database schema mismatch for brands table
+- Missing migration for brands collection
+- Column type mismatch
+
+**Notes:**
+- Other collections (products, categories, videos) work fine
+- Brands collection config looks correct in code
 
 ---
 
 ## Low Priority Bugs
 
-*None found yet*
+### BUG-003: Leaderboard API Returns Error
+
+**Severity:** 🔵 Low
+**Section:** API Endpoints / Crowdsource
+**Endpoint:** `GET /api/crowdsource/leaderboard`
+
+**Steps to Reproduce:**
+1. Call `curl https://payload-website-starter-smoky-sigma.vercel.app/api/crowdsource/leaderboard`
+2. Observe error response
+
+**Expected Behavior:**
+Should return leaderboard data or empty array
+
+**Actual Behavior:**
+Returns `{"success":false,"error":"Failed to load leaderboard"}`
+
+**Possible Cause:**
+- Query on user-submissions collection failing
+- Missing `status` field in user-submissions
+- No verified submissions exist yet (edge case handling needed)
+
+**Notes:**
+- Low priority as feature is not yet in production use
+- Error handling could be improved to return empty array instead of error
 
 ---
 
