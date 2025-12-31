@@ -18,10 +18,20 @@ interface YouTubeVideo {
     }
 }
 
-interface YouTubeSearchResponse {
+interface YouTubePlaylistResponse {
     items: Array<{
-        id: { videoId: string }
-        snippet: YouTubeVideo['snippet']
+        snippet: {
+            title: string
+            description: string
+            thumbnails: {
+                high?: { url: string }
+                maxres?: { url: string }
+            }
+            resourceId: {
+                videoId: string
+            }
+            publishedAt: string
+        }
     }>
     nextPageToken?: string
 }
@@ -41,22 +51,15 @@ function parseDuration(duration: string): number {
 }
 
 /**
- * Check if a YouTube video is a Short by testing the /shorts/ URL
- * Returns true if the video is a Short, false otherwise
+ * Convert a channel ID to its Shorts playlist ID
+ * Pattern: Replace "UC" prefix with "UUSH"
+ * Example: UCb9Bv8QPZ6HScpEvrBUIA2Q -> UUSHb9Bv8QPZ6HScpEvrBUIA2Q
  */
-async function isYouTubeShort(videoId: string): Promise<boolean> {
-    try {
-        // Make a HEAD request to the shorts URL
-        const response = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
-            method: 'HEAD',
-            redirect: 'manual', // Don't follow redirects
-        })
-        // If 200, it's a Short. If 303 redirect, it's not.
-        return response.status === 200
-    } catch {
-        // On error, fall back to false (not a short)
-        return false
+function getShortsPlaylistId(channelId: string): string | null {
+    if (channelId.startsWith('UC')) {
+        return 'UUSH' + channelId.substring(2)
     }
+    return null
 }
 
 export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) => {
@@ -68,11 +71,10 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
             slug: 'youtube-settings',
         })
 
-        const { channelId, apiKey, maxVideosToSync = 50, shortsOnly = true } = settings as {
+        const { channelId, apiKey, maxVideosToSync = 50 } = settings as {
             channelId?: string
             apiKey?: string
             maxVideosToSync?: number
-            shortsOnly?: boolean
         }
 
         if (!channelId || !apiKey) {
@@ -82,19 +84,46 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
             )
         }
 
-        // Fetch videos from YouTube channel
-        const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search')
-        searchUrl.searchParams.set('key', apiKey)
-        searchUrl.searchParams.set('channelId', channelId)
-        searchUrl.searchParams.set('part', 'snippet')
-        searchUrl.searchParams.set('order', 'date')
-        searchUrl.searchParams.set('maxResults', String(Math.min(maxVideosToSync, 50)))
-        searchUrl.searchParams.set('type', 'video')
+        // Get the Shorts playlist ID from the channel ID
+        const shortsPlaylistId = getShortsPlaylistId(channelId)
 
-        const searchResponse = await fetch(searchUrl.toString())
+        if (!shortsPlaylistId) {
+            return Response.json(
+                { error: 'Invalid channel ID format. Must start with "UC".' },
+                { status: 400 }
+            )
+        }
 
-        if (!searchResponse.ok) {
-            const error = await searchResponse.json()
+        console.log(`[YouTube Sync] Fetching Shorts from playlist: ${shortsPlaylistId}`)
+
+        // Fetch videos from the Shorts playlist (UUSH...)
+        const playlistUrl = new URL('https://www.googleapis.com/youtube/v3/playlistItems')
+        playlistUrl.searchParams.set('key', apiKey)
+        playlistUrl.searchParams.set('playlistId', shortsPlaylistId)
+        playlistUrl.searchParams.set('part', 'snippet')
+        playlistUrl.searchParams.set('maxResults', String(Math.min(maxVideosToSync, 50)))
+
+        const playlistResponse = await fetch(playlistUrl.toString())
+
+        if (!playlistResponse.ok) {
+            const error = await playlistResponse.json()
+            console.error('[YouTube Sync] Playlist API error:', error)
+
+            // If Shorts playlist doesn't exist, fall back to search
+            if (error.error?.code === 404) {
+                await payload.updateGlobal({
+                    slug: 'youtube-settings',
+                    data: {
+                        lastSyncAt: new Date().toISOString(),
+                        lastSyncStatus: 'No Shorts playlist found for this channel',
+                    },
+                })
+                return Response.json({
+                    error: 'No Shorts playlist found. This channel may not have any Shorts.',
+                    imported: 0
+                }, { status: 404 })
+            }
+
             await payload.updateGlobal({
                 slug: 'youtube-settings',
                 data: {
@@ -105,19 +134,22 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
             return Response.json({ error: error.error?.message || 'YouTube API error' }, { status: 500 })
         }
 
-        const searchData: YouTubeSearchResponse = await searchResponse.json()
-        const videoIds = searchData.items.map(item => item.id.videoId).join(',')
+        const playlistData: YouTubePlaylistResponse = await playlistResponse.json()
 
-        if (!videoIds) {
+        if (!playlistData.items || playlistData.items.length === 0) {
             await payload.updateGlobal({
                 slug: 'youtube-settings',
                 data: {
                     lastSyncAt: new Date().toISOString(),
-                    lastSyncStatus: 'No videos found',
+                    lastSyncStatus: 'No Shorts found in channel',
                 },
             })
-            return Response.json({ message: 'No videos found', imported: 0 })
+            return Response.json({ message: 'No Shorts found', imported: 0 })
         }
+
+        console.log(`[YouTube Sync] Found ${playlistData.items.length} Shorts`)
+
+        const videoIds = playlistData.items.map(item => item.snippet.resourceId.videoId).join(',')
 
         // Get video details (including duration)
         const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
@@ -129,16 +161,10 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
         const detailsData: YouTubeVideoDetailsResponse = await detailsResponse.json()
 
         let imported = 0
-        let skipped = 0
+        let updated = 0
 
         for (const video of detailsData.items) {
             const duration = video.contentDetails ? parseDuration(video.contentDetails.duration) : 0
-
-            // Skip if shortsOnly and video is longer than 3 minutes (180 seconds)
-            if (shortsOnly && duration > 180) {
-                skipped++
-                continue
-            }
 
             // Check if video already exists
             const existing = await payload.find({
@@ -150,11 +176,7 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
             })
 
             if (existing.docs.length > 0) {
-                // Update existing video
-                // Detect if it's a YouTube Short using the /shorts/ URL check
-                const isShort = await isYouTubeShort(video.id)
-                const videoType = isShort ? 'short' : 'longform'
-
+                // Update existing video - mark as Short
                 await payload.update({
                     collection: 'videos',
                     id: existing.docs[0].id,
@@ -163,16 +185,13 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
                         description: video.snippet.description,
                         thumbnailUrl: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high?.url,
                         duration,
-                        videoType, // Auto-detected from YouTube
+                        videoType: 'short', // From Shorts playlist = definitely a Short
                         youtubeImportedAt: new Date().toISOString(),
                     },
                 })
+                updated++
             } else {
                 // Create new video
-                // Detect if it's a YouTube Short using the /shorts/ URL check
-                const isShort = await isYouTubeShort(video.id)
-                const videoType = isShort ? 'short' : 'longform'
-
                 await payload.create({
                     collection: 'videos',
                     data: {
@@ -181,7 +200,7 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
                         description: video.snippet.description,
                         thumbnailUrl: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high?.url,
                         duration,
-                        videoType, // Auto-detected from YouTube
+                        videoType: 'short', // From Shorts playlist = definitely a Short
                         status: 'published',
                         isAutoImported: true,
                         youtubeImportedAt: new Date().toISOString(),
@@ -196,15 +215,15 @@ export const youtubeSyncHandler: PayloadHandler = async (req: PayloadRequest) =>
             slug: 'youtube-settings',
             data: {
                 lastSyncAt: new Date().toISOString(),
-                lastSyncStatus: `Success: ${imported} imported, ${skipped} skipped (too long)`,
+                lastSyncStatus: `Success: ${imported} Shorts imported, ${updated} updated`,
             },
         })
 
         return Response.json({
             success: true,
             imported,
-            skipped,
-            message: `Synced ${imported} new videos, skipped ${skipped}`,
+            updated,
+            message: `Synced ${imported} new Shorts, updated ${updated} existing`,
         })
     } catch (error) {
         console.error('YouTube sync error:', error)

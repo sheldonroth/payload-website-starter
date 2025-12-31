@@ -14,7 +14,7 @@ import { createAuditLog } from '../collections/AuditLog'
  */
 
 interface IngestResult {
-    inputType: 'youtube' | 'tiktok' | 'amazon' | 'product_page' | 'barcode' | 'unknown'
+    inputType: 'youtube' | 'youtube_channel' | 'tiktok' | 'amazon' | 'product_page' | 'barcode' | 'unknown'
     success: boolean
     productsFound?: number
     draftsCreated?: number
@@ -24,12 +24,27 @@ interface IngestResult {
     details?: unknown
 }
 
+// Check if YouTube URL is a channel URL (not a video)
+function isYouTubeChannelUrl(url: string): boolean {
+    const channelPatterns = [
+        /youtube\.com\/@[\w.-]+/i,           // @username format
+        /youtube\.com\/channel\/UC[\w-]+/i,  // /channel/UCxxxx format
+        /youtube\.com\/c\/[\w.-]+/i,         // /c/channelname format
+        /youtube\.com\/user\/[\w.-]+/i,      // /user/username format (legacy)
+    ]
+    return channelPatterns.some(pattern => pattern.test(url))
+}
+
 // Detect input type from string
 function detectInputType(input: string): IngestResult['inputType'] {
     const trimmed = input.trim().toLowerCase()
 
-    // YouTube
+    // YouTube - check for channel URLs first
     if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
+        // Check if it's a channel URL (not a video)
+        if (isYouTubeChannelUrl(input)) {
+            return 'youtube_channel'
+        }
         return 'youtube'
     }
 
@@ -71,6 +86,35 @@ function extractYouTubeVideoId(url: string): string | null {
     for (const pattern of patterns) {
         const match = url.match(pattern)
         if (match) return match[1]
+    }
+
+    return null
+}
+
+// Extract YouTube channel identifier (handle or channel ID)
+function extractYouTubeChannelId(url: string): { type: 'handle' | 'channelId' | 'customUrl' | 'user'; value: string } | null {
+    // @username format - extract the handle
+    const handleMatch = url.match(/youtube\.com\/@([\w.-]+)/i)
+    if (handleMatch) {
+        return { type: 'handle', value: handleMatch[1] }
+    }
+
+    // /channel/UCxxxx format - extract channel ID
+    const channelMatch = url.match(/youtube\.com\/channel\/(UC[\w-]+)/i)
+    if (channelMatch) {
+        return { type: 'channelId', value: channelMatch[1] }
+    }
+
+    // /c/channelname format - extract custom URL
+    const customMatch = url.match(/youtube\.com\/c\/([\w.-]+)/i)
+    if (customMatch) {
+        return { type: 'customUrl', value: customMatch[1] }
+    }
+
+    // /user/username format - extract username (legacy)
+    const userMatch = url.match(/youtube\.com\/user\/([\w.-]+)/i)
+    if (userMatch) {
+        return { type: 'user', value: userMatch[1] }
     }
 
     return null
@@ -150,7 +194,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
         // Create audit log for ingestion attempt
         await createAuditLog(payload, {
             action: 'ai_product_created',
-            sourceType: inputType === 'youtube' ? 'youtube' :
+            sourceType: inputType === 'youtube' || inputType === 'youtube_channel' ? 'youtube' :
                 inputType === 'tiktok' ? 'tiktok' :
                     inputType === 'barcode' ? 'barcode' : 'web_url',
             sourceUrl: input,
@@ -192,6 +236,60 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
                         ? `Extracted ${videoResult.productsFound} products from YouTube video`
                         : videoResult.error || 'Video analysis failed',
                     details: videoResult,
+                })
+            }
+
+            case 'youtube_channel': {
+                const channelInfo = extractYouTubeChannelId(input)
+                if (!channelInfo) {
+                    return Response.json({
+                        inputType,
+                        success: false,
+                        message: 'Could not extract YouTube channel identifier',
+                    })
+                }
+
+                // For channel URLs, we need a channel ID (starts with UC)
+                // Handle @username and other formats require resolution via YouTube API
+                if (channelInfo.type !== 'channelId') {
+                    // For non-channelId formats, guide user to Channel Analyzer
+                    return Response.json({
+                        inputType,
+                        success: false,
+                        message: `Detected YouTube channel: @${channelInfo.value}. To analyze a channel, use the "Channel Analyzer" tool in Advanced Ingestion section. You can find the channel ID on YouTube by going to the channel page → About → Share → Copy channel ID.`,
+                        details: {
+                            detectedType: channelInfo.type,
+                            detectedValue: channelInfo.value,
+                            hint: 'Channel IDs start with "UC" (e.g., UC-lHJZR3Gqxm24_Vd_AJ5Yw)',
+                        }
+                    })
+                }
+
+                // We have a valid channel ID (UC...), call the channel analyze endpoint
+                const channelResponse = await fetch(`${req.headers.get('origin') || 'http://localhost:3000'}/api/channel/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cookie': req.headers.get('cookie') || '',
+                    },
+                    body: JSON.stringify({
+                        customChannelId: channelInfo.value,
+                        maxVideos: 10
+                    }),
+                })
+
+                const channelResult = await channelResponse.json()
+
+                return Response.json({
+                    inputType,
+                    success: channelResult.success ?? false,
+                    productsFound: channelResult.productsFound || 0,
+                    draftsCreated: channelResult.draftsCreated || 0,
+                    skipped: channelResult.skippedDuplicates?.length || 0,
+                    message: channelResult.success
+                        ? `Analyzed ${channelResult.videosProcessed || 0} videos from YouTube channel`
+                        : channelResult.error || 'Channel analysis failed',
+                    details: channelResult,
                 })
             }
 
