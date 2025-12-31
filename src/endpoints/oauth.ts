@@ -4,9 +4,9 @@ import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '
 
 /**
  * OAuth Endpoints for Apple and Google Sign-In
- * 
+ *
  * These endpoints handle the OAuth flow for the website and mobile app.
- * 
+ *
  * Required environment variables:
  * - GOOGLE_CLIENT_ID
  * - GOOGLE_CLIENT_SECRET
@@ -18,6 +18,33 @@ import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '
  */
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.theproductreport.org'
+
+// SECURITY: OAuth state parameter for CSRF protection
+function generateOAuthState(): string {
+    const array = new Uint8Array(32)
+    crypto.getRandomValues(array)
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function getStateCookieOptions(isProduction: boolean): string {
+    return [
+        'HttpOnly',
+        isProduction ? 'Secure' : '',
+        'SameSite=Lax',
+        'Path=/',
+        'Max-Age=600', // 10 minutes - enough for OAuth flow
+    ].filter(Boolean).join('; ')
+}
+
+function getStateFromCookies(cookieHeader: string | null, cookieName: string): string | null {
+    if (!cookieHeader) return null
+    const cookies = cookieHeader.split(';').map(c => c.trim())
+    for (const cookie of cookies) {
+        const [name, value] = cookie.split('=')
+        if (name === cookieName) return value
+    }
+    return null
+}
 
 // Helper to create a session token for the user
 async function createSessionToken(userId: string, email: string): Promise<string> {
@@ -55,6 +82,10 @@ const googleOAuthStart: Endpoint = {
         const redirectUri = `${process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'}/api/users/oauth/google/callback`
         const scope = 'openid email profile'
 
+        // SECURITY: Generate state for CSRF protection
+        const state = generateOAuthState()
+        const isProduction = process.env.NODE_ENV === 'production'
+
         const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
         authUrl.searchParams.set('client_id', googleClientId)
         authUrl.searchParams.set('redirect_uri', redirectUri)
@@ -62,8 +93,16 @@ const googleOAuthStart: Endpoint = {
         authUrl.searchParams.set('scope', scope)
         authUrl.searchParams.set('access_type', 'offline')
         authUrl.searchParams.set('prompt', 'consent')
+        authUrl.searchParams.set('state', state)
 
-        return Response.redirect(authUrl.toString())
+        // Store state in HttpOnly cookie for verification in callback
+        return new Response(null, {
+            status: 302,
+            headers: {
+                'Location': authUrl.toString(),
+                'Set-Cookie': `oauth_state_google=${state}; ${getStateCookieOptions(isProduction)}`,
+            },
+        })
     },
 }
 
@@ -82,6 +121,16 @@ const googleOAuthCallback: Endpoint = {
         const url = new URL(req.url || '', 'http://localhost')
         const code = url.searchParams.get('code')
         const error = url.searchParams.get('error')
+        const stateFromUrl = url.searchParams.get('state')
+
+        // SECURITY: Verify state parameter to prevent CSRF attacks
+        const cookieHeader = req.headers.get('cookie')
+        const stateFromCookie = getStateFromCookies(cookieHeader, 'oauth_state_google')
+
+        if (!stateFromUrl || !stateFromCookie || stateFromUrl !== stateFromCookie) {
+            console.error('[OAuth] State mismatch - possible CSRF attack')
+            return Response.redirect(`${FRONTEND_URL}/login?error=invalid_state`)
+        }
 
         if (error) {
             return Response.redirect(`${FRONTEND_URL}/login?error=google_auth_failed`)
@@ -175,7 +224,7 @@ const googleOAuthCallback: Endpoint = {
             const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`)
 
             const isProduction = process.env.NODE_ENV === 'production'
-            const cookieOptions = [
+            const tokenCookie = [
                 `payload-token=${token}`,
                 'HttpOnly',
                 isProduction ? 'Secure' : '',
@@ -184,12 +233,16 @@ const googleOAuthCallback: Endpoint = {
                 'Max-Age=604800', // 7 days
             ].filter(Boolean).join('; ')
 
+            // Clear the state cookie after successful validation
+            const clearStateCookie = `oauth_state_google=; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Lax; Path=/; Max-Age=0`
+
             return new Response(null, {
                 status: 302,
-                headers: {
-                    'Location': redirectUrl.toString(),
-                    'Set-Cookie': cookieOptions,
-                },
+                headers: [
+                    ['Location', redirectUrl.toString()],
+                    ['Set-Cookie', tokenCookie],
+                    ['Set-Cookie', clearStateCookie],
+                ],
             })
         } catch (err) {
             console.error('Google OAuth error:', err)
@@ -215,14 +268,26 @@ const appleOAuthStart: Endpoint = {
         const redirectUri = `${process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'}/api/users/oauth/apple/callback`
         const scope = 'name email'
 
+        // SECURITY: Generate state for CSRF protection
+        const state = generateOAuthState()
+        const isProduction = process.env.NODE_ENV === 'production'
+
         const authUrl = new URL('https://appleid.apple.com/auth/authorize')
         authUrl.searchParams.set('client_id', appleClientId)
         authUrl.searchParams.set('redirect_uri', redirectUri)
         authUrl.searchParams.set('response_type', 'code id_token')
         authUrl.searchParams.set('response_mode', 'form_post')
         authUrl.searchParams.set('scope', scope)
+        authUrl.searchParams.set('state', state)
 
-        return Response.redirect(authUrl.toString())
+        // Store state in HttpOnly cookie for verification in callback
+        return new Response(null, {
+            status: 302,
+            headers: {
+                'Location': authUrl.toString(),
+                'Set-Cookie': `oauth_state_apple=${state}; ${getStateCookieOptions(isProduction)}`,
+            },
+        })
     },
 }
 
@@ -246,6 +311,16 @@ const appleOAuthCallback: Endpoint = {
             const code = params.get('code')
             const error = params.get('error')
             const userString = params.get('user') // Apple sends user info on first login
+            const stateFromBody = params.get('state')
+
+            // SECURITY: Verify state parameter to prevent CSRF attacks
+            const cookieHeader = req.headers.get('cookie')
+            const stateFromCookie = getStateFromCookies(cookieHeader, 'oauth_state_apple')
+
+            if (!stateFromBody || !stateFromCookie || stateFromBody !== stateFromCookie) {
+                console.error('[OAuth] Apple state mismatch - possible CSRF attack')
+                return Response.redirect(`${FRONTEND_URL}/login?error=invalid_state`)
+            }
 
             if (error) {
                 return Response.redirect(`${FRONTEND_URL}/login?error=apple_auth_failed`)
@@ -325,7 +400,7 @@ const appleOAuthCallback: Endpoint = {
             const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`)
 
             const isProduction = process.env.NODE_ENV === 'production'
-            const cookieOptions = [
+            const tokenCookie = [
                 `payload-token=${token}`,
                 'HttpOnly',
                 isProduction ? 'Secure' : '',
@@ -334,12 +409,16 @@ const appleOAuthCallback: Endpoint = {
                 'Max-Age=604800', // 7 days
             ].filter(Boolean).join('; ')
 
+            // Clear the state cookie after successful validation
+            const clearStateCookie = `oauth_state_apple=; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Lax; Path=/; Max-Age=0`
+
             return new Response(null, {
                 status: 302,
-                headers: {
-                    'Location': redirectUrl.toString(),
-                    'Set-Cookie': cookieOptions,
-                },
+                headers: [
+                    ['Location', redirectUrl.toString()],
+                    ['Set-Cookie', tokenCookie],
+                    ['Set-Cookie', clearStateCookie],
+                ],
             })
         } catch (err) {
             console.error('Apple OAuth error:', err)
