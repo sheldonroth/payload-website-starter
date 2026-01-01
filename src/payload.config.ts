@@ -24,6 +24,8 @@ import { PriceHistory } from './collections/PriceHistory'
 import { Brands } from './collections/Brands'
 import { RegulatoryChanges } from './collections/RegulatoryChanges'
 import { UserSubmissions } from './collections/UserSubmissions'
+import { DeviceFingerprints } from './collections/DeviceFingerprints'
+import { ProductUnlocks } from './collections/ProductUnlocks'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -64,6 +66,8 @@ import { productRequestsListHandler, productRequestsCreateHandler, productReques
 import { userWatchlistGetHandler, userWatchlistAddHandler, userWatchlistRemoveHandler, checkWatchlistConflictsHandler } from './endpoints/user-watchlist'
 import { productAlternativesHandler } from './endpoints/product-alternatives'
 import { recalculateFeaturedHandler } from './endpoints/featured-products'
+import { fingerprintRegisterHandler, fingerprintCheckHandler } from './endpoints/fingerprint'
+import { productUnlockHandler, productUnlockStatusHandler } from './endpoints/product-unlock'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -141,7 +145,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -374,6 +378,28 @@ export default buildConfig({
       path: '/products/alternatives',
       method: 'get',
       handler: productAlternativesHandler,
+    },
+    // Fingerprint Registration (One-Shot Engine)
+    {
+      path: '/fingerprint/register',
+      method: 'post',
+      handler: fingerprintRegisterHandler,
+    },
+    {
+      path: '/fingerprint/check',
+      method: 'get',
+      handler: fingerprintCheckHandler,
+    },
+    // Product Unlock (One-Shot Engine)
+    {
+      path: '/products/unlock',
+      method: 'post',
+      handler: productUnlockHandler,
+    },
+    {
+      path: '/products/unlock/status',
+      method: 'get',
+      handler: productUnlockStatusHandler,
     },
   ],
   plugins: [

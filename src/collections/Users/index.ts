@@ -354,8 +354,22 @@ export const Users: CollectionConfig = {
       },
     },
     // ============================================
-    // Free Unlock System (PLG)
+    // Free Unlock System (PLG) - One-Shot Engine
     // ============================================
+    {
+      name: 'memberState',
+      type: 'select',
+      defaultValue: 'virgin',
+      options: [
+        { label: 'Virgin (Never Used Unlock)', value: 'virgin' },
+        { label: 'Trial (Used Free Unlock)', value: 'trial' },
+        { label: 'Member (Premium Subscriber)', value: 'member' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'User state in the One-Shot Engine funnel',
+      },
+    },
     {
       name: 'freeUnlockCredits',
       type: 'number',
@@ -371,6 +385,33 @@ export const Users: CollectionConfig = {
       defaultValue: [],
       admin: {
         description: 'Array of permanently unlocked product IDs',
+      },
+    },
+    {
+      name: 'deviceFingerprints',
+      type: 'relationship',
+      relationTo: 'device-fingerprints' as 'users', // Type will be correct after build regenerates types
+      hasMany: true,
+      admin: {
+        description: 'Devices associated with this user',
+      },
+    },
+    {
+      name: 'totalUnlocks',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Total unlocks across all time',
+      },
+    },
+    {
+      name: 'lastUnlockAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+        description: 'When the last product was unlocked',
       },
     },
   ],

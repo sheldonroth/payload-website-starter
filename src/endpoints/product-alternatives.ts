@@ -1,15 +1,21 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { applyLiabilityShield, isPremiumUser } from '../access/liabilityShield'
 
 /**
  * Find Safe Alternative Endpoint
  *
- * GET /api/products/alternatives?productId=xxx
+ * GET /api/products/alternatives?productId=xxx&archetypes=true
  *
  * Returns products in the same category with better safety profiles.
  * Scoring algorithm considers:
  * - Verdict improvement (50%)
  * - Ingredient safety score (30%)
  * - Price similarity (20%)
+ *
+ * When archetypes=true, returns classified alternatives:
+ * - Best Value: Cheapest recommended product
+ * - Premium Pick: Most expensive recommended product
+ * - Hidden Gem: Least popular (lowest sourceCount) - FREE UNLOCK
  */
 
 interface ProductAlternative {
@@ -26,6 +32,16 @@ interface ProductAlternative {
     }
     score: number
     improvements: string[]
+    archetype?: 'best_value' | 'premium_pick' | 'hidden_gem'
+    isLocked?: boolean
+}
+
+type Archetype = 'best_value' | 'premium_pick' | 'hidden_gem'
+
+interface ArchetypeAlternatives {
+    bestValue: ProductAlternative | null
+    premiumPick: ProductAlternative | null
+    hiddenGem: ProductAlternative | null
 }
 
 const VERDICT_SCORES: Record<string, number> = {
@@ -38,11 +54,84 @@ const VERDICT_SCORES: Record<string, number> = {
 
 const PRICE_RANGE_ORDER = ['budget', 'mid-range', 'premium', 'luxury']
 
+// Price range to numeric value for comparison
+const PRICE_TO_NUMBER: Record<string, number> = {
+    '$': 1,
+    '$$': 2,
+    '$$$': 3,
+    '$$$$': 4,
+    'budget': 1,
+    'mid-range': 2,
+    'premium': 3,
+    'luxury': 4,
+}
+
+/**
+ * Convert price range string to a numeric value for comparison.
+ */
+function priceToNumber(priceRange?: string): number {
+    if (!priceRange) return 2 // Default to mid-range
+    return PRICE_TO_NUMBER[priceRange.toLowerCase()] || 2
+}
+
+/**
+ * Classify alternatives into archetypes.
+ *
+ * - Best Value: Cheapest recommended product ($ or $$)
+ * - Premium Pick: Most expensive recommended product ($$$ or $$$$)
+ * - Hidden Gem: Least popular/known (lowest sourceCount)
+ */
+function classifyArchetypes(alternatives: ProductAlternative[]): ArchetypeAlternatives {
+    // Only consider recommend verdict products
+    const recommended = alternatives.filter(
+        (alt) => alt.verdict?.toLowerCase() === 'recommend'
+    )
+
+    if (recommended.length === 0) {
+        return { bestValue: null, premiumPick: null, hiddenGem: null }
+    }
+
+    // Best Value: Cheapest
+    const byPrice = [...recommended].sort(
+        (a, b) => priceToNumber(a.priceRange) - priceToNumber(b.priceRange)
+    )
+    const bestValue = byPrice[0] || null
+
+    // Premium Pick: Most expensive (different from best value)
+    const premiumPick = byPrice.length > 1
+        ? byPrice[byPrice.length - 1]
+        : null
+
+    // Hidden Gem: Least popular (lowest sourceCount, excluding best value and premium)
+    const usedIds = new Set([bestValue?.id, premiumPick?.id].filter(Boolean))
+    const remaining = recommended.filter((alt) => !usedIds.has(alt.id))
+
+    // Sort by sourceCount (ascending) to get least popular
+    const byPopularity = [...remaining].sort((a, b) => {
+        const aCount = (a as unknown as { sourceCount?: number }).sourceCount || 0
+        const bCount = (b as unknown as { sourceCount?: number }).sourceCount || 0
+        return aCount - bCount
+    })
+    const hiddenGem = byPopularity[0] || null
+
+    // Assign archetypes
+    if (bestValue) bestValue.archetype = 'best_value'
+    if (premiumPick && premiumPick.id !== bestValue?.id) premiumPick.archetype = 'premium_pick'
+    if (hiddenGem) hiddenGem.archetype = 'hidden_gem'
+
+    return { bestValue, premiumPick, hiddenGem }
+}
+
 export const productAlternativesHandler: PayloadHandler = async (req: PayloadRequest) => {
     try {
         const url = new URL(req.url || '', 'http://localhost')
         const productId = url.searchParams.get('productId')
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '5', 10), 10)
+        const useArchetypes = url.searchParams.get('archetypes') === 'true'
+        const fingerprintHash = url.searchParams.get('fingerprintHash')
+
+        // Check if user is premium
+        const isPremium = isPremiumUser(req.user as { memberState?: string; subscriptionStatus?: string; role?: string } | null)
 
         if (!productId) {
             return Response.json(
@@ -199,11 +288,84 @@ export const productAlternativesHandler: PayloadHandler = async (req: PayloadReq
             .sort((a, b) => b.score - a.score)
             .slice(0, limit)
 
+        // If archetypes mode is enabled, classify and return structured response
+        if (useArchetypes) {
+            const archetypes = classifyArchetypes(topAlternatives)
+
+            // Check unlocked products for the user/device
+            let unlockedProductIds: Set<string> = new Set()
+
+            if (req.user) {
+                const userData = req.user as { unlockedProducts?: number[] }
+                unlockedProductIds = new Set((userData.unlockedProducts || []).map(String))
+            }
+
+            // Also check device fingerprint unlocks
+            if (fingerprintHash) {
+                const fpResult = await req.payload.find({
+                    collection: 'device-fingerprints' as 'users',
+                    where: { fingerprintHash: { equals: fingerprintHash } },
+                    limit: 1,
+                })
+
+                if (fpResult.docs.length > 0) {
+                    const fpId = (fpResult.docs[0] as { id: number }).id
+                    const unlockResult = await req.payload.find({
+                        collection: 'product-unlocks' as 'users',
+                        where: { deviceFingerprint: { equals: fpId } },
+                        limit: 100,
+                    })
+
+                    for (const unlock of unlockResult.docs) {
+                        const productRef = (unlock as { product?: { id: number } | number }).product
+                        const productId = typeof productRef === 'object' ? productRef?.id : productRef
+                        if (productId) unlockedProductIds.add(String(productId))
+                    }
+                }
+            }
+
+            // Mark locked status for each archetype
+            // Premium users: nothing is locked
+            // Free users: Best Value and Premium Pick are locked, Hidden Gem is FREE
+            const markLocked = (alt: ProductAlternative | null): ProductAlternative | null => {
+                if (!alt) return null
+
+                if (isPremium || unlockedProductIds.has(alt.id)) {
+                    return { ...alt, isLocked: false }
+                }
+
+                // Hidden Gem is the FREE unlock (never locked for first-time users)
+                if (alt.archetype === 'hidden_gem') {
+                    return { ...alt, isLocked: false }
+                }
+
+                // Best Value and Premium Pick are locked for non-premium
+                return { ...alt, isLocked: true }
+            }
+
+            return Response.json({
+                archetypes: {
+                    bestValue: markLocked(archetypes.bestValue),
+                    premiumPick: markLocked(archetypes.premiumPick),
+                    hiddenGem: markLocked(archetypes.hiddenGem),
+                },
+                sourceProduct: {
+                    id: sourceProduct.id,
+                    name: (sourceProduct as { name: string }).name,
+                    verdict: sourceVerdict,
+                    harmfulIngredientCount: sourceHarmfulCount,
+                    isShielded: sourceVerdict === 'avoid' && !isPremium,
+                },
+                isPremium,
+                totalCandidates: alternativeCandidates.totalDocs,
+            })
+        }
+
         return Response.json({
             alternatives: topAlternatives,
             sourceProduct: {
                 id: sourceProduct.id,
-                name: (sourceProduct as any).name,
+                name: (sourceProduct as { name: string }).name,
                 verdict: sourceVerdict,
                 harmfulIngredientCount: sourceHarmfulCount,
             },

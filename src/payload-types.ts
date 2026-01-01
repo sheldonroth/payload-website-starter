@@ -84,6 +84,8 @@ export interface Config {
     brands: Brand;
     'regulatory-changes': RegulatoryChange;
     'user-submissions': UserSubmission;
+    'device-fingerprints': DeviceFingerprint;
+    'product-unlocks': ProductUnlock;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -118,6 +120,8 @@ export interface Config {
     brands: BrandsSelect<false> | BrandsSelect<true>;
     'regulatory-changes': RegulatoryChangesSelect<false> | RegulatoryChangesSelect<true>;
     'user-submissions': UserSubmissionsSelect<false> | UserSubmissionsSelect<true>;
+    'device-fingerprints': DeviceFingerprintsSelect<false> | DeviceFingerprintsSelect<true>;
+    'product-unlocks': ProductUnlocksSelect<false> | ProductUnlocksSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -495,6 +499,18 @@ export interface Category {
    * When category was last enriched with research
    */
   lastEnrichedAt?: string | null;
+  /**
+   * Auto-calculated: Best product to showcase for this category
+   */
+  featuredProduct?: (number | null) | Product;
+  /**
+   * Cached image URL of the featured product
+   */
+  featuredProductImage?: string | null;
+  /**
+   * When featured product was last recalculated
+   */
+  featuredProductUpdatedAt?: string | null;
   breadcrumbs?:
     | {
         doc?: (number | null) | Category;
@@ -503,6 +519,203 @@ export interface Category {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products".
+ */
+export interface Product {
+  id: number;
+  name: string;
+  brand: string;
+  slug?: string | null;
+  category?: (number | null) | Category;
+  /**
+   * Will be auto-created immediately (hierarchical supported)
+   */
+  pendingCategoryName?: string | null;
+  /**
+   * Use this OR upload an image below
+   */
+  imageUrl?: string | null;
+  image?: (number | null) | Media;
+  /**
+   * Auto-set when background is removed. Prevents duplicate processing.
+   */
+  backgroundRemoved?: boolean | null;
+  /**
+   * Final verdict on this product
+   */
+  verdict: 'recommend' | 'avoid';
+  /**
+   * Brief explanation of why this verdict was given
+   */
+  verdictReason?: string | null;
+  /**
+   * System-calculated from ingredients + rules
+   */
+  autoVerdict?: ('recommend' | 'avoid') | null;
+  /**
+   * Enable to manually set verdict different from auto-calculated
+   */
+  verdictOverride?: boolean | null;
+  /**
+   * Required: explain why you are overriding the auto-verdict
+   */
+  verdictOverrideReason?: string | null;
+  verdictOverriddenBy?: (number | null) | User;
+  verdictOverriddenAt?: string | null;
+  /**
+   * Name of VerdictRule(s) that set the verdict
+   */
+  ruleApplied?: string | null;
+  /**
+   * Auto-populated from raw text, or manually link
+   */
+  ingredientsList?: (number | Ingredient)[] | null;
+  /**
+   * Paste ingredients list - will auto-parse and link to Ingredients collection
+   */
+  ingredientsRaw?: string | null;
+  /**
+   * Ingredients that could not be auto-matched (need manual research)
+   */
+  unmatchedIngredients?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Universal Product Code for barcode scanning
+   */
+  upc?: string | null;
+  /**
+   * Amazon Standard Identification Number (10 characters). Used to auto-generate affiliate links.
+   */
+  amazonAsin?: string | null;
+  /**
+   * TikTok, Amazon, or other URL where data was extracted
+   */
+  sourceUrl?: string | null;
+  /**
+   * YouTube video from Videos collection (if applicable)
+   */
+  sourceVideo?: (number | null) | Video;
+  /**
+   * Number of sources that mentioned this product
+   */
+  sourceCount?: number | null;
+  /**
+   * AI confidence in extraction accuracy
+   */
+  aiConfidence?: ('high' | 'medium' | 'low') | null;
+  /**
+   * How the AI extracted this product
+   */
+  aiSourceType?: ('transcript' | 'video_watching' | 'profile' | 'manual') | null;
+  /**
+   * Times mentioned in source video
+   */
+  aiMentions?: number | null;
+  /**
+   * System-detected conflicts (blocks publishing if unresolved)
+   */
+  conflicts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Auto-calculated from last tested date
+   */
+  freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
+  status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
+  priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
+  pros?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  cons?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Brief overview for cards and previews
+   */
+  summary?: string | null;
+  fullReview?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  purchaseLinks?:
+    | {
+        retailer: string;
+        url: string;
+        price?: string | null;
+        isAffiliate?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Link related products for comparison
+   */
+  comparedWith?: (number | Product)[] | null;
+  testingInfo?: {
+    reviewDate?: string | null;
+    lastTestedDate?: string | null;
+    versionTested?: string | null;
+    /**
+     * Notes about changes since last review
+     */
+    updateNotes?: string | null;
+  };
+  /**
+   * Award badges displayed on product cards and pages
+   */
+  badges?: {
+    /**
+     * 🥇 Mark this product as the #1 pick for its category. Only ONE product per category should have this enabled.
+     */
+    isBestOverall?: boolean | null;
+    /**
+     * Featured product for this category
+     */
+    isBestInCategory?: boolean | null;
+    /**
+     * Staff recommended product
+     */
+    isRecommended?: boolean | null;
+    /**
+     * Best price-to-quality ratio
+     */
+    isBestValue?: boolean | null;
+    /**
+     * Selected as editor's top pick
+     */
+    isEditorsChoice?: boolean | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -608,6 +821,10 @@ export interface User {
    */
   weeklyDigestEnabled?: boolean | null;
   /**
+   * User state in the One-Shot Engine funnel
+   */
+  memberState?: ('virgin' | 'trial' | 'member') | null;
+  /**
    * Number of free product unlocks remaining
    */
   freeUnlockCredits?: number | null;
@@ -623,6 +840,18 @@ export interface User {
     | number
     | boolean
     | null;
+  /**
+   * Devices associated with this user
+   */
+  deviceFingerprints?: (number | DeviceFingerprint)[] | null;
+  /**
+   * Total unlocks across all time
+   */
+  totalUnlocks?: number | null;
+  /**
+   * When the last product was unlocked
+   */
+  lastUnlockAt?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -640,6 +869,219 @@ export interface User {
       }[]
     | null;
   password?: string | null;
+}
+/**
+ * Device fingerprints for One-Shot unlock tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "device-fingerprints".
+ */
+export interface DeviceFingerprint {
+  id: number;
+  /**
+   * FingerprintJS visitor ID hash
+   */
+  fingerprintHash: string;
+  /**
+   * Associated user account (if any)
+   */
+  user?: (number | null) | User;
+  /**
+   * Browser name and version
+   */
+  browser?: string | null;
+  /**
+   * Operating system
+   */
+  os?: string | null;
+  deviceType?: ('desktop' | 'mobile' | 'tablet') | null;
+  firstSeenAt: string;
+  lastSeenAt?: string | null;
+  /**
+   * Number of free unlocks used on this device
+   */
+  unlockCreditsUsed?: number | null;
+  /**
+   * Country from IP (for fraud detection)
+   */
+  ipCountry?: string | null;
+  /**
+   * Block this device from unlocking
+   */
+  isBanned?: boolean | null;
+  /**
+   * Why this device was banned
+   */
+  banReason?: string | null;
+  /**
+   * Flagged for review (multiple emails, VPN, etc.)
+   */
+  suspiciousActivity?: boolean | null;
+  /**
+   * List of email addresses used with this fingerprint
+   */
+  emailsUsed?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Ingredient database with verdicts that cascade to products
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingredients".
+ */
+export interface Ingredient {
+  id: number;
+  /**
+   * Primary name (e.g., "Red Dye 40")
+   */
+  name: string;
+  /**
+   * Other names this ingredient goes by
+   */
+  aliases?:
+    | {
+        alias: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Final verdict on this ingredient
+   */
+  verdict: 'safe' | 'caution' | 'avoid' | 'unknown';
+  /**
+   * Brief explanation of the verdict
+   */
+  reason?: string | null;
+  category?:
+    | (
+        | 'artificial_colors'
+        | 'artificial_sweeteners'
+        | 'preservatives'
+        | 'emulsifiers'
+        | 'heavy_metals'
+        | 'pesticides'
+        | 'vitamins_minerals'
+        | 'proteins'
+        | 'fats_oils'
+        | 'sugars'
+        | 'fibers'
+        | 'other'
+      )
+    | null;
+  /**
+   * Which product categories is this ingredient relevant to?
+   */
+  productCategories?: (number | Category)[] | null;
+  /**
+   * Videos, studies, or reports that informed this verdict
+   */
+  sources?:
+    | {
+        type?: ('video' | 'study' | 'lab_report' | 'government') | null;
+        reference?: string | null;
+        /**
+         * Brief note about this source
+         */
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Main video where this ingredient was discussed
+   */
+  sourceVideo?: (number | null) | Video;
+  /**
+   * When AVOID, automatically flag products containing this
+   */
+  autoFlagProducts?: boolean | null;
+  /**
+   * Products currently flagged due to this ingredient
+   */
+  flaggedProductCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos".
+ */
+export interface Video {
+  id: number;
+  title: string;
+  /**
+   * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
+   */
+  youtubeVideoId: string;
+  /**
+   * Leave empty to auto-fetch from YouTube
+   */
+  thumbnailUrl?: string | null;
+  description?: string | null;
+  /**
+   * Video duration in seconds
+   */
+  duration?: number | null;
+  category?: (number | null) | Category;
+  /**
+   * Link to the product being reviewed in this video
+   */
+  relatedProduct?: (number | null) | Product;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('draft' | 'published') | null;
+  /**
+   * Lower numbers appear first
+   */
+  sortOrder?: number | null;
+  viewCount?: number | null;
+  isFeatured?: boolean | null;
+  /**
+   * Shorts will appear in the mobile Browse tab
+   */
+  videoType?: ('short' | 'longform') | null;
+  /**
+   * Was this video imported from YouTube automatically?
+   */
+  isAutoImported?: boolean | null;
+  /**
+   * When this video was last synced from YouTube
+   */
+  youtubeImportedAt?: string | null;
+  /**
+   * Stored transcript from YouTube captions (auto-populated on analysis)
+   */
+  transcript?: string | null;
+  /**
+   * When transcript was last fetched
+   */
+  transcriptUpdatedAt?: string | null;
+  /**
+   * When AI last analyzed this video
+   */
+  analyzedAt?: string | null;
+  /**
+   * Products that were created from analyzing this video
+   */
+  extractedProducts?: (number | Product)[] | null;
+  /**
+   * Ingredients discussed in this video
+   */
+  extractedIngredients?: (number | Ingredient)[] | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1003,329 +1445,6 @@ export interface StatsBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'stats';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "products".
- */
-export interface Product {
-  id: number;
-  name: string;
-  brand: string;
-  slug?: string | null;
-  category?: (number | null) | Category;
-  /**
-   * Will be auto-created immediately (hierarchical supported)
-   */
-  pendingCategoryName?: string | null;
-  /**
-   * Use this OR upload an image below
-   */
-  imageUrl?: string | null;
-  image?: (number | null) | Media;
-  /**
-   * Auto-set when background is removed. Prevents duplicate processing.
-   */
-  backgroundRemoved?: boolean | null;
-  /**
-   * Final verdict on this product
-   */
-  verdict: 'recommend' | 'caution' | 'avoid' | 'pending';
-  /**
-   * Brief explanation of why this verdict was given
-   */
-  verdictReason?: string | null;
-  /**
-   * System-calculated from ingredients + rules
-   */
-  autoVerdict?: ('recommend' | 'caution' | 'avoid') | null;
-  /**
-   * Enable to manually set verdict different from auto-calculated
-   */
-  verdictOverride?: boolean | null;
-  /**
-   * Required: explain why you are overriding the auto-verdict
-   */
-  verdictOverrideReason?: string | null;
-  verdictOverriddenBy?: (number | null) | User;
-  verdictOverriddenAt?: string | null;
-  /**
-   * Name of VerdictRule(s) that set the verdict
-   */
-  ruleApplied?: string | null;
-  /**
-   * Auto-populated from raw text, or manually link
-   */
-  ingredientsList?: (number | Ingredient)[] | null;
-  /**
-   * Paste ingredients list - will auto-parse and link to Ingredients collection
-   */
-  ingredientsRaw?: string | null;
-  /**
-   * Ingredients that could not be auto-matched (need manual research)
-   */
-  unmatchedIngredients?:
-    | {
-        name: string;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Universal Product Code for barcode scanning
-   */
-  upc?: string | null;
-  /**
-   * Amazon Standard Identification Number (10 characters). Used to auto-generate affiliate links.
-   */
-  amazonAsin?: string | null;
-  /**
-   * TikTok, Amazon, or other URL where data was extracted
-   */
-  sourceUrl?: string | null;
-  /**
-   * YouTube video from Videos collection (if applicable)
-   */
-  sourceVideo?: (number | null) | Video;
-  /**
-   * Number of sources that mentioned this product
-   */
-  sourceCount?: number | null;
-  /**
-   * AI confidence in extraction accuracy
-   */
-  aiConfidence?: ('high' | 'medium' | 'low') | null;
-  /**
-   * How the AI extracted this product
-   */
-  aiSourceType?: ('transcript' | 'video_watching' | 'profile' | 'manual') | null;
-  /**
-   * Times mentioned in source video
-   */
-  aiMentions?: number | null;
-  /**
-   * System-detected conflicts (blocks publishing if unresolved)
-   */
-  conflicts?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Auto-calculated from last tested date
-   */
-  freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
-  status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
-  priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
-  pros?:
-    | {
-        text: string;
-        id?: string | null;
-      }[]
-    | null;
-  cons?:
-    | {
-        text: string;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Brief overview for cards and previews
-   */
-  summary?: string | null;
-  fullReview?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  purchaseLinks?:
-    | {
-        retailer: string;
-        url: string;
-        price?: string | null;
-        isAffiliate?: boolean | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Link related products for comparison
-   */
-  comparedWith?: (number | Product)[] | null;
-  testingInfo?: {
-    reviewDate?: string | null;
-    lastTestedDate?: string | null;
-    versionTested?: string | null;
-    /**
-     * Notes about changes since last review
-     */
-    updateNotes?: string | null;
-  };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Ingredient database with verdicts that cascade to products
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ingredients".
- */
-export interface Ingredient {
-  id: number;
-  /**
-   * Primary name (e.g., "Red Dye 40")
-   */
-  name: string;
-  /**
-   * Other names this ingredient goes by
-   */
-  aliases?:
-    | {
-        alias: string;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Final verdict on this ingredient
-   */
-  verdict: 'safe' | 'caution' | 'avoid' | 'unknown';
-  /**
-   * Brief explanation of the verdict
-   */
-  reason?: string | null;
-  category?:
-    | (
-        | 'artificial_colors'
-        | 'artificial_sweeteners'
-        | 'preservatives'
-        | 'emulsifiers'
-        | 'heavy_metals'
-        | 'pesticides'
-        | 'vitamins_minerals'
-        | 'proteins'
-        | 'fats_oils'
-        | 'sugars'
-        | 'fibers'
-        | 'other'
-      )
-    | null;
-  /**
-   * Which product categories is this ingredient relevant to?
-   */
-  productCategories?: (number | Category)[] | null;
-  /**
-   * Videos, studies, or reports that informed this verdict
-   */
-  sources?:
-    | {
-        type?: ('video' | 'study' | 'lab_report' | 'government') | null;
-        reference?: string | null;
-        /**
-         * Brief note about this source
-         */
-        notes?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Main video where this ingredient was discussed
-   */
-  sourceVideo?: (number | null) | Video;
-  /**
-   * When AVOID, automatically flag products containing this
-   */
-  autoFlagProducts?: boolean | null;
-  /**
-   * Products currently flagged due to this ingredient
-   */
-  flaggedProductCount?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "videos".
- */
-export interface Video {
-  id: number;
-  title: string;
-  /**
-   * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
-   */
-  youtubeVideoId: string;
-  /**
-   * Leave empty to auto-fetch from YouTube
-   */
-  thumbnailUrl?: string | null;
-  description?: string | null;
-  /**
-   * Video duration in seconds
-   */
-  duration?: number | null;
-  category?: (number | null) | Category;
-  /**
-   * Link to the product being reviewed in this video
-   */
-  relatedProduct?: (number | null) | Product;
-  tags?:
-    | {
-        tag?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  status?: ('draft' | 'published') | null;
-  /**
-   * Lower numbers appear first
-   */
-  sortOrder?: number | null;
-  viewCount?: number | null;
-  isFeatured?: boolean | null;
-  /**
-   * Shorts will appear in the mobile Browse tab
-   */
-  videoType?: ('short' | 'longform') | null;
-  /**
-   * Was this video imported from YouTube automatically?
-   */
-  isAutoImported?: boolean | null;
-  /**
-   * When this video was last synced from YouTube
-   */
-  youtubeImportedAt?: string | null;
-  /**
-   * Stored transcript from YouTube captions (auto-populated on analysis)
-   */
-  transcript?: string | null;
-  /**
-   * When transcript was last fetched
-   */
-  transcriptUpdatedAt?: string | null;
-  /**
-   * When AI last analyzed this video
-   */
-  analyzedAt?: string | null;
-  /**
-   * Products that were created from analyzing this video
-   */
-  extractedProducts?: (number | Product)[] | null;
-  /**
-   * Ingredients discussed in this video
-   */
-  extractedIngredients?: (number | Ingredient)[] | null;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1969,6 +2088,56 @@ export interface UserSubmission {
   createdAt: string;
 }
 /**
+ * Immutable record of all product unlocks
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-unlocks".
+ */
+export interface ProductUnlock {
+  id: number;
+  /**
+   * User who unlocked the product
+   */
+  user?: (number | null) | User;
+  /**
+   * Device used for unlock
+   */
+  deviceFingerprint?: (number | null) | DeviceFingerprint;
+  /**
+   * Email provided at unlock time (for guests)
+   */
+  email?: string | null;
+  /**
+   * Product that was unlocked
+   */
+  product: number | Product;
+  unlockType: 'free_credit' | 'subscription' | 'admin_grant';
+  /**
+   * Which archetype card was unlocked
+   */
+  archetypeShown?: ('best_value' | 'premium_pick' | 'hidden_gem') | null;
+  unlockedAt: string;
+  /**
+   * The AVOID product that triggered alternatives view
+   */
+  sourceProductId?: number | null;
+  /**
+   * Browser session ID for funnel tracking
+   */
+  sessionId?: string | null;
+  /**
+   * UTM source or referrer URL
+   */
+  referralSource?: string | null;
+  /**
+   * Did this user later subscribe?
+   */
+  convertedToSubscription?: boolean | null;
+  conversionDate?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -2225,6 +2394,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'user-submissions';
         value: number | UserSubmission;
+      } | null)
+    | ({
+        relationTo: 'device-fingerprints';
+        value: number | DeviceFingerprint;
+      } | null)
+    | ({
+        relationTo: 'product-unlocks';
+        value: number | ProductUnlock;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2548,6 +2725,15 @@ export interface ProductsSelect<T extends boolean = true> {
         versionTested?: T;
         updateNotes?: T;
       };
+  badges?:
+    | T
+    | {
+        isBestOverall?: T;
+        isBestInCategory?: T;
+        isRecommended?: T;
+        isBestValue?: T;
+        isEditorsChoice?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2739,6 +2925,9 @@ export interface CategoriesSelect<T extends boolean = true> {
       };
   researchNotes?: T;
   lastEnrichedAt?: T;
+  featuredProduct?: T;
+  featuredProductImage?: T;
+  featuredProductUpdatedAt?: T;
   breadcrumbs?:
     | T
     | {
@@ -2888,8 +3077,12 @@ export interface UsersSelect<T extends boolean = true> {
   watchlistCategories?: T;
   ingredientWatchlist?: T;
   weeklyDigestEnabled?: T;
+  memberState?: T;
   freeUnlockCredits?: T;
   unlockedProducts?: T;
+  deviceFingerprints?: T;
+  totalUnlocks?: T;
+  lastUnlockAt?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -3051,6 +3244,47 @@ export interface UserSubmissionsSelect<T extends boolean = true> {
   voters?: T;
   pointsAwarded?: T;
   featured?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "device-fingerprints_select".
+ */
+export interface DeviceFingerprintsSelect<T extends boolean = true> {
+  fingerprintHash?: T;
+  user?: T;
+  browser?: T;
+  os?: T;
+  deviceType?: T;
+  firstSeenAt?: T;
+  lastSeenAt?: T;
+  unlockCreditsUsed?: T;
+  ipCountry?: T;
+  isBanned?: T;
+  banReason?: T;
+  suspiciousActivity?: T;
+  emailsUsed?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-unlocks_select".
+ */
+export interface ProductUnlocksSelect<T extends boolean = true> {
+  user?: T;
+  deviceFingerprint?: T;
+  email?: T;
+  product?: T;
+  unlockType?: T;
+  archetypeShown?: T;
+  unlockedAt?: T;
+  sourceProductId?: T;
+  sessionId?: T;
+  referralSource?: T;
+  convertedToSubscription?: T;
+  conversionDate?: T;
   updatedAt?: T;
   createdAt?: T;
 }

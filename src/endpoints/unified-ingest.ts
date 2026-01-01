@@ -397,7 +397,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
                             brand: 'Unknown',
                             upc: input,
                             status: 'ai_draft',
-                            verdict: 'pending',
+                            verdict: 'recommend', // Default to recommend, will be reviewed
                             verdictReason: 'Created from barcode scan - needs enrichment',
                         },
                     })

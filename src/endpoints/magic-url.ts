@@ -88,7 +88,7 @@ export const magicUrlHandler: PayloadHandler = async (req: PayloadRequest) => {
                         ingredientsRaw: productData.ingredients,
                         summary: productData.summary,
                         sourceUrl: url,
-                        verdict: 'pending',
+                        verdict: 'recommend', // Default to recommend, will be reviewed
                         status: 'ai_draft',
                         priceRange: (productData.priceRange || '$$') as '$' | '$$' | '$$$' | '$$$$',
                     },
