@@ -617,25 +617,44 @@ export const Products: CollectionConfig = {
                 return true
             },
         },
+        // === SOURCE INFORMATION ===
+        // Collapsible section grouping all source-related fields
+        // NOTE: 'collapsible' type is UI-only - no database migration needed
         {
-            name: 'sourceUrl',
-            type: 'text',
-            label: 'Source URL',
+            type: 'collapsible',
+            label: '📹 Source Information',
             admin: {
-                description: 'Amazon/product page URL where data was extracted',
+                initCollapsed: false, // Keep expanded by default for reviewers
             },
-        },
-        {
-            name: 'sourceVideo',
-            type: 'relationship',
-            relationTo: 'videos',
-            label: 'Source Video',
-            admin: {
-                components: {
-                    // Custom description component that shows YouTube link
-                    Description: '@/components/SourceVideoLink',
+            fields: [
+                // Smart source link display at the top (UI-only, no DB field)
+                {
+                    name: 'sourceLinkDisplay',
+                    type: 'ui',
+                    admin: {
+                        components: {
+                            Field: '@/components/SourceVideoLink',
+                        },
+                    },
                 },
-            },
+                {
+                    name: 'sourceUrl',
+                    type: 'text',
+                    label: 'Source URL',
+                    admin: {
+                        description: 'TikTok, Amazon, or other URL where data was extracted',
+                    },
+                },
+                {
+                    name: 'sourceVideo',
+                    type: 'relationship',
+                    relationTo: 'videos',
+                    label: 'Source Video',
+                    admin: {
+                        description: 'YouTube video from Videos collection (if applicable)',
+                    },
+                },
+            ],
         },
         {
             name: 'sourceCount',

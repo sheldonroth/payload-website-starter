@@ -1,15 +1,7 @@
 'use client'
 
 import React from 'react'
-import { useField, useFormFields } from '@payloadcms/ui'
-
-interface SourceVideoLinkProps {
-    path: string
-    field: {
-        name: string
-        label?: string
-    }
-}
+import { useFormFields } from '@payloadcms/ui'
 
 interface VideoData {
     id: number
@@ -17,86 +9,196 @@ interface VideoData {
     youtubeVideoId?: string
 }
 
-const SourceVideoLink: React.FC<SourceVideoLinkProps> = ({ path }) => {
-    // Get the sourceVideo field value from form context
+/**
+ * Smart Source Link Component
+ *
+ * Displays a clickable link to the product's source based on available data:
+ * - YouTube link (from sourceVideo relationship with youtubeVideoId)
+ * - TikTok link (from sourceUrl containing tiktok.com)
+ * - Generic source link (from sourceUrl)
+ * - Placeholder when no source is available
+ */
+const SourceVideoLink: React.FC<any> = () => {
+    // Watch both sourceVideo and sourceUrl fields
     const sourceVideoField = useFormFields(([fields]) => fields.sourceVideo)
+    const sourceUrlField = useFormFields(([fields]) => fields.sourceUrl)
 
-    // Handle both populated object and ID-only cases
+    // Extract values
     const videoData = sourceVideoField?.value as VideoData | number | null
     const video = typeof videoData === 'object' ? videoData : null
+    const sourceUrl = sourceUrlField?.value as string | null
 
-    if (!video) {
-        return (
-            <div style={{
-                padding: '10px 12px',
-                background: '#f9fafb',
-                borderRadius: '6px',
-                marginBottom: '16px',
-                border: '1px solid #e5e7eb',
-            }}>
-                <span style={{ color: '#9ca3af', fontSize: '13px', fontStyle: 'italic' }}>
-                    Select a source video above to see YouTube link
-                </span>
-            </div>
-        )
+    // Determine source type and build link info
+    const getSourceInfo = () => {
+        // Priority 1: YouTube video from sourceVideo relationship
+        if (video?.youtubeVideoId) {
+            return {
+                type: 'youtube',
+                url: `https://youtube.com/watch?v=${video.youtubeVideoId}`,
+                label: video.title || 'Watch Source Video',
+                icon: '▶',
+                color: '#ef4444',
+                bgColor: '#fef3c7',
+                borderColor: '#fcd34d',
+                hint: 'Opens YouTube',
+            }
+        }
+
+        // Priority 2: Video in CMS without YouTube ID
+        if (video) {
+            return {
+                type: 'cms_video',
+                url: `/admin/collections/videos/${video.id}`,
+                label: video.title || 'View Video in CMS',
+                icon: '📹',
+                color: '#6366f1',
+                bgColor: '#f3f4f6',
+                borderColor: '#e5e7eb',
+                hint: 'Opens CMS',
+            }
+        }
+
+        // Priority 3: TikTok URL
+        if (sourceUrl && sourceUrl.toLowerCase().includes('tiktok')) {
+            // Extract username if possible
+            const usernameMatch = sourceUrl.match(/@([^/?]+)/)
+            const username = usernameMatch ? `@${usernameMatch[1]}` : 'TikTok'
+            return {
+                type: 'tiktok',
+                url: sourceUrl,
+                label: `View on TikTok (${username})`,
+                icon: '📱',
+                color: '#000000',
+                bgColor: '#f0fdfa',
+                borderColor: '#5eead4',
+                hint: 'Opens TikTok',
+            }
+        }
+
+        // Priority 4: Instagram URL
+        if (sourceUrl && sourceUrl.toLowerCase().includes('instagram')) {
+            return {
+                type: 'instagram',
+                url: sourceUrl,
+                label: 'View on Instagram',
+                icon: '📷',
+                color: '#e1306c',
+                bgColor: '#fdf2f8',
+                borderColor: '#f9a8d4',
+                hint: 'Opens Instagram',
+            }
+        }
+
+        // Priority 5: Amazon URL
+        if (sourceUrl && sourceUrl.toLowerCase().includes('amazon')) {
+            return {
+                type: 'amazon',
+                url: sourceUrl,
+                label: 'View on Amazon',
+                icon: '🛒',
+                color: '#ff9900',
+                bgColor: '#fffbeb',
+                borderColor: '#fcd34d',
+                hint: 'Opens Amazon',
+            }
+        }
+
+        // Priority 6: Generic source URL
+        if (sourceUrl) {
+            // Try to extract domain for label
+            let domain = 'Source'
+            try {
+                const urlObj = new URL(sourceUrl)
+                domain = urlObj.hostname.replace('www.', '')
+            } catch {
+                // Invalid URL, use generic label
+            }
+            return {
+                type: 'generic',
+                url: sourceUrl,
+                label: `View Source (${domain})`,
+                icon: '🔗',
+                color: '#6b7280',
+                bgColor: '#f9fafb',
+                borderColor: '#e5e7eb',
+                hint: 'Opens external link',
+            }
+        }
+
+        // No source available
+        return null
     }
 
-    if (!video.youtubeVideoId) {
+    const sourceInfo = getSourceInfo()
+
+    // No source - show placeholder
+    if (!sourceInfo) {
         return (
             <div style={{
-                padding: '12px',
-                background: '#f3f4f6',
-                borderRadius: '6px',
-                marginBottom: '16px',
-                border: '1px solid #e5e7eb',
+                padding: '12px 16px',
+                background: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px dashed #d1d5db',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>&#x1F4F9;</span>
-                    <a
-                        href={`/admin/collections/videos/${video.id}`}
-                        style={{
-                            color: '#6366f1',
-                            textDecoration: 'none',
-                            fontWeight: 500,
-                        }}
-                    >
-                        {video.title || 'View Video in CMS'}
-                    </a>
-                    <span style={{ color: '#9ca3af', fontSize: '12px' }}>
-                        (no YouTube ID)
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    color: '#9ca3af',
+                    fontSize: '13px',
+                }}>
+                    <span style={{ fontSize: '16px' }}>📭</span>
+                    <span style={{ fontStyle: 'italic' }}>
+                        No source linked. Add a Source URL or Source Video above.
                     </span>
                 </div>
             </div>
         )
     }
 
-    const youtubeUrl = `https://youtube.com/watch?v=${video.youtubeVideoId}`
-
+    // Show source link
     return (
         <div style={{
-            padding: '12px',
-            background: '#fef3c7',
-            borderRadius: '6px',
-            marginBottom: '16px',
-            border: '1px solid #fcd34d',
+            padding: '12px 16px',
+            background: sourceInfo.bgColor,
+            borderRadius: '8px',
+            border: `1px solid ${sourceInfo.borderColor}`,
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#ef4444', fontSize: '18px' }}>&#x25B6;</span>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+            }}>
+                <span style={{
+                    fontSize: '20px',
+                    color: sourceInfo.color,
+                }}>
+                    {sourceInfo.icon}
+                </span>
                 <a
-                    href={youtubeUrl}
+                    href={sourceInfo.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
                         color: '#1d4ed8',
                         textDecoration: 'none',
-                        fontWeight: 500,
+                        fontWeight: 600,
                         fontSize: '14px',
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
                 >
-                    {video.title || 'Watch Source Video'}
+                    {sourceInfo.label}
                 </a>
-                <span style={{ color: '#92400e', fontSize: '12px' }}>
-                    (opens YouTube)
+                <span style={{
+                    color: '#6b7280',
+                    fontSize: '12px',
+                    background: 'rgba(0,0,0,0.05)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                }}>
+                    {sourceInfo.hint}
                 </span>
             </div>
         </div>
