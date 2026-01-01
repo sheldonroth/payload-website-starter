@@ -1019,5 +1019,62 @@ export const Products: CollectionConfig = {
             ],
         },
 
+        // === BADGES & AWARDS ===
+        {
+            name: 'badges',
+            type: 'group',
+            label: '🏆 Badges & Awards',
+            admin: {
+                description: 'Award badges displayed on product cards and pages',
+            },
+            fields: [
+                {
+                    name: 'isBestOverall',
+                    type: 'checkbox',
+                    label: 'Best Overall',
+                    defaultValue: false,
+                    admin: {
+                        description: '🥇 Mark this product as the #1 pick for its category. Only ONE product per category should have this enabled.',
+                    },
+                },
+                {
+                    name: 'isBestInCategory',
+                    type: 'checkbox',
+                    label: 'Best in Category',
+                    defaultValue: false,
+                    admin: {
+                        description: 'Featured product for this category',
+                    },
+                },
+                {
+                    name: 'isRecommended',
+                    type: 'checkbox',
+                    label: 'Recommended',
+                    defaultValue: false,
+                    admin: {
+                        description: 'Staff recommended product',
+                    },
+                },
+                {
+                    name: 'isBestValue',
+                    type: 'checkbox',
+                    label: 'Best Value',
+                    defaultValue: false,
+                    admin: {
+                        description: 'Best price-to-quality ratio',
+                    },
+                },
+                {
+                    name: 'isEditorsChoice',
+                    type: 'checkbox',
+                    label: "Editor's Choice",
+                    defaultValue: false,
+                    admin: {
+                        description: "Selected as editor's top pick",
+                    },
+                },
+            ],
+        },
+
     ],
 }
