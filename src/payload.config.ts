@@ -48,6 +48,7 @@ import { batchEnrichHandler } from './endpoints/batch-enrich'
 import { unifiedIngestHandler } from './endpoints/unified-ingest'
 import { adminLinkVideosHandler } from './endpoints/admin-link-videos'
 import { adminCategoryCleanupHandler } from './endpoints/admin-category-cleanup'
+import { backgroundRemoveHandler, backgroundBatchHandler } from './endpoints/background-remove'
 import { cronJobsHandler } from './endpoints/cron-jobs'
 import { bulkOperationsHandler } from './endpoints/bulk-operations'
 import { labelDecodeHandler } from './endpoints/label-decode'
@@ -183,6 +184,16 @@ export default buildConfig({
       path: '/product/enrich',
       method: 'post',
       handler: productEnrichHandler,
+    },
+    {
+      path: '/background/remove',
+      method: 'post',
+      handler: backgroundRemoveHandler,
+    },
+    {
+      path: '/background/batch',
+      method: 'post',
+      handler: backgroundBatchHandler,
     },
     {
       path: '/admin/purge',

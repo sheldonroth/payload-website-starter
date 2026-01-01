@@ -15,6 +15,7 @@ import YouTubeSync from '../YouTubeSync'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import ImageReview from '../ImageReview'
+import BatchBackgroundRemoval from '../BatchBackgroundRemoval'
 import NewsletterExport from '../NewsletterExport'
 import EmailTester from '../EmailTester'
 
@@ -151,6 +152,11 @@ const BeforeDashboard: React.FC = () => {
       {/* Image Review */}
       <CollapsibleSection title="Image Review" icon="🖼️" defaultOpen={true} badge="20 need images">
         <ImageReview />
+      </CollapsibleSection>
+
+      {/* Background Removal */}
+      <CollapsibleSection title="Background Removal" icon="✂️" defaultOpen={false} badge="$0.02/image">
+        <BatchBackgroundRemoval />
       </CollapsibleSection>
 
       {/* Admin Tools */}

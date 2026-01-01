@@ -466,6 +466,17 @@ export const Products: CollectionConfig = {
             relationTo: 'media',
             label: 'Product Image',
         },
+        // Background removal UI button (no database column - UI only)
+        // NOTE: If this component doesn't render, run: pnpm payload generate:importmap
+        {
+            name: 'backgroundRemoveAction',
+            type: 'ui',
+            admin: {
+                components: {
+                    Field: '@/components/BackgroundRemoveButton',
+                },
+            },
+        },
 
         // === BINARY VERDICT SYSTEM ===
         {

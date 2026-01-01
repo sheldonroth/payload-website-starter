@@ -122,6 +122,18 @@ export const RateLimits = {
         maxRequests: 10,
         windowMs: 60 * 1000, // 10 per minute
     },
+
+    // Background removal (Photoroom API: 100/min limit)
+    BG_REMOVAL: {
+        maxRequests: 20,
+        windowMs: 60 * 1000, // 20 per minute (conservative to stay under API limit)
+    },
+
+    // Background removal batch operations
+    BG_REMOVAL_BATCH: {
+        maxRequests: 3,
+        windowMs: 60 * 1000, // 3 batch operations per minute
+    },
 }
 
 /**
