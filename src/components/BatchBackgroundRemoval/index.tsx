@@ -11,6 +11,13 @@ interface ProductWithImage {
     hasImage: boolean
 }
 
+interface ProcessingResult {
+    productId: number
+    success: boolean
+    newMediaId?: number
+    error?: string
+}
+
 /**
  * Batch Background Removal Component
  *
@@ -31,6 +38,8 @@ const BatchBackgroundRemoval: React.FC = () => {
     const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 })
     const [message, setMessage] = useState('')
     const [searchTerm, setSearchTerm] = useState('')
+    const [failedResults, setFailedResults] = useState<ProcessingResult[]>([])
+    const [showErrorDetails, setShowErrorDetails] = useState(false)
 
     const fetchProducts = useCallback(async () => {
         setLoading(true)
@@ -117,6 +126,8 @@ const BatchBackgroundRemoval: React.FC = () => {
         setProcessing(true)
         setProgress({ current: 0, total: selectedIds.size, success: 0, failed: 0 })
         setMessage(`Processing ${selectedIds.size} images...`)
+        setFailedResults([])
+        setShowErrorDetails(false)
 
         const productIds = Array.from(selectedIds)
 
@@ -139,6 +150,13 @@ const BatchBackgroundRemoval: React.FC = () => {
                 success: data.successCount,
                 failed: data.failureCount,
             })
+
+            // Store failed results for display
+            const failed = (data.results || []).filter((r: ProcessingResult) => !r.success)
+            setFailedResults(failed)
+            if (failed.length > 0) {
+                setShowErrorDetails(true)
+            }
 
             setMessage(
                 `Completed: ${data.successCount} succeeded, ${data.failureCount} failed. Cost: ${data.estimatedCost}`
@@ -299,6 +317,64 @@ const BatchBackgroundRemoval: React.FC = () => {
                     }}
                 >
                     {message}
+                    {failedResults.length > 0 && (
+                        <button
+                            onClick={() => setShowErrorDetails(!showErrorDetails)}
+                            style={{
+                                marginLeft: '12px',
+                                padding: '2px 8px',
+                                background: 'transparent',
+                                border: '1px solid #dc2626',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                color: '#dc2626',
+                            }}
+                        >
+                            {showErrorDetails ? 'Hide Details' : 'Show Details'}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Error Details */}
+            {showErrorDetails && failedResults.length > 0 && (
+                <div
+                    style={{
+                        padding: '12px',
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        marginBottom: '16px',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                    }}
+                >
+                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: '#991b1b' }}>
+                        Failed Products ({failedResults.length}):
+                    </div>
+                    {failedResults.map((result) => {
+                        const product = products.find(p => p.id === result.productId)
+                        return (
+                            <div
+                                key={result.productId}
+                                style={{
+                                    padding: '6px 8px',
+                                    background: '#fff',
+                                    borderRadius: '4px',
+                                    marginBottom: '4px',
+                                    fontSize: '12px',
+                                }}
+                            >
+                                <div style={{ fontWeight: 500 }}>
+                                    #{result.productId}: {product?.name || 'Unknown Product'}
+                                </div>
+                                <div style={{ color: '#dc2626', marginTop: '2px' }}>
+                                    Error: {result.error || 'Unknown error'}
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
             )}
 

@@ -28,7 +28,7 @@ async function removeBackgroundWithPhotoroom(imageBuffer: Buffer): Promise<Buffe
     const apiKey = process.env.PHOTOROOM_API_KEY
 
     if (!apiKey) {
-        throw new Error('PHOTOROOM_API_KEY environment variable is not set')
+        throw new Error('PHOTOROOM_API_KEY not configured')
     }
 
     // Create form data for Photoroom API
@@ -48,7 +48,17 @@ async function removeBackgroundWithPhotoroom(imageBuffer: Buffer): Promise<Buffe
 
     if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(`Photoroom API error: ${response.status} - ${errorText}`)
+        // Parse common Photoroom errors
+        if (response.status === 401) {
+            throw new Error('Photoroom API: Invalid API key')
+        } else if (response.status === 402) {
+            throw new Error('Photoroom API: Payment required / credits exhausted')
+        } else if (response.status === 429) {
+            throw new Error('Photoroom API: Rate limit exceeded')
+        } else if (response.status === 400) {
+            throw new Error(`Photoroom API: Bad request - ${errorText}`)
+        }
+        throw new Error(`Photoroom API error (${response.status}): ${errorText.slice(0, 200)}`)
     }
 
     return Buffer.from(await response.arrayBuffer())
@@ -71,13 +81,31 @@ async function fetchImageFromUrl(url: string): Promise<Buffer> {
         clearTimeout(timeoutId)
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
+            if (response.status === 403) {
+                throw new Error(`Image fetch blocked (403 Forbidden): ${url.slice(0, 100)}`)
+            } else if (response.status === 404) {
+                throw new Error(`Image not found (404): ${url.slice(0, 100)}`)
+            }
+            throw new Error(`Image fetch failed (${response.status}): ${url.slice(0, 100)}`)
+        }
+
+        const contentType = response.headers.get('content-type') || ''
+        if (!contentType.includes('image')) {
+            throw new Error(`URL is not an image (content-type: ${contentType}): ${url.slice(0, 100)}`)
         }
 
         const arrayBuffer = await response.arrayBuffer()
+        if (arrayBuffer.byteLength === 0) {
+            throw new Error(`Empty image response: ${url.slice(0, 100)}`)
+        }
+
         return Buffer.from(arrayBuffer)
-    } finally {
+    } catch (error) {
         clearTimeout(timeoutId)
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(`Image fetch timeout (15s): ${url.slice(0, 100)}`)
+        }
+        throw error
     }
 }
 
