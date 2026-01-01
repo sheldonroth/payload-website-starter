@@ -632,18 +632,10 @@ export const Products: CollectionConfig = {
             label: 'Source Video',
             admin: {
                 description: 'Video that this product was extracted from',
-            },
-        },
-        // NOTE FOR AI AGENTS: This is a UI-only field (no database column).
-        // Use 'ui' type for display-only components that don't store data.
-        // If you change this to a storage type (text, number, etc), you MUST create a migration.
-        // See src/migrations/ for examples.
-        {
-            name: 'sourceVideoLink',
-            type: 'ui',
-            admin: {
+                // NOTE FOR AI AGENTS: afterInput renders a custom component after this field.
+                // This doesn't require a database column since it's display-only.
                 components: {
-                    Field: '@/components/SourceVideoLink',
+                    afterInput: ['@/components/SourceVideoLink'],
                 },
             },
         },
