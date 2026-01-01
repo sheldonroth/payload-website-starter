@@ -635,7 +635,7 @@ export const Products: CollectionConfig = {
                 // NOTE FOR AI AGENTS: afterInput renders a custom component after this field.
                 // This doesn't require a database column since it's display-only.
                 components: {
-                    afterInput: ['@/components/SourceVideoLink'],
+                    afterInput: '@/components/SourceVideoLink',
                 },
             },
         },
