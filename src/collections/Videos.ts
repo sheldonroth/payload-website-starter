@@ -29,13 +29,17 @@ export const Videos: CollectionConfig = {
                     const isShort = await isYouTubeShort(data.youtubeVideoId)
                     data.videoType = isShort ? 'short' : 'longform'
                 }
+                // Default to longform for direct video URLs without YouTube ID
+                if (!data.youtubeVideoId && data.videoUrl && !data.videoType) {
+                    data.videoType = 'longform'
+                }
                 return data
             },
         ],
     },
     admin: {
         useAsTitle: 'title',
-        defaultColumns: ['title', 'youtubeVideoId', 'videoType', 'category', 'status', 'sortOrder'],
+        defaultColumns: ['title', 'youtubeVideoId', 'videoUrl', 'videoType', 'category', 'status', 'sortOrder'],
         group: 'Catalog',
     },
     fields: [
@@ -48,10 +52,32 @@ export const Videos: CollectionConfig = {
         {
             name: 'youtubeVideoId',
             type: 'text',
-            required: true,
             label: 'YouTube Video ID',
             admin: {
                 description: 'The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)',
+            },
+        },
+        {
+            name: 'videoUrl',
+            type: 'text',
+            label: 'Direct Video URL',
+            admin: {
+                description: 'Direct URL to a video file (MP4, WebM, etc.) hosted on a CDN or your own server',
+            },
+            validate: (value: string | null | undefined, { siblingData }: { siblingData: Record<string, unknown> }) => {
+                // Require at least one of youtubeVideoId or videoUrl
+                if (!value && !siblingData?.youtubeVideoId) {
+                    return 'Either YouTube Video ID or Direct Video URL is required'
+                }
+                // Validate URL format if provided
+                if (value) {
+                    try {
+                        new URL(value)
+                    } catch {
+                        return 'Please enter a valid URL'
+                    }
+                }
+                return true
             },
         },
         {

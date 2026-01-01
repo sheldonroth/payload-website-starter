@@ -7,6 +7,7 @@ interface VideoData {
     id: number
     title?: string
     youtubeVideoId?: string
+    videoUrl?: string
 }
 
 /**
@@ -44,7 +45,21 @@ const SourceVideoLink: React.FC<any> = () => {
             }
         }
 
-        // Priority 2: Video in CMS without YouTube ID
+        // Priority 2: Direct video URL from sourceVideo
+        if (video?.videoUrl) {
+            return {
+                type: 'direct_video',
+                url: video.videoUrl,
+                label: video.title || 'Watch Video',
+                icon: '🎬',
+                color: '#10b981',
+                bgColor: '#ecfdf5',
+                borderColor: '#6ee7b7',
+                hint: 'Direct video link',
+            }
+        }
+
+        // Priority 3: Video in CMS without YouTube ID or videoUrl
         if (video) {
             return {
                 type: 'cms_video',
@@ -58,7 +73,7 @@ const SourceVideoLink: React.FC<any> = () => {
             }
         }
 
-        // Priority 3: TikTok URL
+        // Priority 4: TikTok URL
         if (sourceUrl && sourceUrl.toLowerCase().includes('tiktok')) {
             // Extract username if possible
             const usernameMatch = sourceUrl.match(/@([^/?]+)/)
@@ -75,7 +90,7 @@ const SourceVideoLink: React.FC<any> = () => {
             }
         }
 
-        // Priority 4: Instagram URL
+        // Priority 5: Instagram URL
         if (sourceUrl && sourceUrl.toLowerCase().includes('instagram')) {
             return {
                 type: 'instagram',
@@ -89,7 +104,7 @@ const SourceVideoLink: React.FC<any> = () => {
             }
         }
 
-        // Priority 5: Amazon URL
+        // Priority 6: Amazon URL
         if (sourceUrl && sourceUrl.toLowerCase().includes('amazon')) {
             return {
                 type: 'amazon',
@@ -103,7 +118,7 @@ const SourceVideoLink: React.FC<any> = () => {
             }
         }
 
-        // Priority 6: Generic source URL
+        // Priority 7: Generic source URL
         if (sourceUrl) {
             // Try to extract domain for label
             let domain = 'Source'
