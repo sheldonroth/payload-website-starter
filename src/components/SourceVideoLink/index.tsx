@@ -1,7 +1,15 @@
 'use client'
 
 import React from 'react'
-import { useFormFields } from '@payloadcms/ui'
+import { useField, useFormFields } from '@payloadcms/ui'
+
+interface SourceVideoLinkProps {
+    path: string
+    field: {
+        name: string
+        label?: string
+    }
+}
 
 interface VideoData {
     id: number
@@ -9,23 +17,26 @@ interface VideoData {
     youtubeVideoId?: string
 }
 
-const SourceVideoLink: React.FC = () => {
-    // Watch the sourceVideo field value
-    const sourceVideo = useFormFields(([fields]) => fields.sourceVideo)
+const SourceVideoLink: React.FC<SourceVideoLinkProps> = ({ path }) => {
+    // Get the sourceVideo field value from form context
+    const sourceVideoField = useFormFields(([fields]) => fields.sourceVideo)
 
     // Handle both populated object and ID-only cases
-    const videoData = sourceVideo?.value as VideoData | number | null
+    const videoData = sourceVideoField?.value as VideoData | number | null
     const video = typeof videoData === 'object' ? videoData : null
 
     if (!video) {
         return (
             <div style={{
-                padding: '8px 12px',
-                color: '#9ca3af',
-                fontSize: '13px',
-                fontStyle: 'italic',
+                padding: '10px 12px',
+                background: '#f9fafb',
+                borderRadius: '6px',
+                marginBottom: '16px',
+                border: '1px solid #e5e7eb',
             }}>
-                Select a source video above to see YouTube link
+                <span style={{ color: '#9ca3af', fontSize: '13px', fontStyle: 'italic' }}>
+                    Select a source video above to see YouTube link
+                </span>
             </div>
         )
     }
@@ -37,6 +48,7 @@ const SourceVideoLink: React.FC = () => {
                 background: '#f3f4f6',
                 borderRadius: '6px',
                 marginBottom: '16px',
+                border: '1px solid #e5e7eb',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '16px' }}>&#x1F4F9;</span>

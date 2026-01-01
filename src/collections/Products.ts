@@ -621,8 +621,10 @@ export const Products: CollectionConfig = {
         },
         {
             name: 'sourceVideoLink',
-            type: 'ui',
+            type: 'text',
+            label: ' ', // Empty label - component handles its own display
             admin: {
+                readOnly: true,
                 components: {
                     Field: '@/components/SourceVideoLink',
                 },

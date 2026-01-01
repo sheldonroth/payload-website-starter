@@ -136,11 +136,13 @@ export interface Config {
     header: Header;
     footer: Footer;
     'youtube-settings': YoutubeSetting;
+    'site-settings': SiteSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     'youtube-settings': YoutubeSettingsSelect<false> | YoutubeSettingsSelect<true>;
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
   };
   locale: null;
   user: User & {
@@ -1053,6 +1055,10 @@ export interface Product {
    */
   upc?: string | null;
   /**
+   * Amazon Standard Identification Number (10 characters). Used to auto-generate affiliate links.
+   */
+  amazonAsin?: string | null;
+  /**
    * Amazon/product page URL where data was extracted
    */
   sourceUrl?: string | null;
@@ -1909,6 +1915,31 @@ export interface UserSubmission {
    * Internal notes from review
    */
   moderatorNotes?: string | null;
+  productRequestDetails?: {
+    requestedProductName: string;
+    requestedBrand?: string | null;
+    /**
+     * Link to product page (Amazon, retailer, etc.)
+     */
+    productUrl?: string | null;
+    reasonForRequest?: string | null;
+  };
+  /**
+   * Number of community votes
+   */
+  voteCount?: number | null;
+  /**
+   * Array of user IDs who voted
+   */
+  voters?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   pointsAwarded?: number | null;
   /**
    * Feature this submission (bonus points)
@@ -2453,6 +2484,7 @@ export interface ProductsSelect<T extends boolean = true> {
         id?: T;
       };
   upc?: T;
+  amazonAsin?: T;
   sourceUrl?: T;
   sourceVideo?: T;
   sourceCount?: T;
@@ -2984,6 +3016,16 @@ export interface UserSubmissionsSelect<T extends boolean = true> {
   aiConfidence?: T;
   status?: T;
   moderatorNotes?: T;
+  productRequestDetails?:
+    | T
+    | {
+        requestedProductName?: T;
+        requestedBrand?: T;
+        productUrl?: T;
+        reasonForRequest?: T;
+      };
+  voteCount?: T;
+  voters?: T;
   pointsAwarded?: T;
   featured?: T;
   updatedAt?: T;
@@ -3358,6 +3400,33 @@ export interface YoutubeSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings".
+ */
+export interface SiteSetting {
+  id: number;
+  affiliateSettings?: {
+    /**
+     * Your Amazon Associates tag (e.g., "yoursite-20"). Used to generate affiliate links.
+     */
+    amazonAffiliateTag?: string | null;
+    /**
+     * Disclosure text shown near affiliate links
+     */
+    affiliateDisclosure?: string | null;
+    /**
+     * Show affiliate links on product pages
+     */
+    enableAffiliateLinks?: boolean | null;
+  };
+  siteInfo?: {
+    siteName?: string | null;
+    siteDescription?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -3414,6 +3483,28 @@ export interface YoutubeSettingsSelect<T extends boolean = true> {
   shortsOnly?: T;
   lastSyncAt?: T;
   lastSyncStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings_select".
+ */
+export interface SiteSettingsSelect<T extends boolean = true> {
+  affiliateSettings?:
+    | T
+    | {
+        amazonAffiliateTag?: T;
+        affiliateDisclosure?: T;
+        enableAffiliateLinks?: T;
+      };
+  siteInfo?:
+    | T
+    | {
+        siteName?: T;
+        siteDescription?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
