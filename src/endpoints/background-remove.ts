@@ -110,22 +110,100 @@ async function fetchImageFromUrl(url: string): Promise<Buffer> {
 }
 
 /**
+ * Internalize an external image URL by downloading and storing in Media collection
+ * Returns the new Media ID
+ */
+async function internalizeExternalImage(
+    payload: Payload,
+    imageUrl: string,
+    productId: number,
+    productName: string,
+    brandName: string | null
+): Promise<{ mediaId: number; buffer: Buffer }> {
+    console.log(`Internalizing external image for product ${productId}: ${imageUrl.slice(0, 80)}...`)
+
+    // Download the external image
+    const buffer = await fetchImageFromUrl(imageUrl)
+
+    // Generate a filename
+    const safeBrand = (brandName || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-')
+    const safeName = productName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+
+    // Detect extension from URL or default to jpg
+    const urlPath = new URL(imageUrl).pathname
+    const ext = urlPath.match(/\.(jpg|jpeg|png|gif|webp)$/i)?.[1]?.toLowerCase() || 'jpg'
+    const filename = `${safeBrand}-${safeName}-${Date.now()}.${ext}`
+
+    // Determine mimetype
+    const mimeTypes: Record<string, string> = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+    }
+    const mimetype = mimeTypes[ext] || 'image/jpeg'
+
+    // Upload to Media collection
+    const media = await payload.create({
+        collection: 'media',
+        data: {
+            alt: `${brandName || ''} ${productName}`.trim(),
+        },
+        file: {
+            data: buffer,
+            name: filename,
+            mimetype,
+            size: buffer.length,
+        },
+    })
+
+    console.log(`Internalized image for product ${productId} -> Media ID: ${media.id}`)
+
+    return { mediaId: media.id as number, buffer }
+}
+
+/**
  * Get image buffer from product (either from external URL or Media relationship)
+ * If external URL, internalizes it first and updates the product
  */
 async function getProductImageBuffer(
     payload: Payload,
+    productId: number,
     product: {
         imageUrl?: string | null
         image?: { url?: string; id?: number } | number | null
+        name?: string
+        brand?: { name?: string } | null
     }
 ): Promise<{ buffer: Buffer; source: 'url' | 'media'; mediaId?: number }> {
-    // Priority 1: Try external URL
+    // Priority 1: If external URL, internalize it first
     if (product.imageUrl) {
-        const buffer = await fetchImageFromUrl(product.imageUrl)
-        return { buffer, source: 'url' }
+        const productName = (product.name as string) || 'product'
+        const brandName = product.brand?.name || null
+
+        const { mediaId, buffer } = await internalizeExternalImage(
+            payload,
+            product.imageUrl,
+            productId,
+            productName,
+            brandName
+        )
+
+        // Update the product to use the internal image and clear external URL
+        await payload.update({
+            collection: 'products',
+            id: productId,
+            data: {
+                image: mediaId,
+                imageUrl: null, // Clear external URL
+            },
+        })
+
+        return { buffer, source: 'url', mediaId }
     }
 
-    // Priority 2: Try Media relationship
+    // Priority 2: Try Media relationship (already internal)
     if (product.image) {
         let mediaUrl: string | undefined
         let mediaId: number | undefined
@@ -212,8 +290,8 @@ async function processProductBackgroundRemoval(
             return { success: false, productId, error: 'Product not found' }
         }
 
-        // Get image buffer
-        const { buffer: originalBuffer, source } = await getProductImageBuffer(payload, product as any)
+        // Get image buffer (internalizes external URLs first)
+        const { buffer: originalBuffer, source } = await getProductImageBuffer(payload, productId, product as any)
 
         // Check image size (Photoroom limit is 25MB)
         if (originalBuffer.length > 25 * 1024 * 1024) {
