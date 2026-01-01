@@ -30,6 +30,7 @@ import * as migration_20251231_240000_add_background_removed from './20251231_24
 import * as migration_20260101_000000_add_product_badges from './20260101_000000_add_product_badges';
 import * as migration_20260101_000100_add_featured_product from './20260101_000100_add_featured_product';
 import * as migration_20260101_010000_one_shot_engine from './20260101_010000_one_shot_engine';
+import * as migration_20260101_020000_add_video_url from './20260101_020000_add_video_url';
 
 export const migrations = [
   {
@@ -191,5 +192,10 @@ export const migrations = [
     up: migration_20260101_010000_one_shot_engine.up,
     down: migration_20260101_010000_one_shot_engine.down,
     name: '20260101_010000_one_shot_engine'
+  },
+  {
+    up: migration_20260101_020000_add_video_url.up,
+    down: migration_20260101_020000_add_video_url.down,
+    name: '20260101_020000_add_video_url'
   },
 ];

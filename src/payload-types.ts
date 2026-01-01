@@ -1020,7 +1020,11 @@ export interface Video {
   /**
    * The ID from the YouTube URL (e.g., "dQw4w9WgXcQ" from youtube.com/watch?v=dQw4w9WgXcQ)
    */
-  youtubeVideoId: string;
+  youtubeVideoId?: string | null;
+  /**
+   * Direct URL to a video file (MP4, WebM, etc.) hosted on a CDN or your own server
+   */
+  videoUrl?: string | null;
   /**
    * Leave empty to auto-fetch from YouTube
    */
@@ -2771,6 +2775,7 @@ export interface ArticlesSelect<T extends boolean = true> {
 export interface VideosSelect<T extends boolean = true> {
   title?: T;
   youtubeVideoId?: T;
+  videoUrl?: T;
   thumbnailUrl?: T;
   description?: T;
   duration?: T;
