@@ -2,10 +2,12 @@ import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface ProductInfo {
-    imageUrl: string | null
+    mediaId: number | null
     priceRange: string | null
     source: string | null
     searchQuery: string
+    triedUrls: number
+    error?: string
 }
 
 interface GoogleSearchResult {
@@ -23,65 +25,199 @@ interface GoogleSearchResponse {
 }
 
 /**
- * Search for product images using Google Custom Search API
- * Returns the best quality image URL from the search results
+ * Try to download and upload an image, returns mediaId on success
  */
-async function searchProductImage(productName: string, brand: string | null): Promise<string | null> {
+async function tryDownloadImage(
+    payload: Payload,
+    imageUrl: string,
+    productName: string,
+    brand: string | null
+): Promise<{ mediaId: number | null; error?: string }> {
+    try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+        const response = await fetch(imageUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.google.com/',
+            },
+            signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+            return { mediaId: null, error: `HTTP ${response.status}` }
+        }
+
+        const contentType = response.headers.get('content-type') || ''
+        if (!contentType.includes('image')) {
+            return { mediaId: null, error: `Not an image: ${contentType}` }
+        }
+
+        const arrayBuffer = await response.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        if (buffer.length < 1000) {
+            return { mediaId: null, error: 'Image too small' }
+        }
+
+        const ext = contentType.includes('png') ? 'png' :
+            contentType.includes('webp') ? 'webp' :
+                contentType.includes('gif') ? 'gif' : 'jpg'
+
+        const safeBrand = (brand || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-')
+        const safeName = productName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        const filename = `${safeBrand}-${safeName}-${Date.now()}.${ext}`
+
+        const media = await payload.create({
+            collection: 'media',
+            data: {
+                alt: `${brand || ''} ${productName}`.trim(),
+            },
+            file: {
+                data: buffer,
+                name: filename,
+                mimetype: contentType,
+                size: buffer.length,
+            },
+        })
+
+        return { mediaId: media.id as number }
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error'
+        return { mediaId: null, error: msg.includes('abort') ? 'Timeout' : msg }
+    }
+}
+
+/**
+ * Search Google for product images and return multiple URLs to try
+ */
+async function getGoogleImageUrls(productName: string, brand: string | null): Promise<string[]> {
     const apiKey = process.env.GOOGLE_SEARCH_API_KEY
     const cseId = process.env.GOOGLE_CSE_ID
 
     if (!apiKey || !cseId) {
-        console.error('Google Custom Search not configured (missing GOOGLE_SEARCH_API_KEY or GOOGLE_CSE_ID)')
-        return null
+        console.log('Google Custom Search not configured')
+        return []
     }
 
     const searchQuery = brand ? `${brand} ${productName} product` : `${productName} product`
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&searchType=image&q=${encodeURIComponent(searchQuery)}&num=5&imgSize=large&safe=active`
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&searchType=image&q=${encodeURIComponent(searchQuery)}&num=10&imgSize=large&safe=active`
 
     try {
         const response = await fetch(url)
         const data: GoogleSearchResponse = await response.json()
 
-        if (data.error) {
-            console.error('Google Search API error:', data.error.message)
-            return null
+        if (data.error || !data.items) {
+            return []
         }
 
-        if (!data.items || data.items.length === 0) {
-            console.log('No images found for:', searchQuery)
-            return null
-        }
+        // Sort by preference: preferred domains first, then by size
+        const preferredDomains = ['amazon.com', 'walmart.com', 'target.com', 'instacart.com']
 
-        // Find the best image - prefer larger images from reputable sources
-        const preferredDomains = ['amazon.com', 'walmart.com', 'target.com', 'manufacturer']
-        let bestImage: string | null = null
+        const sorted = data.items
+            .filter(item => !item.image || (item.image.width >= 200 && item.image.height >= 200))
+            .sort((a, b) => {
+                const aPreferred = preferredDomains.some(d => a.link.includes(d) || a.image?.contextLink?.includes(d))
+                const bPreferred = preferredDomains.some(d => b.link.includes(d) || b.image?.contextLink?.includes(d))
+                if (aPreferred && !bPreferred) return -1
+                if (bPreferred && !aPreferred) return 1
+                return 0
+            })
 
-        for (const item of data.items) {
-            const link = item.link
-            // Skip tiny images
-            if (item.image && (item.image.width < 200 || item.image.height < 200)) continue
-
-            // Check if from preferred source
-            const isPreferred = preferredDomains.some(domain =>
-                item.image?.contextLink?.includes(domain) || link.includes(domain)
-            )
-
-            if (isPreferred) {
-                bestImage = link
-                break
-            }
-
-            // Use first valid image as fallback
-            if (!bestImage) {
-                bestImage = link
-            }
-        }
-
-        console.log('Found image for', searchQuery, ':', bestImage)
-        return bestImage
+        return sorted.map(item => item.link)
     } catch (error) {
         console.error('Google Search failed:', error)
-        return null
+        return []
+    }
+}
+
+/**
+ * Search Open Food Facts for product images
+ */
+async function getOpenFoodFactsImageUrls(productName: string, brand: string | null): Promise<string[]> {
+    try {
+        const searchQuery = brand ? `${brand} ${productName}` : productName
+        const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=5`
+
+        const response = await fetch(url, {
+            headers: { 'User-Agent': 'ProductReport/1.0' }
+        })
+
+        if (!response.ok) return []
+
+        const data = await response.json()
+        const urls: string[] = []
+
+        for (const product of data.products || []) {
+            if (product.image_url) urls.push(product.image_url)
+            if (product.image_front_url) urls.push(product.image_front_url)
+        }
+
+        return urls
+    } catch (error) {
+        console.error('Open Food Facts search failed:', error)
+        return []
+    }
+}
+
+/**
+ * Try multiple image sources until one downloads successfully
+ * Returns mediaId only if we successfully internalized an image
+ */
+async function findAndInternalizeImage(
+    payload: Payload,
+    productName: string,
+    brand: string | null
+): Promise<{ mediaId: number | null; source: string | null; triedUrls: number; error?: string }> {
+    let triedUrls = 0
+    const errors: string[] = []
+
+    // Try Google Images first
+    console.log(`Searching Google for: ${brand || ''} ${productName}`)
+    const googleUrls = await getGoogleImageUrls(productName, brand)
+
+    for (const url of googleUrls) {
+        triedUrls++
+        console.log(`  Trying Google result ${triedUrls}: ${url.slice(0, 60)}...`)
+        const result = await tryDownloadImage(payload, url, productName, brand)
+
+        if (result.mediaId) {
+            console.log(`  ✓ Success from Google`)
+            return { mediaId: result.mediaId, source: 'Google Images', triedUrls }
+        }
+        errors.push(`Google #${triedUrls}: ${result.error}`)
+    }
+
+    // Try Open Food Facts as backup
+    console.log(`Searching Open Food Facts for: ${brand || ''} ${productName}`)
+    const offUrls = await getOpenFoodFactsImageUrls(productName, brand)
+
+    for (const url of offUrls) {
+        triedUrls++
+        console.log(`  Trying OFF result: ${url.slice(0, 60)}...`)
+        const result = await tryDownloadImage(payload, url, productName, brand)
+
+        if (result.mediaId) {
+            console.log(`  ✓ Success from Open Food Facts`)
+            return { mediaId: result.mediaId, source: 'Open Food Facts', triedUrls }
+        }
+        errors.push(`OFF: ${result.error}`)
+    }
+
+    // All sources failed
+    const errorSummary = triedUrls === 0
+        ? 'No image URLs found'
+        : `Tried ${triedUrls} URLs, all failed`
+
+    return {
+        mediaId: null,
+        source: null,
+        triedUrls,
+        error: errorSummary
     }
 }
 
@@ -116,100 +252,26 @@ async function searchProductPrice(productName: string, brand: string | null): Pr
     }
 }
 
-async function searchProductInfo(productName: string, brand: string | null): Promise<ProductInfo> {
+async function searchProductInfo(
+    payload: Payload,
+    productName: string,
+    brand: string | null
+): Promise<ProductInfo> {
     const searchQuery = brand ? `${brand} ${productName}` : productName
 
-    // Search for image using Google Custom Search (real web search)
-    const imageUrl = await searchProductImage(productName, brand)
+    // Search for image and immediately internalize - no external URL storage
+    const imageResult = await findAndInternalizeImage(payload, productName, brand)
 
     // Search for price using Gemini (good at price estimation)
     const priceRange = await searchProductPrice(productName, brand)
 
     return {
-        imageUrl,
+        mediaId: imageResult.mediaId,
         priceRange,
-        source: imageUrl ? 'Google Custom Search' : 'AI Estimated',
+        source: imageResult.source,
         searchQuery,
-    }
-}
-
-/**
- * Download an image from external URL and upload to Payload CMS Media collection
- * Returns object with mediaId on success or error details on failure
- */
-async function downloadAndUploadImage(
-    payload: Payload,
-    imageUrl: string,
-    productName: string,
-    brand: string | null
-): Promise<{ mediaId: number | null; error?: string }> {
-    try {
-        // Fetch the image from external URL with timeout
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
-
-        const response = await fetch(imageUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; ProductReport/1.0)',
-            },
-            signal: controller.signal,
-        })
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-            const error = `Failed to fetch image: ${response.status} ${response.statusText}`
-            console.error(error)
-            return { mediaId: null, error }
-        }
-
-        // Get image data as buffer
-        const arrayBuffer = await response.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-
-        // Check if we actually got image data
-        if (buffer.length < 1000) {
-            const error = 'Image too small (likely invalid or blocked)'
-            console.error(error)
-            return { mediaId: null, error }
-        }
-
-        // Determine file extension from content-type
-        const contentType = response.headers.get('content-type') || 'image/jpeg'
-        if (!contentType.includes('image')) {
-            const error = `Invalid content type: ${contentType}`
-            console.error(error)
-            return { mediaId: null, error }
-        }
-
-        const ext = contentType.includes('png') ? 'png' :
-            contentType.includes('webp') ? 'webp' :
-                contentType.includes('gif') ? 'gif' : 'jpg'
-
-        // Generate safe filename
-        const safeBrand = (brand || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-')
-        const safeName = productName.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        const filename = `${safeBrand}-${safeName}-${Date.now()}.${ext}`
-
-        // Create Media document in Payload
-        const media = await payload.create({
-            collection: 'media',
-            data: {
-                alt: `${brand || ''} ${productName}`.trim(),
-            },
-            file: {
-                data: buffer,
-                name: filename,
-                mimetype: contentType,
-                size: buffer.length,
-            },
-        })
-
-        console.log(`Uploaded image for ${brand} ${productName}: Media ID ${media.id}`)
-        return { mediaId: media.id as number }
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.error('Failed to download/upload image:', errorMessage)
-        return { mediaId: null, error: errorMessage }
+        triedUrls: imageResult.triedUrls,
+        error: imageResult.error,
     }
 }
 
@@ -252,38 +314,22 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
         const productName = (productData.name || 'Unknown Product') as string
         const brand = (productData.brand || null) as string | null
 
-        // Search for product info
-        const info = await searchProductInfo(productName, brand)
+        // Skip image search if product already has an image
+        const needsImage = !productData.image
 
-        // Track if we successfully downloaded the image
-        let imageDownloaded = false
-        let mediaId: number | null = null
-        let imageError: string | null = null
+        // Search for product info - this tries multiple sources and only returns if successful
+        const info = await searchProductInfo(req.payload, productName, brand)
 
-        // Optionally auto-apply to product
-        if (autoApply && (info.imageUrl || info.priceRange)) {
+        // Auto-apply to product if requested
+        if (autoApply && (info.mediaId || info.priceRange)) {
             const updateData: Record<string, unknown> = {}
 
-            // Try to download and upload image to CMS instead of storing external URL
-            if (info.imageUrl && !productData.image) {
-                const downloadResult = await downloadAndUploadImage(
-                    req.payload,
-                    info.imageUrl,
-                    productName,
-                    brand
-                )
-
-                if (downloadResult.mediaId) {
-                    // Successfully uploaded to CMS - link the Media document
-                    updateData.image = downloadResult.mediaId
-                    mediaId = downloadResult.mediaId
-                    imageDownloaded = true
-                } else {
-                    // Download failed - store external URL as fallback and report error
-                    if (!productData.imageUrl) {
-                        updateData.imageUrl = info.imageUrl
-                    }
-                    imageError = downloadResult.error || 'Download failed'
+            // Only set image if we successfully internalized one AND product doesn't have one
+            if (info.mediaId && needsImage) {
+                updateData.image = info.mediaId
+                // Clear any old external URL since we now have internal image
+                if (productData.imageUrl) {
+                    updateData.imageUrl = null
                 }
             }
 
@@ -304,10 +350,10 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
             success: true,
             productName,
             brand,
-            imageUrl: info.imageUrl,
-            imageDownloaded,
-            mediaId,
-            imageError,
+            imageFound: !!info.mediaId,
+            mediaId: info.mediaId,
+            triedUrls: info.triedUrls,
+            imageError: info.error,
             priceRange: info.priceRange,
             source: info.source,
             searchQuery: info.searchQuery,

@@ -525,6 +525,16 @@ export const Products: CollectionConfig = {
             relationTo: 'media',
             label: 'Product Image',
         },
+        // Find image button - searches Google + Open Food Facts
+        {
+            name: 'retryImageSearch',
+            type: 'ui',
+            admin: {
+                components: {
+                    Field: '@/components/RetryImageSearch',
+                },
+            },
+        },
         // Background removal UI button (no database column - UI only)
         // NOTE: If this component doesn't render, run: pnpm payload generate:importmap
         {
