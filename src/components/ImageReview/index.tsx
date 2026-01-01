@@ -6,9 +6,9 @@ interface ProductForReview {
     id: number
     name: string
     brand: string
-    imageUrl: string | null
-    suggestedImageUrl: string | null | undefined
-    isLoadingSuggestion?: boolean
+    status: 'pending' | 'searching' | 'success' | 'failed'
+    error?: string
+    source?: string
 }
 
 const ImageReview: React.FC = () => {
@@ -32,9 +32,7 @@ const ImageReview: React.FC = () => {
                         id: p.id,
                         name: p.name || 'Untitled',
                         brand: p.brand || 'Unknown',
-                        imageUrl: null,
-                        suggestedImageUrl: null,
-                        isLoadingSuggestion: false,
+                        status: 'pending' as const,
                     }))
 
                 setProducts(productsWithoutImages)
@@ -47,77 +45,77 @@ const ImageReview: React.FC = () => {
         fetchProducts()
     }, [])
 
-    // Fetch image suggestion for a product
-    const fetchSuggestion = async (productId: number) => {
+    // Find and internalize image for a product
+    const findImage = async (productId: number) => {
         setProducts(prev => prev.map(p =>
-            p.id === productId ? { ...p, isLoadingSuggestion: true } : p
+            p.id === productId ? { ...p, status: 'searching' as const } : p
         ))
 
         try {
-            // Call the product enrich endpoint to get an image
+            // Call the product enrich endpoint - it now searches multiple sources
+            // and automatically internalizes the image
             const res = await fetch('/api/product/enrich', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     productId,
-                    enrichFields: ['imageUrl'],
-                    dryRun: true, // Just get suggestion, don't save yet
+                    autoApply: true, // Search, download, and save internally
                 }),
             })
 
-            if (res.ok) {
-                const data = await res.json()
-                const suggestedUrl = data.enrichedData?.imageUrl || data.imageUrl
+            const data = await res.json()
 
+            if (res.ok && data.mediaId) {
+                // Success - image was found and saved internally
                 setProducts(prev => prev.map(p =>
                     p.id === productId
-                        ? { ...p, suggestedImageUrl: suggestedUrl, isLoadingSuggestion: false }
+                        ? { ...p, status: 'success' as const, source: data.source }
                         : p
                 ))
+                setMessage(`✅ Found image from ${data.source}`)
+
+                // Remove from list after short delay
+                setTimeout(() => {
+                    setProducts(prev => prev.filter(p => p.id !== productId))
+                }, 1500)
             } else {
+                // Failed - no image could be downloaded
                 setProducts(prev => prev.map(p =>
-                    p.id === productId ? { ...p, isLoadingSuggestion: false } : p
+                    p.id === productId
+                        ? { ...p, status: 'failed' as const, error: data.imageError || 'No image found' }
+                        : p
                 ))
-                setMessage(`Couldn't find image for product ${productId}`)
             }
-        } catch {
+        } catch (error) {
             setProducts(prev => prev.map(p =>
-                p.id === productId ? { ...p, isLoadingSuggestion: false } : p
+                p.id === productId
+                    ? { ...p, status: 'failed' as const, error: 'Request failed' }
+                    : p
             ))
         }
     }
 
-    // Accept the suggested image
-    const acceptImage = async (productId: number, imageUrl: string) => {
-        try {
-            const res = await fetch(`/api/products/${productId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageUrl }),
-            })
-
-            if (res.ok) {
-                // Remove from list after accepting
-                setProducts(prev => prev.filter(p => p.id !== productId))
-                setMessage(`✅ Image saved!`)
-            }
-        } catch {
-            setMessage('Failed to save image')
-        }
-    }
-
-    // Reject and try another
-    const tryAnother = (productId: number) => {
-        // Clear current suggestion and fetch new one
+    // Retry search for a failed product
+    const retrySearch = (productId: number) => {
         setProducts(prev => prev.map(p =>
-            p.id === productId ? { ...p, suggestedImageUrl: null } : p
+            p.id === productId ? { ...p, status: 'pending' as const, error: undefined } : p
         ))
-        fetchSuggestion(productId)
+        findImage(productId)
     }
 
     // Skip this product (remove from list)
     const skipProduct = (productId: number) => {
         setProducts(prev => prev.filter(p => p.id !== productId))
+    }
+
+    // Find images for all pending products
+    const findAllImages = async () => {
+        const pendingProducts = products.filter(p => p.status === 'pending')
+        for (const product of pendingProducts) {
+            await findImage(product.id)
+            // Small delay between requests
+            await new Promise(r => setTimeout(r, 500))
+        }
     }
 
     if (loading) {
@@ -143,6 +141,9 @@ const ImageReview: React.FC = () => {
         )
     }
 
+    const pendingCount = products.filter(p => p.status === 'pending').length
+    const isSearching = products.some(p => p.status === 'searching')
+
     return (
         <div style={{
             background: '#fff',
@@ -150,16 +151,35 @@ const ImageReview: React.FC = () => {
             borderRadius: '12px',
             padding: '16px',
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1f2937', margin: 0 }}>
-                    🖼️ Image Review ({products.length} need images)
+                    🖼️ Products Missing Images ({products.length})
                 </h3>
+                {pendingCount > 0 && (
+                    <button
+                        onClick={findAllImages}
+                        disabled={isSearching}
+                        style={{
+                            padding: '6px 12px',
+                            background: isSearching ? '#9ca3af' : '#2563eb',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: isSearching ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        {isSearching ? 'Searching...' : `🔍 Find All (${pendingCount})`}
+                    </button>
+                )}
             </div>
 
             {message && (
                 <div style={{
                     padding: '8px',
-                    background: '#f3f4f6',
+                    background: message.includes('✅') ? '#d1fae5' : '#f3f4f6',
+                    color: message.includes('✅') ? '#047857' : '#374151',
                     borderRadius: '6px',
                     marginBottom: '12px',
                     fontSize: '13px',
@@ -168,65 +188,28 @@ const ImageReview: React.FC = () => {
                 </div>
             )}
 
+            <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 12px' }}>
+                Searches Google Images + Open Food Facts, downloads and stores internally.
+            </p>
+
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: '12px',
-                maxHeight: '400px',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '10px',
+                maxHeight: '350px',
                 overflowY: 'auto',
             }}>
                 {products.map((product) => (
                     <div
                         key={product.id}
                         style={{
-                            padding: '12px',
-                            background: '#f9fafb',
+                            padding: '10px',
+                            background: product.status === 'success' ? '#d1fae5' :
+                                        product.status === 'failed' ? '#fee2e2' : '#f9fafb',
                             border: '1px solid #e5e7eb',
                             borderRadius: '8px',
                         }}
                     >
-                        {/* Image Preview */}
-                        <div style={{
-                            width: '100%',
-                            height: '100px',
-                            background: '#e5e7eb',
-                            borderRadius: '6px',
-                            marginBottom: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
-                        }}>
-                            {product.isLoadingSuggestion ? (
-                                <span style={{ color: '#6b7280', fontSize: '12px' }}>Loading...</span>
-                            ) : product.suggestedImageUrl ? (
-                                <img
-                                    src={product.suggestedImageUrl}
-                                    alt={product.name}
-                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none'
-                                    }}
-                                />
-                            ) : (
-                                <button
-                                    onClick={() => fetchSuggestion(product.id)}
-                                    style={{
-                                        padding: '8px 12px',
-                                        background: '#3b82f6',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    🔍 Find Image
-                                </button>
-                            )}
-                        </div>
-
                         {/* Product Info */}
                         <div style={{
                             fontSize: '12px',
@@ -247,57 +230,94 @@ const ImageReview: React.FC = () => {
                             {product.brand}
                         </div>
 
-                        {/* Action Buttons */}
-                        {product.suggestedImageUrl && (
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                    onClick={() => acceptImage(product.id, product.suggestedImageUrl!)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        background: '#22c55e',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    ✓ Yes
-                                </button>
-                                <button
-                                    onClick={() => tryAnother(product.id)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        background: '#f59e0b',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    🔄 Try
-                                </button>
-                                <button
-                                    onClick={() => skipProduct(product.id)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        background: '#ef4444',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    ✕ Skip
-                                </button>
+                        {/* Status & Actions */}
+                        {product.status === 'pending' && (
+                            <button
+                                onClick={() => findImage(product.id)}
+                                style={{
+                                    width: '100%',
+                                    padding: '6px',
+                                    background: '#3b82f6',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                🔍 Find Image
+                            </button>
+                        )}
+
+                        {product.status === 'searching' && (
+                            <div style={{
+                                padding: '6px',
+                                background: '#e0e7ff',
+                                color: '#4338ca',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                textAlign: 'center',
+                            }}>
+                                ⏳ Searching...
+                            </div>
+                        )}
+
+                        {product.status === 'success' && (
+                            <div style={{
+                                padding: '6px',
+                                background: '#22c55e',
+                                color: '#fff',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                textAlign: 'center',
+                            }}>
+                                ✓ Found ({product.source})
+                            </div>
+                        )}
+
+                        {product.status === 'failed' && (
+                            <div>
+                                <div style={{
+                                    padding: '4px',
+                                    color: '#dc2626',
+                                    fontSize: '10px',
+                                    marginBottom: '4px',
+                                }}>
+                                    {product.error}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                        onClick={() => retrySearch(product.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px',
+                                            background: '#f59e0b',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        🔄 Retry
+                                    </button>
+                                    <button
+                                        onClick={() => skipProduct(product.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px',
+                                            background: '#6b7280',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        ✕ Skip
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
