@@ -50,10 +50,14 @@ async function fetchImageFromUrl(url: string): Promise<Buffer> {
         return Buffer.from(arrayBuffer)
     } catch (error) {
         clearTimeout(timeoutId)
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error(`Timeout (15s): ${url.slice(0, 80)}`)
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+                throw new Error(`Timeout (15s): ${url.slice(0, 80)}`)
+            }
+            // Wrap any other error with URL context
+            throw new Error(`${url.slice(0, 60)}: ${error.message}`)
         }
-        throw error
+        throw new Error(`${url.slice(0, 60)}: Unknown error`)
     }
 }
 

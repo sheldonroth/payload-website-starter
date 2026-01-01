@@ -102,10 +102,14 @@ async function fetchImageFromUrl(url: string): Promise<Buffer> {
         return Buffer.from(arrayBuffer)
     } catch (error) {
         clearTimeout(timeoutId)
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error(`Image fetch timeout (15s): ${url.slice(0, 100)}`)
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+                throw new Error(`Timeout (15s): ${url.slice(0, 100)}`)
+            }
+            // Wrap any other error with URL context
+            throw new Error(`Fetch failed for ${url.slice(0, 80)}: ${error.message}`)
         }
-        throw error
+        throw new Error(`Fetch failed for ${url.slice(0, 80)}: Unknown error`)
     }
 }
 
@@ -232,7 +236,7 @@ async function getProductImageBuffer(
         }
     }
 
-    throw new Error('Product has no image (neither imageUrl nor image relationship)')
+    throw new Error('No image found - product has neither imageUrl nor image attachment')
 }
 
 /**
