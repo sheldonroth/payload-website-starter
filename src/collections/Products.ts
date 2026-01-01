@@ -631,10 +631,9 @@ export const Products: CollectionConfig = {
             relationTo: 'videos',
             label: 'Source Video',
             admin: {
-                description: 'Video that this product was extracted from',
                 components: {
-                    // Custom field component that shows YouTube link below the relationship picker
-                    Field: '@/components/SourceVideoField',
+                    // Custom description component that shows YouTube link
+                    Description: '@/components/SourceVideoLink',
                 },
             },
         },
