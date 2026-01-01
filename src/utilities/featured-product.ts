@@ -105,11 +105,9 @@ export function calculateFeaturedProductScore(product: ProductForScoring): numbe
     if (product.badges?.isRecommended) score += 200
     if (product.badges?.isBestValue) score += 100
 
-    // 2. VERDICT (must be recommended or caution, never avoid)
+    // 2. VERDICT (must be recommend, never avoid)
     if (product.verdict === 'avoid') return -1 // Disqualify
-    if (product.verdict === 'pending') return -1 // Disqualify pending products
     if (product.verdict === 'recommend') score += 150
-    if (product.verdict === 'caution') score += 50
 
     // 3. OVERALL SCORE (0-100 scale, if available)
     if (product.overallScore) {

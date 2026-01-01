@@ -12,7 +12,7 @@ interface RecentProduct {
     id: number
     name: string
     brand?: string
-    verdict?: 'recommend' | 'avoid' | 'pending'
+    verdict?: 'recommend' | 'avoid'
     status: string
     imageUrl?: string
     completeness?: number

@@ -27,9 +27,7 @@ const CONFIDENCE_COLORS = {
 
 const VERDICT_COLORS = {
     recommend: { bg: '#dcfce7', text: '#166534', icon: '&#x2705;' },
-    caution: { bg: '#fef3c7', text: '#92400e', icon: '&#x26A0;&#xFE0F;' },
     avoid: { bg: '#fee2e2', text: '#991b1b', icon: '&#x1F6AB;' },
-    pending: { bg: '#f3f4f6', text: '#6b7280', icon: '&#x23F3;' },
 }
 
 const AIDraftInbox: React.FC = () => {
@@ -307,7 +305,7 @@ const AIDraftInbox: React.FC = () => {
                         const isProcessing = processingIds.has(draft.id)
                         const isSelected = selectedIds.has(draft.id)
                         const confidence = draft.aiConfidence ? CONFIDENCE_COLORS[draft.aiConfidence] : null
-                        const verdict = VERDICT_COLORS[draft.verdict as keyof typeof VERDICT_COLORS] || VERDICT_COLORS.pending
+                        const verdict = VERDICT_COLORS[draft.verdict as keyof typeof VERDICT_COLORS] || VERDICT_COLORS.recommend
 
                         return (
                             <div

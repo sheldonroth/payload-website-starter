@@ -94,7 +94,7 @@ export const Products: CollectionConfig = {
                         // Set auto-verdict from parsed ingredients
                         if (parseResult.autoVerdict && !data.verdictOverride) {
                             data.autoVerdict = parseResult.autoVerdict;
-                            if (!data.verdict || data.verdict === 'pending') {
+                            if (!data.verdict) {
                                 data.verdict = parseResult.autoVerdict;
                             }
                         }
@@ -182,7 +182,7 @@ export const Products: CollectionConfig = {
                                 .map(e => e.ruleName)
                                 .join(', ');
 
-                            if (!data.verdict || data.verdict === 'pending') {
+                            if (!data.verdict) {
                                 data.verdict = ruleResult.suggestedVerdict;
                             }
                             data.autoVerdict = ruleResult.suggestedVerdict;
@@ -237,21 +237,19 @@ export const Products: CollectionConfig = {
                             limit: 100,
                         });
 
-                        // Determine auto-verdict based on worst ingredient
-                        let worstVerdict = 'recommend' as 'recommend' | 'caution' | 'avoid';
+                        // Determine auto-verdict: avoid if any ingredient is avoid, otherwise recommend
+                        let worstVerdict = 'recommend' as 'recommend' | 'avoid';
                         for (const ing of ingredients.docs) {
                             const ingVerdict = (ing as { verdict?: string }).verdict;
                             if (ingVerdict === 'avoid') {
                                 worstVerdict = 'avoid';
                                 break;
-                            } else if (ingVerdict === 'caution') {
-                                worstVerdict = 'caution';
                             }
                         }
 
                         data.autoVerdict = worstVerdict;
 
-                        if (!data.verdict || data.verdict === 'pending') {
+                        if (!data.verdict) {
                             data.verdict = worstVerdict;
                         }
                     } catch (error) {
@@ -620,13 +618,11 @@ export const Products: CollectionConfig = {
             name: 'verdict',
             type: 'select',
             required: true,
-            defaultValue: 'pending',
+            defaultValue: 'recommend',
             index: true, // Added for query performance
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
-                { label: '⚠️ CAUTION', value: 'caution' },
                 { label: '🚫 AVOID', value: 'avoid' },
-                { label: '⏳ PENDING', value: 'pending' },
             ],
             admin: {
                 position: 'sidebar',
@@ -646,7 +642,6 @@ export const Products: CollectionConfig = {
             type: 'select',
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
-                { label: '⚠️ CAUTION', value: 'caution' },
                 { label: '🚫 AVOID', value: 'avoid' },
             ],
             admin: {
