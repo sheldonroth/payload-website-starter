@@ -295,6 +295,11 @@ async function processProductBackgroundRemoval(
             return { success: false, productId, error: 'Product not found' }
         }
 
+        // Skip if already processed (unless in preview mode)
+        if ((product as any).backgroundRemoved && !preview) {
+            return { success: false, productId, error: 'Background already removed' }
+        }
+
         // Get image buffer (internalizes external URLs first)
         const { buffer: originalBuffer, source } = await getProductImageBuffer(payload, productId, product as any)
 
