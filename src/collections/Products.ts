@@ -633,8 +633,8 @@ export const Products: CollectionConfig = {
             admin: {
                 description: 'Video that this product was extracted from',
                 components: {
-                    // Renders YouTube link below the relationship field (no DB column needed)
-                    afterInput: ['@/components/SourceVideoLink'],
+                    // Custom field component that shows YouTube link below the relationship picker
+                    Field: '@/components/SourceVideoField',
                 },
             },
         },
