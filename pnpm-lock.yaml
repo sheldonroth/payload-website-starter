@@ -11,6 +11,9 @@ importers:
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
+      '@lucide/lab':
+        specifier: ^0.1.2
+        version: 0.1.2
       '@payloadcms/admin-bar':
         specifier: 3.63.0
         version: 3.63.0(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -1309,6 +1312,9 @@ packages:
     resolution: {integrity: sha512-3DSP7QpmTGYU9bN/yljP0PIao4tNIQtsR4ycauWNSawxs/GQCZtSmAPcLRnCm6qpqsDDjUtKjO/1Ej8FRp0m0w==}
     peerDependencies:
       yjs: '>=13.5.22'
+
+  '@lucide/lab@0.1.2':
+    resolution: {integrity: sha512-VprF2BJa7ZuTGOhUd5cf8tHJXyL63wdxcGieAiVVoR9hO0YmPsnZO0AGqDiX2/br+/MC6n8BoJcmPilltOXIJA==}
 
   '@monaco-editor/loader@1.7.0':
     resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
@@ -6128,6 +6134,8 @@ snapshots:
       '@lexical/selection': 0.35.0
       lexical: 0.35.0
       yjs: 13.6.27
+
+  '@lucide/lab@0.1.2': {}
 
   '@monaco-editor/loader@1.7.0':
     dependencies:

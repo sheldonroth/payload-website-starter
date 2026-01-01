@@ -4,10 +4,17 @@ import React, { useState, useEffect } from 'react'
 import { useField } from '@payloadcms/ui'
 import { TextInput } from '@payloadcms/ui'
 import * as LucideIcons from 'lucide-react'
+import { Icon } from 'lucide-react'
+import * as LabIcons from '@lucide/lab'
 
-// Get all valid Lucide icon names
+// Get all valid Lucide icon names (standard icons)
 const validIconNames = Object.keys(LucideIcons).filter(
-    (key) => key !== 'default' && key !== 'createLucideIcon' && typeof (LucideIcons as any)[key] === 'function'
+    (key) => key !== 'default' && key !== 'createLucideIcon' && key !== 'Icon' && typeof (LucideIcons as any)[key] === 'function'
+)
+
+// Get all valid Lab icon names
+const validLabIconNames = Object.keys(LabIcons).filter(
+    (key) => key !== 'default' && typeof (LabIcons as any)[key] === 'object'
 )
 
 // Convert kebab-case to PascalCase for Lucide lookup
@@ -33,25 +40,43 @@ const IconPreviewField: React.FC<IconPreviewFieldProps> = ({ path, field }) => {
     const { value, setValue } = useField<string>({ path })
     const [isValid, setIsValid] = useState(true)
     const [IconComponent, setIconComponent] = useState<React.ComponentType<any> | null>(null)
+    const [labIconData, setLabIconData] = useState<any>(null)
 
     useEffect(() => {
         if (!value) {
             setIconComponent(null)
+            setLabIconData(null)
             setIsValid(true)
             return
         }
 
         // Try to find the icon (handle both kebab-case and PascalCase)
         const pascalName = toPascalCase(value)
+
+        // First check standard Lucide icons
         const icon = (LucideIcons as any)[pascalName] || (LucideIcons as any)[value]
 
         if (icon && typeof icon === 'function') {
             setIconComponent(() => icon)
+            setLabIconData(null)
             setIsValid(true)
-        } else {
-            setIconComponent(null)
-            setIsValid(false)
+            return
         }
+
+        // Then check Lab icons (they are IconNode arrays, not components)
+        const labIcon = (LabIcons as any)[pascalName] || (LabIcons as any)[value]
+
+        if (labIcon && typeof labIcon === 'object') {
+            setIconComponent(null)
+            setLabIconData(labIcon)
+            setIsValid(true)
+            return
+        }
+
+        // No icon found
+        setIconComponent(null)
+        setLabIconData(null)
+        setIsValid(false)
     }, [value])
 
     return (
@@ -85,6 +110,8 @@ const IconPreviewField: React.FC<IconPreviewFieldProps> = ({ path, field }) => {
                 >
                     {IconComponent ? (
                         <IconComponent size={24} strokeWidth={2} />
+                    ) : labIconData ? (
+                        <Icon iconNode={labIconData} size={24} strokeWidth={2} />
                     ) : value ? (
                         <span style={{ color: '#ef4444', fontSize: '18px' }}>?</span>
                     ) : (
@@ -119,6 +146,15 @@ const IconPreviewField: React.FC<IconPreviewFieldProps> = ({ path, field }) => {
                                 style={{ color: '#3b82f6', textDecoration: 'underline' }}
                             >
                                 lucide.dev/icons
+                            </a>
+                            {' or '}
+                            <a
+                                href="https://lucide.dev/icons/categories#labs"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                            >
+                                lab icons
                             </a>
                         </p>
                     )}
