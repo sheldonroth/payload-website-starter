@@ -592,6 +592,22 @@ export interface User {
    */
   watchlistCategories?: (number | Category)[] | null;
   /**
+   * Ingredients this user wants to avoid. Structure: [{ ingredientId, ingredientName, reason?, dateAdded }]
+   */
+  ingredientWatchlist?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Receive weekly digest emails with new products and community highlights
+   */
+  weeklyDigestEnabled?: boolean | null;
+  /**
    * Number of free product unlocks remaining
    */
   freeUnlockCredits?: number | null;
@@ -2865,6 +2881,8 @@ export interface UsersSelect<T extends boolean = true> {
   savedProductIds?: T;
   savedArticleIds?: T;
   watchlistCategories?: T;
+  ingredientWatchlist?: T;
+  weeklyDigestEnabled?: T;
   freeUnlockCredits?: T;
   unlockedProducts?: T;
   updatedAt?: T;

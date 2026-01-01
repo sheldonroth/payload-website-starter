@@ -632,10 +632,15 @@ export const Products: CollectionConfig = {
             label: 'Source Video',
             admin: {
                 description: 'Video that this product was extracted from',
-                // NOTE FOR AI AGENTS: afterInput renders a custom component after this field.
-                // This doesn't require a database column since it's display-only.
+            },
+        },
+        // UI-only field to display YouTube link - no database column needed
+        {
+            name: 'sourceVideoLink',
+            type: 'ui',
+            admin: {
                 components: {
-                    afterInput: '@/components/SourceVideoLink',
+                    Field: '@/components/SourceVideoLink',
                 },
             },
         },
