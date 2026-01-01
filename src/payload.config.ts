@@ -63,6 +63,7 @@ import { populateBrandsHandler } from './endpoints/populate-brands'
 import { productRequestsListHandler, productRequestsCreateHandler, productRequestVoteHandler } from './endpoints/product-requests'
 import { userWatchlistGetHandler, userWatchlistAddHandler, userWatchlistRemoveHandler, checkWatchlistConflictsHandler } from './endpoints/user-watchlist'
 import { productAlternativesHandler } from './endpoints/product-alternatives'
+import { recalculateFeaturedHandler } from './endpoints/featured-products'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -235,6 +236,11 @@ export default buildConfig({
       path: '/admin/populate-brands',
       method: 'post',
       handler: populateBrandsHandler,
+    },
+    {
+      path: '/admin/recalculate-featured',
+      method: 'post',
+      handler: recalculateFeaturedHandler,
     },
     // Product Request Queue
     {

@@ -28,6 +28,7 @@ import * as migration_20250101_000100_add_voting_to_user_submissions from './202
 import * as migration_20250101_000200_add_ingredient_watchlist from './20250101_000200_add_ingredient_watchlist';
 import * as migration_20251231_240000_add_background_removed from './20251231_240000_add_background_removed';
 import * as migration_20260101_000000_add_product_badges from './20260101_000000_add_product_badges';
+import * as migration_20260101_000100_add_featured_product from './20260101_000100_add_featured_product';
 
 export const migrations = [
   {
@@ -179,5 +180,10 @@ export const migrations = [
     up: migration_20260101_000000_add_product_badges.up,
     down: migration_20260101_000000_add_product_badges.down,
     name: '20260101_000000_add_product_badges'
+  },
+  {
+    up: migration_20260101_000100_add_featured_product.up,
+    down: migration_20260101_000100_add_featured_product.down,
+    name: '20260101_000100_add_featured_product'
   },
 ];

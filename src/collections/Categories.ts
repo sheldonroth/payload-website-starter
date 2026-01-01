@@ -310,5 +310,38 @@ export const Categories: CollectionConfig = {
         description: 'When category was last enriched with research',
       },
     },
+    // ============================================
+    // Featured Product (Auto-Calculated)
+    // ============================================
+    {
+      name: 'featuredProduct',
+      type: 'relationship',
+      relationTo: 'products',
+      label: 'Featured Product',
+      admin: {
+        position: 'sidebar',
+        description: 'Auto-calculated: Best product to showcase for this category',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'featuredProductImage',
+      type: 'text',
+      label: 'Featured Product Image URL',
+      admin: {
+        position: 'sidebar',
+        description: 'Cached image URL of the featured product',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'featuredProductUpdatedAt',
+      type: 'date',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'When featured product was last recalculated',
+      },
+    },
   ],
 }

@@ -22,6 +22,7 @@ import {
     hydrateCategory,
     calculateFreshness,
 } from '../utilities/smart-automation'
+import { recalculateFeaturedProduct } from '../utilities/featured-product'
 import { createAuditLog } from './AuditLog'
 
 /**
@@ -445,6 +446,62 @@ export const Products: CollectionConfig = {
                             console.error(`[Auto BG Removal] Error for product ${doc.id}:`, error)
                         }
                     }, 100) // Small delay to let the response complete
+                }
+
+                return doc
+            },
+
+            // ============================================
+            // HOOK: RECALCULATE FEATURED PRODUCT FOR CATEGORY
+            // ============================================
+            async ({ doc, previousDoc, req }) => {
+                // Get the product's current and previous category
+                const currentCategoryId = typeof doc.category === 'number'
+                    ? doc.category
+                    : (doc.category as { id?: number })?.id
+
+                const previousCategoryId = previousDoc
+                    ? (typeof previousDoc.category === 'number'
+                        ? previousDoc.category
+                        : (previousDoc.category as { id?: number })?.id)
+                    : null
+
+                // Recalculate featured product when:
+                // 1. Product is published
+                // 2. Product has a category
+                // 3. Something relevant changed (status, verdict, badges, image, category)
+                const isPublished = doc.status === 'published'
+                const wasPublished = previousDoc?.status === 'published'
+                const statusChanged = doc.status !== previousDoc?.status
+                const verdictChanged = doc.verdict !== previousDoc?.verdict
+                const categoryChanged = currentCategoryId !== previousCategoryId
+                const badgesChanged = JSON.stringify(doc.badges) !== JSON.stringify(previousDoc?.badges)
+                const imageChanged = doc.image !== previousDoc?.image || doc.imageUrl !== previousDoc?.imageUrl
+
+                const shouldRecalculate = isPublished && currentCategoryId && (
+                    statusChanged || verdictChanged || categoryChanged || badgesChanged || imageChanged
+                )
+
+                // Also recalculate if product was unpublished/deleted from category
+                const shouldRecalculatePrevious = wasPublished && previousCategoryId && (
+                    !isPublished || categoryChanged
+                )
+
+                // Recalculate in background to not block response
+                if (shouldRecalculate || shouldRecalculatePrevious) {
+                    setTimeout(async () => {
+                        try {
+                            if (shouldRecalculate && currentCategoryId) {
+                                await recalculateFeaturedProduct(currentCategoryId, req.payload)
+                            }
+                            // If category changed, also recalculate the old category
+                            if (shouldRecalculatePrevious && previousCategoryId && previousCategoryId !== currentCategoryId) {
+                                await recalculateFeaturedProduct(previousCategoryId, req.payload)
+                            }
+                        } catch (error) {
+                            console.error('[Featured Product] Recalculation error:', error)
+                        }
+                    }, 100)
                 }
 
                 return doc
