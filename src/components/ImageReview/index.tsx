@@ -6,7 +6,10 @@ interface ProductForReview {
     id: number
     name: string
     brand: string
-    status: 'pending' | 'searching' | 'success' | 'failed'
+    status: 'pending' | 'searching' | 'preview' | 'saving' | 'success' | 'failed'
+    previewUrl?: string
+    previewSource?: string
+    triedUrls?: string[] // URLs we've already tried
     error?: string
     source?: string
 }
@@ -45,62 +48,100 @@ const ImageReview: React.FC = () => {
         fetchProducts()
     }, [])
 
-    // Find and internalize image for a product
-    const findImage = async (productId: number) => {
+    // Search for image preview (doesn't save yet)
+    const searchForPreview = async (productId: number, excludeUrls: string[] = []) => {
         setProducts(prev => prev.map(p =>
-            p.id === productId ? { ...p, status: 'searching' as const } : p
+            p.id === productId ? { ...p, status: 'searching' as const, triedUrls: excludeUrls } : p
         ))
 
         try {
-            // Call the product enrich endpoint - it now searches multiple sources
-            // and automatically internalizes the image
-            const res = await fetch('/api/product/enrich', {
+            const res = await fetch('/api/product/search-images', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    productId,
-                    autoApply: true, // Search, download, and save internally
-                }),
+                body: JSON.stringify({ productId, excludeUrls }),
             })
 
             const data = await res.json()
 
-            if (res.ok && data.mediaId) {
-                // Success - image was found and saved internally
+            if (res.ok && data.previewUrl) {
                 setProducts(prev => prev.map(p =>
                     p.id === productId
-                        ? { ...p, status: 'success' as const, source: data.source }
+                        ? {
+                            ...p,
+                            status: 'preview' as const,
+                            previewUrl: data.previewUrl,
+                            previewSource: data.source,
+                            triedUrls: excludeUrls,
+                        }
                         : p
                 ))
-                setMessage(`✅ Found image from ${data.source}`)
-
-                // Remove from list after short delay
-                setTimeout(() => {
-                    setProducts(prev => prev.filter(p => p.id !== productId))
-                }, 1500)
             } else {
-                // Failed - no image could be downloaded
                 setProducts(prev => prev.map(p =>
                     p.id === productId
-                        ? { ...p, status: 'failed' as const, error: data.imageError || 'No image found' }
+                        ? { ...p, status: 'failed' as const, error: data.error || 'No images found' }
                         : p
                 ))
             }
         } catch (error) {
             setProducts(prev => prev.map(p =>
                 p.id === productId
-                    ? { ...p, status: 'failed' as const, error: 'Request failed' }
+                    ? { ...p, status: 'failed' as const, error: 'Search failed' }
                     : p
             ))
         }
     }
 
-    // Retry search for a failed product
-    const retrySearch = (productId: number) => {
+    // Accept the previewed image - download and save
+    const acceptImage = async (productId: number) => {
+        const product = products.find(p => p.id === productId)
+        if (!product?.previewUrl) return
+
         setProducts(prev => prev.map(p =>
-            p.id === productId ? { ...p, status: 'pending' as const, error: undefined } : p
+            p.id === productId ? { ...p, status: 'saving' as const } : p
         ))
-        findImage(productId)
+
+        try {
+            const res = await fetch('/api/product/save-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId, imageUrl: product.previewUrl }),
+            })
+
+            const data = await res.json()
+
+            if (res.ok && data.success) {
+                setProducts(prev => prev.map(p =>
+                    p.id === productId
+                        ? { ...p, status: 'success' as const, source: product.previewSource }
+                        : p
+                ))
+                setMessage(`✅ Saved image from ${product.previewSource}`)
+
+                setTimeout(() => {
+                    setProducts(prev => prev.filter(p => p.id !== productId))
+                }, 1500)
+            } else {
+                // Download failed - try next image
+                const triedUrls = [...(product.triedUrls || []), product.previewUrl]
+                searchForPreview(productId, triedUrls)
+                setMessage(`⚠️ Download failed, trying next...`)
+            }
+        } catch (error) {
+            setProducts(prev => prev.map(p =>
+                p.id === productId
+                    ? { ...p, status: 'failed' as const, error: 'Save failed' }
+                    : p
+            ))
+        }
+    }
+
+    // Reject current preview and try next image
+    const tryNextImage = (productId: number) => {
+        const product = products.find(p => p.id === productId)
+        if (!product?.previewUrl) return
+
+        const triedUrls = [...(product.triedUrls || []), product.previewUrl]
+        searchForPreview(productId, triedUrls)
     }
 
     // Skip this product (remove from list)
@@ -108,13 +149,12 @@ const ImageReview: React.FC = () => {
         setProducts(prev => prev.filter(p => p.id !== productId))
     }
 
-    // Find images for all pending products
+    // Search for all pending products
     const findAllImages = async () => {
         const pendingProducts = products.filter(p => p.status === 'pending')
         for (const product of pendingProducts) {
-            await findImage(product.id)
-            // Small delay between requests
-            await new Promise(r => setTimeout(r, 500))
+            await searchForPreview(product.id)
+            await new Promise(r => setTimeout(r, 300))
         }
     }
 
@@ -233,7 +273,7 @@ const ImageReview: React.FC = () => {
                         {/* Status & Actions */}
                         {product.status === 'pending' && (
                             <button
-                                onClick={() => findImage(product.id)}
+                                onClick={() => searchForPreview(product.id)}
                                 style={{
                                     width: '100%',
                                     padding: '6px',
@@ -263,6 +303,103 @@ const ImageReview: React.FC = () => {
                             </div>
                         )}
 
+                        {product.status === 'preview' && product.previewUrl && (
+                            <div>
+                                {/* Preview Image */}
+                                <div style={{
+                                    width: '100%',
+                                    height: '100px',
+                                    marginBottom: '6px',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden',
+                                    background: '#f3f4f6',
+                                }}>
+                                    <img
+                                        src={product.previewUrl}
+                                        alt={`Preview for ${product.name}`}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'contain',
+                                        }}
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{
+                                    fontSize: '9px',
+                                    color: '#6b7280',
+                                    marginBottom: '4px',
+                                    textAlign: 'center',
+                                }}>
+                                    {product.previewSource}
+                                </div>
+                                {/* Accept / Try Next / Skip buttons */}
+                                <div style={{ display: 'flex', gap: '3px' }}>
+                                    <button
+                                        onClick={() => acceptImage(product.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px',
+                                            background: '#22c55e',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        ✓
+                                    </button>
+                                    <button
+                                        onClick={() => tryNextImage(product.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px',
+                                            background: '#f59e0b',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        →
+                                    </button>
+                                    <button
+                                        onClick={() => skipProduct(product.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px',
+                                            background: '#6b7280',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {product.status === 'saving' && (
+                            <div style={{
+                                padding: '6px',
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                textAlign: 'center',
+                            }}>
+                                💾 Saving...
+                            </div>
+                        )}
+
                         {product.status === 'success' && (
                             <div style={{
                                 padding: '6px',
@@ -272,7 +409,7 @@ const ImageReview: React.FC = () => {
                                 fontSize: '11px',
                                 textAlign: 'center',
                             }}>
-                                ✓ Found ({product.source})
+                                ✓ Saved ({product.source})
                             </div>
                         )}
 
@@ -288,7 +425,7 @@ const ImageReview: React.FC = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     <button
-                                        onClick={() => retrySearch(product.id)}
+                                        onClick={() => searchForPreview(product.id)}
                                         style={{
                                             flex: 1,
                                             padding: '4px',

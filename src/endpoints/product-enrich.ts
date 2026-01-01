@@ -367,3 +367,132 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
         )
     }
 }
+
+/**
+ * Search for product images without saving - returns URLs for preview
+ * POST /api/product/search-images
+ */
+export const productSearchImagesHandler: PayloadHandler = async (req: PayloadRequest) => {
+    if (!req.user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        const body = await req.json?.()
+        const { productId, excludeUrls = [] } = body || {}
+
+        if (!productId) {
+            return Response.json({ error: 'productId is required' }, { status: 400 })
+        }
+
+        const product = await req.payload.findByID({
+            collection: 'products',
+            id: productId,
+        })
+
+        if (!product) {
+            return Response.json({ error: 'Product not found' }, { status: 404 })
+        }
+
+        const productData = product as unknown as Record<string, unknown>
+        const productName = (productData.name || 'Unknown Product') as string
+        const brand = (productData.brand || null) as string | null
+
+        // Get image URLs from multiple sources
+        const googleUrls = await getGoogleImageUrls(productName, brand)
+        const offUrls = await getOpenFoodFactsImageUrls(productName, brand)
+
+        // Combine and filter out already-tried URLs
+        const allUrls = [...googleUrls, ...offUrls].filter(url => !excludeUrls.includes(url))
+
+        // Return first available URL for preview
+        if (allUrls.length === 0) {
+            return Response.json({
+                success: false,
+                error: 'No images found',
+                totalUrls: 0,
+            })
+        }
+
+        // Determine source for the first URL
+        const firstUrl = allUrls[0]
+        const source = googleUrls.includes(firstUrl) ? 'Google Images' : 'Open Food Facts'
+
+        return Response.json({
+            success: true,
+            previewUrl: firstUrl,
+            source,
+            remainingUrls: allUrls.length - 1,
+            allUrls, // Return all so frontend can try next if rejected
+        })
+    } catch (error) {
+        console.error('Image search error:', error)
+        return Response.json(
+            { error: error instanceof Error ? error.message : 'Search failed' },
+            { status: 500 }
+        )
+    }
+}
+
+/**
+ * Save a specific image URL to a product
+ * POST /api/product/save-image
+ */
+export const productSaveImageHandler: PayloadHandler = async (req: PayloadRequest) => {
+    if (!req.user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        const body = await req.json?.()
+        const { productId, imageUrl } = body || {}
+
+        if (!productId || !imageUrl) {
+            return Response.json({ error: 'productId and imageUrl are required' }, { status: 400 })
+        }
+
+        const product = await req.payload.findByID({
+            collection: 'products',
+            id: productId,
+        })
+
+        if (!product) {
+            return Response.json({ error: 'Product not found' }, { status: 404 })
+        }
+
+        const productData = product as unknown as Record<string, unknown>
+        const productName = (productData.name || 'Unknown Product') as string
+        const brand = (productData.brand || null) as string | null
+
+        // Try to download and save the image
+        const result = await tryDownloadImage(req.payload, imageUrl, productName, brand)
+
+        if (!result.mediaId) {
+            return Response.json({
+                success: false,
+                error: result.error || 'Failed to download image',
+            })
+        }
+
+        // Update the product
+        await req.payload.update({
+            collection: 'products',
+            id: productId,
+            data: {
+                image: result.mediaId,
+                imageUrl: null, // Clear external URL
+            },
+        })
+
+        return Response.json({
+            success: true,
+            mediaId: result.mediaId,
+        })
+    } catch (error) {
+        console.error('Save image error:', error)
+        return Response.json(
+            { error: error instanceof Error ? error.message : 'Save failed' },
+            { status: 500 }
+        )
+    }
+}

@@ -202,8 +202,9 @@ export const imageInternalizeStatusHandler: PayloadHandler = async (req: Payload
 }
 
 /**
- * Internalize all external images
+ * Internalize external images
  * POST /api/images/internalize
+ * Body: { productIds?: number[] } - Optional array of specific product IDs to process
  */
 export const imageInternalizeHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {
@@ -218,15 +219,33 @@ export const imageInternalizeHandler: PayloadHandler = async (req: PayloadReques
     }
 
     try {
-        // Find all products with external imageUrl
-        const products = await req.payload.find({
-            collection: 'products',
-            where: {
-                imageUrl: { exists: true },
-            },
-            limit: 200, // Process in batches
-            depth: 1, // Get brand info
-        })
+        // Check if specific product IDs were provided
+        const body = await req.json?.().catch(() => null)
+        const specificProductIds = body?.productIds as number[] | undefined
+
+        let products: any
+
+        if (specificProductIds && specificProductIds.length > 0) {
+            // Fetch specific products
+            products = await req.payload.find({
+                collection: 'products',
+                where: {
+                    id: { in: specificProductIds },
+                },
+                limit: specificProductIds.length,
+                depth: 1,
+            })
+        } else {
+            // Find all products with external imageUrl
+            products = await req.payload.find({
+                collection: 'products',
+                where: {
+                    imageUrl: { exists: true },
+                },
+                limit: 200, // Process in batches
+                depth: 1, // Get brand info
+            })
+        }
 
         if (products.docs.length === 0) {
             return Response.json({

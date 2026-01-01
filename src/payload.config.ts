@@ -37,7 +37,7 @@ import { channelAnalyzeHandler } from './endpoints/channel-analyze'
 import { pollGenerateHandler } from './endpoints/poll-generate'
 import { seoGenerateHandler } from './endpoints/seo-generate'
 import { categoryPollHandler } from './endpoints/category-poll-generate'
-import { productEnrichHandler } from './endpoints/product-enrich'
+import { productEnrichHandler, productSearchImagesHandler, productSaveImageHandler } from './endpoints/product-enrich'
 import { adminPurgeHandler } from './endpoints/admin-purge'
 import { tiktokAnalyzeHandler } from './endpoints/tiktok-analyze'
 import { backupExportHandler } from './endpoints/backup-export'
@@ -185,6 +185,16 @@ export default buildConfig({
       path: '/product/enrich',
       method: 'post',
       handler: productEnrichHandler,
+    },
+    {
+      path: '/product/search-images',
+      method: 'post',
+      handler: productSearchImagesHandler,
+    },
+    {
+      path: '/product/save-image',
+      method: 'post',
+      handler: productSaveImageHandler,
     },
     {
       path: '/background/remove',

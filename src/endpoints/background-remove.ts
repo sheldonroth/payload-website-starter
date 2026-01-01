@@ -1,5 +1,6 @@
 import type { Payload, PayloadHandler, PayloadRequest } from 'payload'
 import { checkRateLimit, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
+import { getServerSideURL } from '@/utilities/getURL'
 
 /**
  * Background Removal Endpoint
@@ -226,10 +227,10 @@ async function getProductImageBuffer(
         }
 
         if (mediaUrl) {
-            // Handle relative URLs
+            // Handle relative URLs - use getServerSideURL for production
             const fullUrl = mediaUrl.startsWith('http')
                 ? mediaUrl
-                : `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}${mediaUrl}`
+                : `${getServerSideURL()}${mediaUrl}`
 
             const buffer = await fetchImageFromUrl(fullUrl)
             return { buffer, source: 'media', mediaId }
