@@ -620,6 +620,15 @@ export const Products: CollectionConfig = {
             },
         },
         {
+            name: 'sourceVideoLink',
+            type: 'ui',
+            admin: {
+                components: {
+                    Field: '@/components/SourceVideoLink',
+                },
+            },
+        },
+        {
             name: 'sourceCount',
             type: 'number',
             defaultValue: 1,
