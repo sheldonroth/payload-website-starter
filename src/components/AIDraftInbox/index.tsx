@@ -11,7 +11,7 @@ interface AIDraft {
     autoVerdict?: string
     aiConfidence?: 'high' | 'medium' | 'low'
     aiSourceType?: string
-    sourceVideo?: { id: number; title: string }
+    sourceVideo?: { id: number; title: string; youtubeVideoId?: string }
     imageUrl?: string
     createdAt: string
     conflicts?: { detected?: string[] }
@@ -414,6 +414,26 @@ const AIDraftInbox: React.FC = () => {
                                                 }}
                                             >
                                                 {confidence.label} Confidence
+                                            </span>
+                                        )}
+                                        {draft.sourceVideo && (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <span style={{ color: '#ef4444' }}>&#x25B6;</span>
+                                                <a
+                                                    href={draft.sourceVideo.youtubeVideoId
+                                                        ? `https://youtube.com/watch?v=${draft.sourceVideo.youtubeVideoId}`
+                                                        : `/admin/collections/videos/${draft.sourceVideo.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        color: '#6366f1',
+                                                        textDecoration: 'none',
+                                                        fontSize: '12px',
+                                                    }}
+                                                    title={`From: ${draft.sourceVideo.title}`}
+                                                >
+                                                    {draft.sourceVideo.title || 'Source Video'}
+                                                </a>
                                             </span>
                                         )}
                                     </div>
