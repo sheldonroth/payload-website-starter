@@ -253,6 +253,8 @@ async function uploadProcessedImage(
     const safeName = productName.toLowerCase().replace(/[^a-z0-9]/g, '-')
     const filename = `${safeBrand}-${safeName}-nobg-${Date.now()}.png`
 
+    console.log(`[BG Remove] Creating media document: ${filename} (${imageBuffer.length} bytes)`)
+
     const media = await payload.create({
         collection: 'media',
         data: {
@@ -265,6 +267,8 @@ async function uploadProcessedImage(
             size: imageBuffer.length,
         },
     })
+
+    console.log(`[BG Remove] Media document created: ID=${media.id}, URL=${(media as any).url}`)
 
     return media.id as number
 }
@@ -283,6 +287,8 @@ async function processProductBackgroundRemoval(
     newMediaId?: number
     error?: string
 }> {
+    console.log(`[BG Remove] Starting background removal for product ${productId} (preview=${preview})`)
+
     try {
         // Fetch product with image relationship populated
         const product = await payload.findByID({
@@ -290,6 +296,8 @@ async function processProductBackgroundRemoval(
             id: productId,
             depth: 1,
         })
+
+        console.log(`[BG Remove] Product ${productId} fetched: name="${product?.name}", hasImage=${!!(product as any)?.image}, hasImageUrl=${!!(product as any)?.imageUrl}, backgroundRemoved=${(product as any)?.backgroundRemoved}`)
 
         if (!product) {
             return { success: false, productId, error: 'Product not found' }
@@ -302,6 +310,7 @@ async function processProductBackgroundRemoval(
 
         // Get image buffer (internalizes external URLs first)
         const { buffer: originalBuffer, source } = await getProductImageBuffer(payload, productId, product as any)
+        console.log(`[BG Remove] Got image buffer: source=${source}, size=${originalBuffer.length} bytes`)
 
         // Check image size (Photoroom limit is 25MB)
         if (originalBuffer.length > 25 * 1024 * 1024) {
@@ -309,7 +318,9 @@ async function processProductBackgroundRemoval(
         }
 
         // Remove background using Photoroom
+        console.log(`[BG Remove] Calling Photoroom API...`)
         const processedBuffer = await removeBackgroundWithPhotoroom(originalBuffer)
+        console.log(`[BG Remove] Photoroom returned ${processedBuffer.length} bytes`)
 
         // If preview mode, return base64 without saving
         if (preview) {
@@ -322,15 +333,23 @@ async function processProductBackgroundRemoval(
         }
 
         // Upload processed image to Media collection
+        const productName = (product.name as string) || 'product'
+        // Brand is a text field, not a relationship
+        const brandName = typeof product.brand === 'string' ? product.brand : null
+
+        console.log(`[BG Remove] Uploading processed image for product ${productId}: ${brandName} ${productName}`)
+
         const newMediaId = await uploadProcessedImage(
             payload,
             processedBuffer,
-            (product.name as string) || 'product',
-            (product.brand as { name?: string })?.name || null
+            productName,
+            brandName
         )
 
+        console.log(`[BG Remove] Media created with ID ${newMediaId}, now updating product ${productId}`)
+
         // Update product with new media ID, clear external URL, and mark as processed
-        await payload.update({
+        const updateResult = await payload.update({
             collection: 'products',
             id: productId,
             data: {
@@ -340,7 +359,7 @@ async function processProductBackgroundRemoval(
             },
         })
 
-        console.log(`Background removed for product ${productId}, new Media ID: ${newMediaId}`)
+        console.log(`[BG Remove] Product ${productId} updated. New image ID: ${(updateResult as any).image}, backgroundRemoved: ${(updateResult as any).backgroundRemoved}`)
 
         return {
             success: true,
