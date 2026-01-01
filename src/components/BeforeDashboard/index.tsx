@@ -16,6 +16,7 @@ import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
 import ImageReview from '../ImageReview'
 import BatchBackgroundRemoval from '../BatchBackgroundRemoval'
+import ImageInternalizer from '../ImageInternalizer'
 import NewsletterExport from '../NewsletterExport'
 import EmailTester from '../EmailTester'
 
@@ -154,9 +155,16 @@ const BeforeDashboard: React.FC = () => {
         <ImageReview />
       </CollapsibleSection>
 
-      {/* Background Removal */}
-      <CollapsibleSection title="Background Removal" icon="✂️" defaultOpen={false} badge="$0.02/image">
-        <BatchBackgroundRemoval />
+      {/* Image Management */}
+      <CollapsibleSection title="Image Management" icon="🖼️" defaultOpen={false}>
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>📥 Internalize External URLs</h4>
+          <ImageInternalizer />
+        </div>
+        <div>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>✂️ Background Removal <span style={{ fontWeight: 400, color: '#6b7280' }}>($0.02/image)</span></h4>
+          <BatchBackgroundRemoval />
+        </div>
       </CollapsibleSection>
 
       {/* Admin Tools */}

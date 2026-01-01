@@ -49,6 +49,7 @@ import { unifiedIngestHandler } from './endpoints/unified-ingest'
 import { adminLinkVideosHandler } from './endpoints/admin-link-videos'
 import { adminCategoryCleanupHandler } from './endpoints/admin-category-cleanup'
 import { backgroundRemoveHandler, backgroundBatchHandler } from './endpoints/background-remove'
+import { imageInternalizeHandler, imageInternalizeStatusHandler } from './endpoints/image-internalize'
 import { cronJobsHandler } from './endpoints/cron-jobs'
 import { bulkOperationsHandler } from './endpoints/bulk-operations'
 import { labelDecodeHandler } from './endpoints/label-decode'
@@ -194,6 +195,16 @@ export default buildConfig({
       path: '/background/batch',
       method: 'post',
       handler: backgroundBatchHandler,
+    },
+    {
+      path: '/images/internalize/status',
+      method: 'get',
+      handler: imageInternalizeStatusHandler,
+    },
+    {
+      path: '/images/internalize',
+      method: 'post',
+      handler: imageInternalizeHandler,
     },
     {
       path: '/admin/purge',
