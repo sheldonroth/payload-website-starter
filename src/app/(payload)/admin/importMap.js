@@ -17,8 +17,10 @@ import { PreviewComponent as PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860 }
 import { SlugField as SlugField_3817bf644402e67bfe6577f60ef982de } from '@payloadcms/ui'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_b86c2794d853a6cbf5069197bde7e8e2 } from '@/components/SourceVideoLink'
 import { FolderTableCell as FolderTableCell_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { FolderField as FolderField_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
+import { default as default_a814725a5c86f27c59db027aa5a4f37a } from '@/components/IconPreviewField'
 import { LinkToDoc as LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ReindexButton as ReindexButton_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { FolderTypeField as FolderTypeField_3817bf644402e67bfe6577f60ef982de } from '@payloadcms/ui'
@@ -31,6 +33,7 @@ import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e
 import { default as default_75dc2b615834d6768a54dcd141eaa5e8 } from '@/components/AITools'
 import { default as default_13a816ebfa4a02aa29b5ff61c24f72d4 } from '@/components/AIProductSuggestions'
 import { default as default_51efc397df5a963397c9b90f50d26f14 } from '@/components/SuggestedCategories'
+import { default as default_4fb88c9a3a532122f1d42f73ebcc5f22 } from '@/components/AnalyticsDashboard'
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -52,8 +55,10 @@ export const importMap = {
   "@payloadcms/ui#SlugField": SlugField_3817bf644402e67bfe6577f60ef982de,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/SourceVideoLink#default": default_b86c2794d853a6cbf5069197bde7e8e2,
   "@payloadcms/ui/rsc#FolderTableCell": FolderTableCell_ab83ff7e88da8d3530831f296ec4756a,
   "@payloadcms/ui/rsc#FolderField": FolderField_ab83ff7e88da8d3530831f296ec4756a,
+  "@/components/IconPreviewField#default": default_a814725a5c86f27c59db027aa5a4f37a,
   "@payloadcms/plugin-search/client#LinkToDoc": LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-search/client#ReindexButton": ReindexButton_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/ui#FolderTypeField": FolderTypeField_3817bf644402e67bfe6577f60ef982de,
@@ -65,5 +70,6 @@ export const importMap = {
   "@payloadcms/storage-vercel-blob/client#VercelBlobClientUploadHandler": VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e,
   "@/components/AITools#default": default_75dc2b615834d6768a54dcd141eaa5e8,
   "@/components/AIProductSuggestions#default": default_13a816ebfa4a02aa29b5ff61c24f72d4,
-  "@/components/SuggestedCategories#default": default_51efc397df5a963397c9b90f50d26f14
+  "@/components/SuggestedCategories#default": default_51efc397df5a963397c9b90f50d26f14,
+  "@/components/AnalyticsDashboard#default": default_4fb88c9a3a532122f1d42f73ebcc5f22
 }
