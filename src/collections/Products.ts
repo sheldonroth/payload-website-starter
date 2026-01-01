@@ -49,7 +49,14 @@ const premiumFieldAccess: FieldAccess = ({ req }) => {
 export const Products: CollectionConfig = {
     slug: 'products',
     access: {
-        read: () => true, // Basic product info is public
+        // Only published products are visible to public API
+        // CMS users (admin/editor) can see all products
+        read: ({ req }) => {
+            const role = (req.user as { role?: string })?.role
+            if (role === 'admin' || role === 'product_editor') return true
+            // Public users only see published products
+            return { status: { equals: 'published' } }
+        },
         create: isEditorOrAdmin, // Admins and product_editors can create
         update: isEditorOrAdmin, // Admins and product_editors can update
         delete: isAdmin, // Only admins can delete (product_editors cannot)
