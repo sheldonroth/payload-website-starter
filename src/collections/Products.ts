@@ -632,15 +632,9 @@ export const Products: CollectionConfig = {
             label: 'Source Video',
             admin: {
                 description: 'Video that this product was extracted from',
-            },
-        },
-        // UI-only field to display YouTube link - no database column needed
-        {
-            name: 'sourceVideoLink',
-            type: 'ui',
-            admin: {
                 components: {
-                    Field: '@/components/SourceVideoLink',
+                    // Renders YouTube link below the relationship field (no DB column needed)
+                    afterInput: ['@/components/SourceVideoLink'],
                 },
             },
         },
