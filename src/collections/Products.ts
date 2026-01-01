@@ -1,3 +1,18 @@
+/**
+ * Products Collection
+ *
+ * ⚠️ IMPORTANT FOR AI AGENTS:
+ * When adding new fields that store data (text, number, json, relationship, etc.),
+ * you MUST create a database migration. Use 'ui' type for display-only components.
+ *
+ * To create a migration:
+ * 1. Add the field to this collection
+ * 2. Create a migration file in src/migrations/ (see existing files for examples)
+ * 3. Register it in src/migrations/index.ts
+ *
+ * Fields that DON'T need migrations: 'ui' type (display-only)
+ * Fields that DO need migrations: text, number, date, checkbox, select, json, relationship, etc.
+ */
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 import {
@@ -619,12 +634,14 @@ export const Products: CollectionConfig = {
                 description: 'Video that this product was extracted from',
             },
         },
+        // NOTE FOR AI AGENTS: This is a UI-only field (no database column).
+        // Use 'ui' type for display-only components that don't store data.
+        // If you change this to a storage type (text, number, etc), you MUST create a migration.
+        // See src/migrations/ for examples.
         {
             name: 'sourceVideoLink',
-            type: 'text',
-            label: ' ', // Empty label - component handles its own display
+            type: 'ui',
             admin: {
-                readOnly: true,
                 components: {
                     Field: '@/components/SourceVideoLink',
                 },
