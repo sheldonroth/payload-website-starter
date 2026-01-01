@@ -1024,6 +1024,10 @@ export interface Product {
   imageUrl?: string | null;
   image?: (number | null) | Media;
   /**
+   * Auto-set when background is removed. Prevents duplicate processing.
+   */
+  backgroundRemoved?: boolean | null;
+  /**
    * Final verdict on this product
    */
   verdict: 'recommend' | 'caution' | 'avoid' | 'pending';
@@ -1075,11 +1079,11 @@ export interface Product {
    */
   amazonAsin?: string | null;
   /**
-   * Amazon/product page URL where data was extracted
+   * TikTok, Amazon, or other URL where data was extracted
    */
   sourceUrl?: string | null;
   /**
-   * Video that this product was extracted from
+   * YouTube video from Videos collection (if applicable)
    */
   sourceVideo?: (number | null) | Video;
   /**
@@ -2483,6 +2487,7 @@ export interface ProductsSelect<T extends boolean = true> {
   pendingCategoryName?: T;
   imageUrl?: T;
   image?: T;
+  backgroundRemoved?: T;
   verdict?: T;
   verdictReason?: T;
   autoVerdict?: T;

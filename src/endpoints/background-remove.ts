@@ -213,13 +213,14 @@ async function processProductBackgroundRemoval(
             (product.brand as { name?: string })?.name || null
         )
 
-        // Update product with new media ID and clear external URL
+        // Update product with new media ID, clear external URL, and mark as processed
         await payload.update({
             collection: 'products',
             id: productId,
             data: {
                 image: newMediaId,
                 imageUrl: null, // Clear external URL since we now have a Media document
+                backgroundRemoved: true, // Mark as processed to prevent duplicate charges
             },
         })
 

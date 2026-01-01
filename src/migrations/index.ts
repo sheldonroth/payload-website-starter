@@ -26,6 +26,7 @@ import * as migration_20251231_230000_add_pages_blocks_stats from './20251231_23
 import * as migration_20250101_000000_add_amazon_asin from './20250101_000000_add_amazon_asin';
 import * as migration_20250101_000100_add_voting_to_user_submissions from './20250101_000100_add_voting_to_user_submissions';
 import * as migration_20250101_000200_add_ingredient_watchlist from './20250101_000200_add_ingredient_watchlist';
+import * as migration_20251231_240000_add_background_removed from './20251231_240000_add_background_removed';
 
 export const migrations = [
   {
@@ -167,5 +168,10 @@ export const migrations = [
     up: migration_20250101_000200_add_ingredient_watchlist.up,
     down: migration_20250101_000200_add_ingredient_watchlist.down,
     name: '20250101_000200_add_ingredient_watchlist'
+  },
+  {
+    up: migration_20251231_240000_add_background_removed.up,
+    down: migration_20251231_240000_add_background_removed.down,
+    name: '20251231_240000_add_background_removed'
   },
 ];

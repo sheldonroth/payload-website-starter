@@ -391,6 +391,65 @@ export const Products: CollectionConfig = {
                 return data
             },
         ],
+
+        // ============================================
+        // AFTER CHANGE: AUTO BACKGROUND REMOVAL ON PUBLISH
+        // ============================================
+        afterChange: [
+            async ({ doc, previousDoc, req }) => {
+                // Only process if:
+                // 1. Status just changed to 'published'
+                // 2. Product has an image (imageUrl or image)
+                // 3. Background hasn't been removed yet
+                const justPublished = doc.status === 'published' && previousDoc?.status !== 'published'
+                const hasImage = !!(doc.imageUrl || doc.image)
+                const notProcessed = !doc.backgroundRemoved
+
+                if (justPublished && hasImage && notProcessed) {
+                    console.log(`[Auto BG Removal] Product ${doc.id} published with image, queuing background removal...`)
+
+                    // Process in background (don't block the save)
+                    // Use setTimeout to not block the response
+                    setTimeout(async () => {
+                        try {
+                            // Call the background removal endpoint internally
+                            const response = await fetch(
+                                `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/api/background/remove`,
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        // Use internal auth - the endpoint will check for user
+                                        'Cookie': req.headers.get('cookie') || '',
+                                    },
+                                    body: JSON.stringify({
+                                        productId: doc.id,
+                                        preview: false,
+                                    }),
+                                }
+                            )
+
+                            if (response.ok) {
+                                // Update the backgroundRemoved flag
+                                await req.payload.update({
+                                    collection: 'products',
+                                    id: doc.id,
+                                    data: { backgroundRemoved: true },
+                                })
+                                console.log(`[Auto BG Removal] Successfully removed background for product ${doc.id}`)
+                            } else {
+                                const error = await response.json()
+                                console.error(`[Auto BG Removal] Failed for product ${doc.id}:`, error)
+                            }
+                        } catch (error) {
+                            console.error(`[Auto BG Removal] Error for product ${doc.id}:`, error)
+                        }
+                    }, 100) // Small delay to let the response complete
+                }
+
+                return doc
+            },
+        ],
     },
     fields: [
         // === MAIN INFO ===
@@ -475,6 +534,17 @@ export const Products: CollectionConfig = {
                 components: {
                     Field: '@/components/BackgroundRemoveButton',
                 },
+            },
+        },
+        // Track if background has been removed (prevents duplicate API charges)
+        {
+            name: 'backgroundRemoved',
+            type: 'checkbox',
+            defaultValue: false,
+            admin: {
+                description: 'Auto-set when background is removed. Prevents duplicate processing.',
+                position: 'sidebar',
+                readOnly: true,
             },
         },
 
