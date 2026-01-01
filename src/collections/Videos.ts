@@ -36,6 +36,19 @@ export const Videos: CollectionConfig = {
                 return data
             },
         ],
+        afterRead: [
+            ({ doc }) => {
+                // Compute YouTube URL from video ID (no database storage needed)
+                if (doc.youtubeVideoId) {
+                    const isShort = doc.videoType === 'short'
+                    doc.youtubeUrl = isShort
+                        ? `https://www.youtube.com/shorts/${doc.youtubeVideoId}`
+                        : `https://www.youtube.com/watch?v=${doc.youtubeVideoId}`
+                    doc.youtubeThumbnail = doc.thumbnailUrl || `https://img.youtube.com/vi/${doc.youtubeVideoId}/maxresdefault.jpg`
+                }
+                return doc
+            },
+        ],
     },
     admin: {
         useAsTitle: 'title',
