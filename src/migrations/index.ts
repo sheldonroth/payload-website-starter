@@ -35,6 +35,7 @@ import * as migration_20260101_030000_add_featured_product from './20260101_0300
 import * as migration_20260102_010000_create_site_settings from './20260102_010000_create_site_settings';
 import * as migration_20260102_000000_add_trending_fields from './20260102_000000_add_trending_fields';
 import * as migration_20260102_020000_add_trending_news_rel from './20260102_020000_add_trending_news_rel';
+import * as migration_20260102_030000_add_display_title from './20260102_030000_add_display_title';
 
 export const migrations = [
   {
@@ -221,5 +222,10 @@ export const migrations = [
     up: migration_20260102_020000_add_trending_news_rel.up,
     down: migration_20260102_020000_add_trending_news_rel.down,
     name: '20260102_020000_add_trending_news_rel'
+  },
+  {
+    up: migration_20260102_030000_add_display_title.up,
+    down: migration_20260102_030000_add_display_title.down,
+    name: '20260102_030000_add_display_title'
   },
 ];

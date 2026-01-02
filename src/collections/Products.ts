@@ -62,7 +62,7 @@ export const Products: CollectionConfig = {
         delete: isAdmin, // Only admins can delete (product_editors cannot)
     },
     admin: {
-        useAsTitle: 'name',
+        useAsTitle: 'displayTitle',
         defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
         listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
@@ -584,6 +584,23 @@ export const Products: CollectionConfig = {
             type: 'text',
             required: true,
             label: 'Brand Name',
+        },
+        {
+            name: 'displayTitle',
+            type: 'text',
+            admin: {
+                hidden: true,
+                description: 'Auto-generated: Brand - Product Name',
+            },
+            hooks: {
+                beforeChange: [
+                    ({ siblingData }) => {
+                        const brand = siblingData?.brand || ''
+                        const name = siblingData?.name || ''
+                        return brand && name ? `${brand} - ${name}` : name || brand || 'Unnamed Product'
+                    },
+                ],
+            },
         },
         {
             name: 'slug',
