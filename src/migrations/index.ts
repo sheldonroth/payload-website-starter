@@ -34,6 +34,7 @@ import * as migration_20260101_020000_add_video_url from './20260101_020000_add_
 import * as migration_20260101_030000_add_featured_product from './20260101_030000_add_featured_product';
 import * as migration_20260102_010000_create_site_settings from './20260102_010000_create_site_settings';
 import * as migration_20260102_000000_add_trending_fields from './20260102_000000_add_trending_fields';
+import * as migration_20260102_020000_add_trending_news_rel from './20260102_020000_add_trending_news_rel';
 
 export const migrations = [
   {
@@ -215,5 +216,10 @@ export const migrations = [
     up: migration_20260102_000000_add_trending_fields.up,
     down: migration_20260102_000000_add_trending_fields.down,
     name: '20260102_000000_add_trending_fields'
+  },
+  {
+    up: migration_20260102_020000_add_trending_news_rel.up,
+    down: migration_20260102_020000_add_trending_news_rel.down,
+    name: '20260102_020000_add_trending_news_rel'
   },
 ];
