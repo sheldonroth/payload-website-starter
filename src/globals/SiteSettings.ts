@@ -11,6 +11,25 @@ export const SiteSettings: GlobalConfig = {
         group: 'Settings',
     },
     fields: [
+        // === FEATURED PRODUCT ===
+        {
+            name: 'featuredProduct',
+            type: 'relationship',
+            relationTo: 'products',
+            label: 'Featured Product',
+            admin: {
+                description: 'Select one product to feature prominently in the app',
+            },
+        },
+        {
+            name: 'featuredProductHeadline',
+            type: 'text',
+            label: 'Featured Product Headline',
+            defaultValue: 'Featured Finding',
+            admin: {
+                description: 'Headline shown above the featured product (e.g., "Featured Finding", "Editor\'s Pick")',
+            },
+        },
         // === AFFILIATE SETTINGS ===
         {
             name: 'affiliateSettings',
