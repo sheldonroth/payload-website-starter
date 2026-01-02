@@ -46,6 +46,17 @@ function formatGDELTDate(date: Date): string {
         .replace(/\.\d{3}Z/, '')
 }
 
+// Safely format date to ISO string, returns null for invalid dates
+function safeISOString(date: Date): string | null {
+    try {
+        const timestamp = date.getTime()
+        if (isNaN(timestamp)) return null
+        return date.toISOString()
+    } catch {
+        return null
+    }
+}
+
 // Parse GDELT article response
 function parseGDELTArticle(article: any): NewsArticle {
     return {
@@ -418,6 +429,7 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
 
                 // Add new snippets
                 for (const article of uniqueArticles.slice(0, 5)) {
+                    const publishedAt = safeISOString(article.publishedAt)
                     await req.payload.create({
                         collection: 'trending-news' as any,
                         data: {
@@ -425,7 +437,7 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
                             title: article.title,
                             source: article.source,
                             url: article.url,
-                            publishedAt: article.publishedAt.toISOString(),
+                            publishedAt: publishedAt || new Date().toISOString(),
                             sentiment: article.sentiment !== undefined
                                 ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
                                 : 'neutral',
