@@ -86,6 +86,7 @@ export interface Config {
     'user-submissions': UserSubmission;
     'device-fingerprints': DeviceFingerprint;
     'product-unlocks': ProductUnlock;
+    'trending-news': TrendingNew;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -122,6 +123,7 @@ export interface Config {
     'user-submissions': UserSubmissionsSelect<false> | UserSubmissionsSelect<true>;
     'device-fingerprints': DeviceFingerprintsSelect<false> | DeviceFingerprintsSelect<true>;
     'product-unlocks': ProductUnlocksSelect<false> | ProductUnlocksSelect<true>;
+    'trending-news': TrendingNewsSelect<false> | TrendingNewsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -530,6 +532,10 @@ export interface Product {
   id: number;
   name: string;
   brand: string;
+  /**
+   * Auto-generated: Brand - Product Name
+   */
+  displayTitle?: string | null;
   slug?: string | null;
   category?: (number | null) | Category;
   /**
@@ -596,6 +602,12 @@ export interface Product {
    * Amazon Standard Identification Number (10 characters). Used to auto-generate affiliate links.
    */
   amazonAsin?: string | null;
+  /**
+   * Validation status of the Amazon product link
+   */
+  amazonLinkStatus?: ('unchecked' | 'valid' | 'invalid') | null;
+  amazonLinkLastChecked?: string | null;
+  amazonLinkError?: string | null;
   /**
    * TikTok, Amazon, or other URL where data was extracted
    */
@@ -715,6 +727,15 @@ export interface Product {
      * Selected as editor's top pick
      */
     isEditorsChoice?: boolean | null;
+  };
+  /**
+   * Auto-calculated from brand trending status
+   */
+  trending?: {
+    isTrending?: boolean | null;
+    trendingScore?: number | null;
+    trendingSentiment?: ('positive' | 'negative' | 'neutral' | 'mixed') | null;
+    trendingReason?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -1897,6 +1918,26 @@ export interface Brand {
    * Internal notes about this brand
    */
   notes?: string | null;
+  /**
+   * Auto-calculated from daily news scan
+   */
+  trending?: {
+    isTrending?: boolean | null;
+    /**
+     * 0-100 based on news mentions
+     */
+    trendingScore?: number | null;
+    trendingSentiment?: ('positive' | 'negative' | 'neutral' | 'mixed') | null;
+    /**
+     * AI-generated summary of why this brand is trending
+     */
+    trendingReason?: string | null;
+    /**
+     * News mentions in past 7 days
+     */
+    recentNewsCount?: number | null;
+    lastTrendingCheck?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -2138,6 +2179,37 @@ export interface ProductUnlock {
    */
   convertedToSubscription?: boolean | null;
   conversionDate?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * News articles matched to brands by the Trending Engine
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "trending-news".
+ */
+export interface TrendingNew {
+  id: number;
+  brand: number | Brand;
+  title: string;
+  /**
+   * News source (e.g., CNN, Reuters)
+   */
+  source?: string | null;
+  /**
+   * Link to original article
+   */
+  url?: string | null;
+  publishedAt?: string | null;
+  sentiment?: ('positive' | 'negative' | 'neutral') | null;
+  /**
+   * 0-1 score of how relevant this article is to the brand
+   */
+  relevanceScore?: number | null;
+  /**
+   * Which brand name/alias matched
+   */
+  matchedTerms?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2408,6 +2480,10 @@ export interface PayloadLockedDocument {
         value: number | ProductUnlock;
       } | null)
     | ({
+        relationTo: 'trending-news';
+        value: number | TrendingNew;
+      } | null)
+    | ({
         relationTo: 'redirects';
         value: number | Redirect;
       } | null)
@@ -2663,6 +2739,7 @@ export interface PostsSelect<T extends boolean = true> {
 export interface ProductsSelect<T extends boolean = true> {
   name?: T;
   brand?: T;
+  displayTitle?: T;
   slug?: T;
   category?: T;
   pendingCategoryName?: T;
@@ -2687,6 +2764,9 @@ export interface ProductsSelect<T extends boolean = true> {
       };
   upc?: T;
   amazonAsin?: T;
+  amazonLinkStatus?: T;
+  amazonLinkLastChecked?: T;
+  amazonLinkError?: T;
   sourceUrl?: T;
   sourceVideo?: T;
   sourceCount?: T;
@@ -2737,6 +2817,14 @@ export interface ProductsSelect<T extends boolean = true> {
         isRecommended?: T;
         isBestValue?: T;
         isEditorsChoice?: T;
+      };
+  trending?:
+    | T
+    | {
+        isTrending?: T;
+        trendingScore?: T;
+        trendingSentiment?: T;
+        trendingReason?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -3172,6 +3260,16 @@ export interface BrandsSelect<T extends boolean = true> {
   description?: T;
   categories?: T;
   notes?: T;
+  trending?:
+    | T
+    | {
+        isTrending?: T;
+        trendingScore?: T;
+        trendingSentiment?: T;
+        trendingReason?: T;
+        recentNewsCount?: T;
+        lastTrendingCheck?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3290,6 +3388,22 @@ export interface ProductUnlocksSelect<T extends boolean = true> {
   referralSource?: T;
   convertedToSubscription?: T;
   conversionDate?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "trending-news_select".
+ */
+export interface TrendingNewsSelect<T extends boolean = true> {
+  brand?: T;
+  title?: T;
+  source?: T;
+  url?: T;
+  publishedAt?: T;
+  sentiment?: T;
+  relevanceScore?: T;
+  matchedTerms?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3666,6 +3780,14 @@ export interface YoutubeSetting {
  */
 export interface SiteSetting {
   id: number;
+  /**
+   * Select one product to feature prominently in the app
+   */
+  featuredProduct?: (number | null) | Product;
+  /**
+   * Headline shown above the featured product (e.g., "Featured Finding", "Editor's Pick")
+   */
+  featuredProductHeadline?: string | null;
   affiliateSettings?: {
     /**
      * Your Amazon Associates tag (e.g., "yoursite-20"). Used to generate affiliate links.
@@ -3754,6 +3876,8 @@ export interface YoutubeSettingsSelect<T extends boolean = true> {
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
+  featuredProduct?: T;
+  featuredProductHeadline?: T;
   affiliateSettings?:
     | T
     | {

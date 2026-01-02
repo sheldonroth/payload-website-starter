@@ -19,7 +19,6 @@ import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_d571914cf7760a5f1f7052b16963f17c } from '@/components/RetryImageSearch'
 import { default as default_67bf667bd5fe39cecb104aaed387d9c1 } from '@/components/BackgroundRemoveButton'
-import { default as default_bc2a6aa4fb6e9fbd71b63e0466dc4ecc } from '@/components/AmazonValidateButton'
 import { default as default_b86c2794d853a6cbf5069197bde7e8e2 } from '@/components/SourceVideoLink'
 import { FolderTableCell as FolderTableCell_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { FolderField as FolderField_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
@@ -60,7 +59,6 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/RetryImageSearch#default": default_d571914cf7760a5f1f7052b16963f17c,
   "@/components/BackgroundRemoveButton#default": default_67bf667bd5fe39cecb104aaed387d9c1,
-  "@/components/AmazonValidateButton#default": default_bc2a6aa4fb6e9fbd71b63e0466dc4ecc,
   "@/components/SourceVideoLink#default": default_b86c2794d853a6cbf5069197bde7e8e2,
   "@payloadcms/ui/rsc#FolderTableCell": FolderTableCell_ab83ff7e88da8d3530831f296ec4756a,
   "@payloadcms/ui/rsc#FolderField": FolderField_ab83ff7e88da8d3530831f296ec4756a,
