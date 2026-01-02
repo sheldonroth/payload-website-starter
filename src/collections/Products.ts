@@ -66,10 +66,7 @@ export const Products: CollectionConfig = {
         defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
         listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
-        // Hide AI drafts from main product list - they show in "AI Suggestions" view
-        baseListFilter: () => ({
-            status: { not_equals: 'ai_draft' },
-        }),
+        // NOTE: Removed baseListFilter that hid ai_drafts - it blocked the "View all AI drafts" link
     },
     hooks: {
         beforeChange: [
