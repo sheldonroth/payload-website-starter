@@ -512,6 +512,64 @@ export const Products: CollectionConfig = {
                 return doc
             },
         ],
+
+        // ============================================
+        // AFTER READ: COMPUTE AMAZON AFFILIATE LINK
+        // ============================================
+        afterRead: [
+            async ({ doc, req }) => {
+                try {
+                    // Get affiliate tag from SiteSettings
+                    const siteSettings = await req.payload.findGlobal({
+                        slug: 'site-settings' as any,
+                    })
+                    const affiliateSettings = (siteSettings as {
+                        affiliateSettings?: {
+                            amazonAffiliateTag?: string
+                            enableAffiliateLinks?: boolean
+                        }
+                    })?.affiliateSettings
+
+                    const affiliateTag = affiliateSettings?.amazonAffiliateTag
+                    const enableAffiliateLinks = affiliateSettings?.enableAffiliateLinks !== false
+
+                    // Skip if affiliate links are disabled
+                    if (!enableAffiliateLinks) {
+                        return doc
+                    }
+
+                    // Generate affiliate link based on available data
+                    let amazonAffiliateLink: string
+
+                    if (doc.amazonAsin) {
+                        // Direct product link (best conversion)
+                        const asin = doc.amazonAsin.toUpperCase()
+                        amazonAffiliateLink = affiliateTag
+                            ? `https://www.amazon.com/dp/${asin}?tag=${affiliateTag}`
+                            : `https://www.amazon.com/dp/${asin}`
+                    } else {
+                        // Search link using brand + product name (fallback)
+                        const brand = typeof doc.brand === 'string' ? doc.brand : ''
+                        const productName = doc.name || ''
+                        const searchTerms = `${brand} ${productName}`.trim()
+                        const encodedSearch = encodeURIComponent(searchTerms)
+
+                        amazonAffiliateLink = affiliateTag
+                            ? `https://www.amazon.com/s?k=${encodedSearch}&tag=${affiliateTag}`
+                            : `https://www.amazon.com/s?k=${encodedSearch}`
+                    }
+
+                    // Add computed field to document
+                    doc.amazonAffiliateLink = amazonAffiliateLink
+                    doc.hasDirectAmazonLink = !!doc.amazonAsin
+                } catch (error) {
+                    // Don't fail the read if affiliate link generation fails
+                    console.error('[Affiliate Link] Failed to generate:', error)
+                }
+
+                return doc
+            },
+        ],
     },
     fields: [
         // === MAIN INFO ===
