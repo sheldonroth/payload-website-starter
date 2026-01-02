@@ -66,7 +66,24 @@ export const Products: CollectionConfig = {
         defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
         listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
-        // NOTE: Removed baseListFilter that hid ai_drafts - it blocked the "View all AI drafts" link
+        // Smart filter: Hide AI drafts from main list, BUT allow them when explicitly filtered
+        // This way the "View all AI drafts" link works while keeping the main list clean
+        baseListFilter: ({ req }) => {
+            // Check if the request is explicitly filtering for ai_draft status
+            const url = req.url || ''
+            const isFilteringForAIDrafts = url.includes('where[status][equals]=ai_draft') ||
+                                           url.includes('where%5Bstatus%5D%5Bequals%5D=ai_draft')
+
+            // If explicitly requesting AI drafts, show them (return true = no filter)
+            if (isFilteringForAIDrafts) {
+                return true
+            }
+
+            // Otherwise, hide AI drafts from the normal product list
+            return {
+                status: { not_equals: 'ai_draft' }
+            }
+        },
     },
     hooks: {
         beforeChange: [
