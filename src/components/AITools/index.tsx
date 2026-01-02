@@ -12,6 +12,7 @@ import PollGenerator from '../PollGenerator'
 import CategoryPollGenerator from '../CategoryPollGenerator'
 import AdminPurge from '../AdminPurge'
 import BackupDownload from '../BackupDownload'
+import BulkAmazonValidate from '../BulkAmazonValidate'
 
 /**
  * AI Tools Dashboard - All AI-powered content creation tools
@@ -50,6 +51,7 @@ const AITools: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
                     <ProductEnricher />
                     <SEOGenerator />
+                    <BulkAmazonValidate />
                 </div>
             </section>
 
