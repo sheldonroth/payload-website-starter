@@ -242,6 +242,7 @@ async function getProductImageBuffer(
 
 /**
  * Upload processed image to Media collection
+ * Includes verification to ensure URL is properly set (workaround for Vercel Blob timing issue)
  */
 async function uploadProcessedImage(
     payload: Payload,
@@ -269,6 +270,27 @@ async function uploadProcessedImage(
     })
 
     console.log(`[BG Remove] Media document created: ID=${media.id}, URL=${(media as any).url}`)
+
+    // Workaround: Vercel Blob storage plugin sometimes doesn't populate URL immediately
+    // Re-fetch to verify URL is set, and if not, construct it manually
+    const verifyMedia = await payload.findByID({
+        collection: 'media',
+        id: media.id as number,
+    })
+
+    if (!verifyMedia.url && verifyMedia.filename) {
+        console.log(`[BG Remove] URL not set, constructing from blob storage pattern...`)
+        // Construct URL based on Vercel Blob storage pattern
+        const blobUrl = `https://4cqt8agccocxf8ch.public.blob.vercel-storage.com/${verifyMedia.filename}`
+        await payload.update({
+            collection: 'media',
+            id: media.id as number,
+            data: {
+                url: blobUrl,
+            },
+        })
+        console.log(`[BG Remove] Manually set URL: ${blobUrl}`)
+    }
 
     return media.id as number
 }
