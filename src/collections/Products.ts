@@ -880,6 +880,16 @@ export const Products: CollectionConfig = {
                 condition: (data) => data?.amazonLinkStatus === 'invalid',
             },
         },
+        {
+            name: 'amazonValidateButton',
+            type: 'ui',
+            admin: {
+                position: 'sidebar',
+                components: {
+                    Field: '@/components/AmazonValidateButton',
+                },
+            },
+        },
         // === SOURCE INFORMATION ===
         // Collapsible section grouping all source-related fields
         // NOTE: 'collapsible' type is UI-only - no database migration needed
