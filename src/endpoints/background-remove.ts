@@ -37,7 +37,8 @@ async function removeBackgroundWithPhotoroom(imageBuffer: Buffer): Promise<Buffe
     formData.append('image_file', new Blob([imageBuffer]), 'image.png')
     formData.append('size', 'full')
     formData.append('format', 'png')
-    formData.append('bg_color', 'white') // White background for e-commerce
+    // Note: Omitting bg_color gives transparent background (PNG with alpha channel)
+    // To use white background instead: formData.append('bg_color', 'white')
 
     const response = await fetch('https://sdk.photoroom.com/v1/segment', {
         method: 'POST',
