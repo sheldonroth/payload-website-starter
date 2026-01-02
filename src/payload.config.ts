@@ -70,6 +70,7 @@ import { recalculateFeaturedHandler } from './endpoints/featured-products'
 import { fingerprintRegisterHandler, fingerprintCheckHandler } from './endpoints/fingerprint'
 import { productUnlockHandler, productUnlockStatusHandler } from './endpoints/product-unlock'
 import { trendingEngineHandler } from './endpoints/trending-engine'
+import { amazonValidateHandler } from './endpoints/amazon-validate'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -407,6 +408,11 @@ export default buildConfig({
       path: '/trending/update',
       method: 'post',
       handler: trendingEngineHandler,
+    },
+    {
+      path: '/amazon/validate',
+      method: 'post',
+      handler: amazonValidateHandler,
     },
   ],
   plugins: [

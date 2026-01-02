@@ -842,6 +842,44 @@ export const Products: CollectionConfig = {
                 return true
             },
         },
+        {
+            name: 'amazonLinkStatus',
+            type: 'select',
+            label: 'Amazon Link Status',
+            defaultValue: 'unchecked',
+            options: [
+                { label: 'Unchecked', value: 'unchecked' },
+                { label: 'Valid', value: 'valid' },
+                { label: 'Invalid', value: 'invalid' },
+            ],
+            admin: {
+                position: 'sidebar',
+                description: 'Validation status of the Amazon product link',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'amazonLinkLastChecked',
+            type: 'date',
+            label: 'Link Last Validated',
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                date: {
+                    displayFormat: 'MMM d, yyyy h:mm a',
+                },
+            },
+        },
+        {
+            name: 'amazonLinkError',
+            type: 'text',
+            label: 'Link Validation Error',
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                condition: (data) => data?.amazonLinkStatus === 'invalid',
+            },
+        },
         // === SOURCE INFORMATION ===
         // Collapsible section grouping all source-related fields
         // NOTE: 'collapsible' type is UI-only - no database migration needed
