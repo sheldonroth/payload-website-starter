@@ -16,10 +16,12 @@ import { getServerSideURL } from '@/utilities/getURL'
 interface RemoveBackgroundRequest {
     productId: number
     preview?: boolean // If true, return preview without saving
+    force?: boolean // If true, re-process even if already done
 }
 
 interface BatchRemoveRequest {
     productIds: number[]
+    force?: boolean // If true, re-process even if already done
 }
 
 /**
@@ -302,7 +304,8 @@ async function uploadProcessedImage(
 async function processProductBackgroundRemoval(
     payload: Payload,
     productId: number,
-    preview: boolean = false
+    preview: boolean = false,
+    force: boolean = false
 ): Promise<{
     success: boolean
     productId: number
@@ -310,7 +313,7 @@ async function processProductBackgroundRemoval(
     newMediaId?: number
     error?: string
 }> {
-    console.log(`[BG Remove] Starting background removal for product ${productId} (preview=${preview})`)
+    console.log(`[BG Remove] Starting background removal for product ${productId} (preview=${preview}, force=${force})`)
 
     try {
         // Fetch product with image relationship populated
@@ -326,9 +329,9 @@ async function processProductBackgroundRemoval(
             return { success: false, productId, error: 'Product not found' }
         }
 
-        // Skip if already processed (unless in preview mode)
-        if ((product as any).backgroundRemoved && !preview) {
-            return { success: false, productId, error: 'Background already removed' }
+        // Skip if already processed (unless in preview mode or force is true)
+        if ((product as any).backgroundRemoved && !preview && !force) {
+            return { success: false, productId, error: 'Background already removed (use force=true to re-process)' }
         }
 
         // Get image buffer (internalizes external URLs first)
@@ -435,7 +438,8 @@ export const backgroundRemoveHandler: PayloadHandler = async (req: PayloadReques
         const result = await processProductBackgroundRemoval(
             req.payload,
             body.productId,
-            body.preview ?? false
+            body.preview ?? false,
+            body.force ?? false
         )
 
         if (!result.success) {
@@ -518,7 +522,7 @@ export const backgroundBatchHandler: PayloadHandler = async (req: PayloadRequest
                 await new Promise((resolve) => setTimeout(resolve, 700)) // ~85 requests/min max
             }
 
-            const result = await processProductBackgroundRemoval(req.payload, productId, false)
+            const result = await processProductBackgroundRemoval(req.payload, productId, false, body.force ?? false)
             results.push({
                 productId: result.productId,
                 success: result.success,

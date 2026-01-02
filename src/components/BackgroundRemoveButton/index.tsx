@@ -27,14 +27,16 @@ const BackgroundRemoveButton: React.FC<any> = () => {
     // Get document info for the product ID
     const { id: productId } = useDocumentInfo()
 
-    // Watch both image sources
+    // Watch both image sources and backgroundRemoved flag
     const imageUrlField = useFormFields(([fields]) => fields.imageUrl)
     const imageField = useFormFields(([fields]) => fields.image)
+    const backgroundRemovedField = useFormFields(([fields]) => fields.backgroundRemoved)
 
     // Extract values
     const imageUrl = imageUrlField?.value as string | null
     const imageData = imageField?.value as MediaData | number | null
     const hasImage = Boolean(imageUrl) || Boolean(imageData)
+    const isAlreadyProcessed = Boolean(backgroundRemovedField?.value)
 
     // Get current image URL for display
     const getCurrentImageUrl = (): string | null => {
@@ -50,7 +52,7 @@ const BackgroundRemoveButton: React.FC<any> = () => {
     const currentImageUrl = getCurrentImageUrl()
 
     // Handle preview request
-    const handlePreview = async () => {
+    const handlePreview = async (force: boolean = false) => {
         if (!productId) {
             setError('Please save the product first')
             return
@@ -64,7 +66,7 @@ const BackgroundRemoveButton: React.FC<any> = () => {
             const response = await fetch('/api/background/remove', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, preview: true }),
+                body: JSON.stringify({ productId, preview: true, force }),
             })
 
             const data = await response.json()
@@ -82,7 +84,7 @@ const BackgroundRemoveButton: React.FC<any> = () => {
     }
 
     // Handle apply (save the processed image)
-    const handleApply = async () => {
+    const handleApply = async (force: boolean = false) => {
         if (!productId) {
             setError('Please save the product first')
             return
@@ -95,7 +97,7 @@ const BackgroundRemoveButton: React.FC<any> = () => {
             const response = await fetch('/api/background/remove', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, preview: false }),
+                body: JSON.stringify({ productId, preview: false, force }),
             })
 
             const data = await response.json()
@@ -263,7 +265,7 @@ const BackgroundRemoveButton: React.FC<any> = () => {
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
-                        onClick={handleApply}
+                        onClick={() => handleApply(isAlreadyProcessed)}
                         disabled={isLoading}
                         style={{
                             padding: '8px 16px',
@@ -319,9 +321,9 @@ const BackgroundRemoveButton: React.FC<any> = () => {
         <div
             style={{
                 padding: '12px 16px',
-                background: '#fef3c7',
+                background: isAlreadyProcessed ? '#d1fae5' : '#fef3c7',
                 borderRadius: '8px',
-                border: '1px solid #fcd34d',
+                border: `1px solid ${isAlreadyProcessed ? '#6ee7b7' : '#fcd34d'}`,
                 marginTop: '8px',
             }}
         >
@@ -335,9 +337,9 @@ const BackgroundRemoveButton: React.FC<any> = () => {
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>✂️</span>
-                    <span style={{ fontWeight: 500, fontSize: '14px', color: '#92400e' }}>
-                        Background Removal
+                    <span style={{ fontSize: '18px' }}>{isAlreadyProcessed ? '✓' : '✂️'}</span>
+                    <span style={{ fontWeight: 500, fontSize: '14px', color: isAlreadyProcessed ? '#047857' : '#92400e' }}>
+                        {isAlreadyProcessed ? 'Background Removed' : 'Background Removal'}
                     </span>
                     <span
                         style={{
@@ -353,11 +355,11 @@ const BackgroundRemoveButton: React.FC<any> = () => {
                 </div>
 
                 <button
-                    onClick={handlePreview}
+                    onClick={() => handlePreview(isAlreadyProcessed)}
                     disabled={isLoading || !productId}
                     style={{
                         padding: '6px 14px',
-                        background: isLoading ? '#9ca3af' : '#1d4ed8',
+                        background: isLoading ? '#9ca3af' : isAlreadyProcessed ? '#f59e0b' : '#1d4ed8',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
@@ -384,6 +386,8 @@ const BackgroundRemoveButton: React.FC<any> = () => {
                             />
                             Processing...
                         </>
+                    ) : isAlreadyProcessed ? (
+                        'Re-process (Transparent)'
                     ) : (
                         'Remove Background'
                     )}
