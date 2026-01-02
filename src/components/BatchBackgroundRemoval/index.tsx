@@ -9,6 +9,7 @@ interface ProductWithImage {
     imageUrl: string | null
     imageMediaUrl: string | null
     hasImage: boolean
+    backgroundRemoved: boolean
 }
 
 interface ProcessingResult {
@@ -40,6 +41,7 @@ const BatchBackgroundRemoval: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [failedResults, setFailedResults] = useState<ProcessingResult[]>([])
     const [showErrorDetails, setShowErrorDetails] = useState(false)
+    const [forceReprocess, setForceReprocess] = useState(false)
 
     const fetchProducts = useCallback(async () => {
         setLoading(true)
@@ -58,6 +60,7 @@ const BatchBackgroundRemoval: React.FC = () => {
                     imageUrl: p.imageUrl || null,
                     imageMediaUrl: p.image?.url || null,
                     hasImage: !!(p.imageUrl || p.image),
+                    backgroundRemoved: !!p.backgroundRemoved,
                 }))
                 .filter((p: ProductWithImage) => p.hasImage) // Only show products with images
 
@@ -112,15 +115,30 @@ const BatchBackgroundRemoval: React.FC = () => {
 
     const estimatedCost = (selectedIds.size * 0.02).toFixed(2)
 
+    // Count how many selected products are already processed
+    const alreadyProcessedCount = Array.from(selectedIds).filter(
+        (id) => products.find((p) => p.id === id)?.backgroundRemoved
+    ).length
+
     const removeBackgrounds = async () => {
         if (selectedIds.size === 0) {
             setMessage('Please select products first')
             return
         }
 
-        const confirmed = confirm(
-            `Remove backgrounds from ${selectedIds.size} product images?\n\nEstimated cost: $${estimatedCost}\n\nThis will replace the original images.`
-        )
+        // Build confirmation message
+        let confirmMsg = `Remove backgrounds from ${selectedIds.size} product images?\n\nEstimated cost: $${estimatedCost}`
+        if (alreadyProcessedCount > 0) {
+            confirmMsg += `\n\n⚠️ ${alreadyProcessedCount} product(s) already processed.`
+            if (forceReprocess) {
+                confirmMsg += `\nForce re-process is ON - they will be re-processed with transparent backgrounds.`
+            } else {
+                confirmMsg += `\nEnable "Force re-process" to re-process them.`
+            }
+        }
+        confirmMsg += `\n\nThis will replace the original images.`
+
+        const confirmed = confirm(confirmMsg)
         if (!confirmed) return
 
         setProcessing(true)
@@ -135,7 +153,7 @@ const BatchBackgroundRemoval: React.FC = () => {
             const res = await fetch('/api/background/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productIds }),
+                body: JSON.stringify({ productIds, force: forceReprocess }),
             })
 
             const data = await res.json()
@@ -276,6 +294,37 @@ const BatchBackgroundRemoval: React.FC = () => {
                         ? `Processing ${progress.current}/${progress.total}...`
                         : `Remove Backgrounds (${selectedIds.size})`}
                 </button>
+
+                {/* Force reprocess checkbox */}
+                <label
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        color: '#374151',
+                        cursor: 'pointer',
+                        padding: '6px 12px',
+                        background: forceReprocess ? '#fef3c7' : '#fff',
+                        border: `1px solid ${forceReprocess ? '#f59e0b' : '#d1d5db'}`,
+                        borderRadius: '6px',
+                    }}
+                >
+                    <input
+                        type="checkbox"
+                        checked={forceReprocess}
+                        onChange={(e) => setForceReprocess(e.target.checked)}
+                        disabled={processing}
+                        style={{ cursor: 'pointer' }}
+                    />
+                    Force re-process (transparent)
+                </label>
+
+                {alreadyProcessedCount > 0 && selectedIds.size > 0 && (
+                    <span style={{ fontSize: '12px', color: '#f59e0b' }}>
+                        ⚠️ {alreadyProcessedCount} already processed
+                    </span>
+                )}
             </div>
 
             {/* Progress bar */}
@@ -398,13 +447,16 @@ const BatchBackgroundRemoval: React.FC = () => {
                             onClick={() => !processing && toggleSelect(product.id)}
                             style={{
                                 padding: '8px',
-                                background: isSelected ? '#dbeafe' : '#fff',
+                                background: isSelected ? '#dbeafe' : product.backgroundRemoved ? '#f0fdf4' : '#fff',
                                 border: isSelected
                                     ? '2px solid #3b82f6'
+                                    : product.backgroundRemoved
+                                    ? '1px solid #86efac'
                                     : '1px solid #e5e7eb',
                                 borderRadius: '8px',
                                 cursor: processing ? 'not-allowed' : 'pointer',
                                 opacity: processing ? 0.7 : 1,
+                                position: 'relative',
                             }}
                         >
                             {/* Image preview */}
@@ -436,6 +488,25 @@ const BatchBackgroundRemoval: React.FC = () => {
                                     </span>
                                 )}
                             </div>
+
+                            {/* Already processed badge */}
+                            {product.backgroundRemoved && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        top: '4px',
+                                        right: '4px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        fontSize: '10px',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    ✓ Done
+                                </div>
+                            )}
 
                             {/* Product info */}
                             <div
