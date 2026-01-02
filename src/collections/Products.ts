@@ -74,9 +74,9 @@ export const Products: CollectionConfig = {
             const isFilteringForAIDrafts = url.includes('where[status][equals]=ai_draft') ||
                                            url.includes('where%5Bstatus%5D%5Bequals%5D=ai_draft')
 
-            // If explicitly requesting AI drafts, show them (return true = no filter)
+            // If explicitly requesting AI drafts, show them (return null = no base filter)
             if (isFilteringForAIDrafts) {
-                return true
+                return null
             }
 
             // Otherwise, hide AI drafts from the normal product list
