@@ -43,7 +43,26 @@ async function getYouTubeTranscript(videoUrl: string): Promise<string | null> {
     }
 }
 
-// Extract products directly from video using Gemini video understanding
+// Fetch YouTube video metadata using oEmbed API
+async function fetchYouTubeMetadata(videoUrl: string): Promise<{ title: string; author: string } | null> {
+    try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`
+        const response = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) })
+        if (!response.ok) return null
+        const data = await response.json()
+        return {
+            title: data.title || '',
+            author: data.author_name || '',
+        }
+    } catch (error) {
+        console.error('Failed to fetch YouTube metadata:', error)
+        return null
+    }
+}
+
+// Extract products from video metadata when transcript is unavailable
+// NOTE: Gemini cannot actually watch YouTube videos from URLs - it can only process uploaded video files
+// So we use video metadata (title, channel name) to infer products
 async function extractProductsFromVideo(
     videoUrl: string,
     existingCategories: string[]
@@ -52,22 +71,40 @@ async function extractProductsFromVideo(
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
+    // Fetch actual video metadata from YouTube
+    const metadata = await fetchYouTubeMetadata(videoUrl)
+
+    if (!metadata || !metadata.title) {
+        console.log('Could not fetch video metadata, returning empty products')
+        return []
+    }
+
+    console.log(`Analyzing video metadata: "${metadata.title}" by ${metadata.author}`)
+
     const systemPrompt = generateSystemPrompt(existingCategories)
 
-    // For video analysis, we ask Gemini to watch and analyze the video
+    // Use video metadata instead of pretending to watch the video
     const fullPrompt = `${systemPrompt}
 
-IMPORTANT: You are analyzing a YouTube video directly (not a transcript). 
-Watch/analyze the video at this URL: ${videoUrl}
+IMPORTANT: You are analyzing a YouTube video based on its metadata (no transcript available).
 
-Extract all products that are reviewed or discussed in this video. If you cannot access the video content, return an empty products array.
+VIDEO TITLE: ${metadata.title}
+CHANNEL: ${metadata.author}
+VIDEO URL: ${videoUrl}
 
-Analyze this video and extract all products reviewed:`
+Based on this video title, extract the product(s) being reviewed or discussed.
+- The video title usually contains the product name and brand
+- Be specific - extract the exact product mentioned in the title
+- If the title mentions a specific product (like "Nag Champa Incense" or "Dr. Squatch Soap"), that is the product
+- If you cannot determine a specific product from the title, return an empty products array
+- Do NOT guess or hallucinate products - only extract what is clearly in the title
+
+Extract products from this video title:`
 
     const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
         generationConfig: {
-            temperature: 0.3,
+            temperature: 0.1, // Lower temperature for more deterministic extraction
             responseMimeType: 'application/json',
         },
     })
