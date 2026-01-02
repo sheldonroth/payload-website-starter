@@ -298,6 +298,66 @@ export const Brands: CollectionConfig = {
                 description: 'Internal notes about this brand',
             },
         },
+
+        // === TRENDING STATUS ===
+        {
+            name: 'trending',
+            type: 'group',
+            label: 'Trending Status',
+            admin: {
+                description: 'Auto-calculated from daily news scan',
+            },
+            fields: [
+                {
+                    name: 'isTrending',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    admin: { readOnly: true },
+                },
+                {
+                    name: 'trendingScore',
+                    type: 'number',
+                    min: 0,
+                    max: 100,
+                    admin: {
+                        readOnly: true,
+                        description: '0-100 based on news mentions',
+                    },
+                },
+                {
+                    name: 'trendingSentiment',
+                    type: 'select',
+                    options: [
+                        { label: 'Positive', value: 'positive' },
+                        { label: 'Negative', value: 'negative' },
+                        { label: 'Neutral', value: 'neutral' },
+                        { label: 'Mixed', value: 'mixed' },
+                    ],
+                    admin: { readOnly: true },
+                },
+                {
+                    name: 'trendingReason',
+                    type: 'textarea',
+                    admin: {
+                        readOnly: true,
+                        description: 'AI-generated summary of why this brand is trending',
+                    },
+                },
+                {
+                    name: 'recentNewsCount',
+                    type: 'number',
+                    admin: {
+                        readOnly: true,
+                        description: 'News mentions in past 7 days',
+                    },
+                },
+                {
+                    name: 'lastTrendingCheck',
+                    type: 'date',
+                    admin: { readOnly: true },
+                },
+            ],
+        },
     ],
     timestamps: true,
 }

@@ -1193,5 +1193,47 @@ export const Products: CollectionConfig = {
             ],
         },
 
+        // === TRENDING STATUS ===
+        {
+            name: 'trending',
+            type: 'group',
+            label: 'Trending Status',
+            admin: {
+                position: 'sidebar',
+                description: 'Auto-calculated from brand trending status',
+            },
+            fields: [
+                {
+                    name: 'isTrending',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    admin: { readOnly: true },
+                },
+                {
+                    name: 'trendingScore',
+                    type: 'number',
+                    min: 0,
+                    max: 100,
+                    admin: { readOnly: true },
+                },
+                {
+                    name: 'trendingSentiment',
+                    type: 'select',
+                    options: [
+                        { label: 'Positive', value: 'positive' },
+                        { label: 'Negative', value: 'negative' },
+                        { label: 'Neutral', value: 'neutral' },
+                        { label: 'Mixed', value: 'mixed' },
+                    ],
+                    admin: { readOnly: true },
+                },
+                {
+                    name: 'trendingReason',
+                    type: 'text',
+                    admin: { readOnly: true },
+                },
+            ],
+        },
+
     ],
 }
