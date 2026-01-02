@@ -4,7 +4,19 @@ import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 export const Categories: CollectionConfig = {
   slug: 'categories',
   access: {
-    read: () => true,
+    read: ({ req }) => {
+      // Admins and editors can see all categories (including empty ones)
+      const role = (req.user as { role?: string })?.role
+      if (role === 'admin' || role === 'product_editor') {
+        return true
+      }
+      // Public users only see categories with products
+      return {
+        productCount: {
+          greater_than: 0,
+        },
+      }
+    },
     create: isEditorOrAdmin, // Admins and product_editors can create
     update: isEditorOrAdmin, // Admins and product_editors can update
     delete: isAdmin, // Only admins can delete (product_editors cannot)

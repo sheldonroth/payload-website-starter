@@ -511,6 +511,66 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+
+            // ============================================
+            // HOOK: UPDATE CATEGORY PRODUCT COUNT
+            // ============================================
+            async ({ doc, previousDoc, req, operation }) => {
+                const currentCategoryId = typeof doc.category === 'number'
+                    ? doc.category
+                    : (doc.category as { id?: number })?.id
+
+                const previousCategoryId = previousDoc
+                    ? (typeof previousDoc.category === 'number'
+                        ? previousDoc.category
+                        : (previousDoc.category as { id?: number })?.id)
+                    : null
+
+                const isPublished = doc.status === 'published'
+                const wasPublished = previousDoc?.status === 'published'
+                const categoryChanged = currentCategoryId !== previousCategoryId
+
+                // Update counts in background
+                setTimeout(async () => {
+                    try {
+                        // If newly published to a category, or category changed while published
+                        if (currentCategoryId && isPublished && (!wasPublished || categoryChanged)) {
+                            const count = await req.payload.count({
+                                collection: 'products',
+                                where: {
+                                    category: { equals: currentCategoryId },
+                                    status: { equals: 'published' },
+                                },
+                            })
+                            await req.payload.update({
+                                collection: 'categories',
+                                id: currentCategoryId,
+                                data: { productCount: count.totalDocs },
+                            })
+                        }
+
+                        // If unpublished or moved away from a category, decrement old category
+                        if (previousCategoryId && wasPublished && (!isPublished || categoryChanged)) {
+                            const count = await req.payload.count({
+                                collection: 'products',
+                                where: {
+                                    category: { equals: previousCategoryId },
+                                    status: { equals: 'published' },
+                                },
+                            })
+                            await req.payload.update({
+                                collection: 'categories',
+                                id: previousCategoryId,
+                                data: { productCount: count.totalDocs },
+                            })
+                        }
+                    } catch (error) {
+                        console.error('[Category Count] Update error:', error)
+                    }
+                }, 100)
+
+                return doc
+            },
         ],
     },
     fields: [
