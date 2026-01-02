@@ -62,7 +62,7 @@ export const Products: CollectionConfig = {
         delete: isAdmin, // Only admins can delete (product_editors cannot)
     },
     admin: {
-        useAsTitle: 'displayTitle',
+        useAsTitle: 'name', // Changed back from displayTitle - migration may not have run
         defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
         listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
