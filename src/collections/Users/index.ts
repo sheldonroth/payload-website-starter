@@ -1,7 +1,102 @@
-import type { CollectionConfig, FieldHook } from 'payload'
+import type { CollectionConfig, FieldHook, CollectionAfterDeleteHook, CollectionBeforeDeleteHook } from 'payload'
 
 import { authenticated } from '../../access/authenticated'
 import { isSelfOrAdmin } from '../../access/isSelfOrAdmin'
+import { createAuditLog } from '../AuditLog'
+
+/**
+ * GDPR/CCPA COMPLIANCE: Account Deletion Cleanup
+ * When a user deletes their account, we must:
+ * 1. Delete or anonymize related DeviceFingerprints
+ * 2. Anonymize ProductUnlocks (keep for analytics, remove PII)
+ * 3. Create audit log for compliance documentation
+ */
+const beforeDeleteUser: CollectionBeforeDeleteHook = async ({ req, id }) => {
+  // Capture user email for audit log before deletion
+  const user = await req.payload.findByID({
+    collection: 'users',
+    id,
+    depth: 0,
+  })
+
+  // Store in request context for afterDelete hook
+  if (user) {
+    ;(req as any)._deletedUserEmail = user.email
+    ;(req as any)._deletedUserName = user.name
+    ;(req as any)._deletedUserId = id
+  }
+}
+
+const afterDeleteUser: CollectionAfterDeleteHook = async ({ req, id, doc }) => {
+  const deletedEmail = (req as any)._deletedUserEmail || doc?.email || 'unknown'
+  const deletedName = (req as any)._deletedUserName || doc?.name || 'unknown'
+  const requestingUser = req.user as { id?: string | number; email?: string } | undefined
+  const isSelfDelete = requestingUser?.id?.toString() === id?.toString()
+
+  try {
+    // 1. Delete related DeviceFingerprints (privacy - no reason to keep these)
+    const fingerprints = await req.payload.find({
+      collection: 'device-fingerprints',
+      where: { user: { equals: id } },
+      limit: 100,
+    })
+
+    for (const fp of fingerprints.docs) {
+      await req.payload.delete({
+        collection: 'device-fingerprints',
+        id: fp.id,
+      })
+    }
+
+    // 2. Anonymize ProductUnlocks (keep for analytics, remove user reference)
+    const unlocks = await req.payload.find({
+      collection: 'product-unlocks',
+      where: { user: { equals: id } },
+      limit: 1000,
+    })
+
+    for (const unlock of unlocks.docs) {
+      await req.payload.update({
+        collection: 'product-unlocks',
+        id: unlock.id,
+        data: {
+          user: null,
+          email: null, // Remove email PII
+        },
+      })
+    }
+
+    // 3. Create audit log for compliance documentation
+    await createAuditLog(req.payload, {
+      action: 'account_deleted',
+      sourceType: isSelfDelete ? 'user_action' : 'admin_action',
+      metadata: {
+        deletedUserEmail: deletedEmail,
+        deletedUserName: deletedName,
+        deletedUserId: id,
+        deletedBy: isSelfDelete ? 'self' : requestingUser?.email || 'system',
+        fingerprintsDeleted: fingerprints.totalDocs,
+        unlocksAnonymized: unlocks.totalDocs,
+        timestamp: new Date().toISOString(),
+      },
+    })
+
+    console.log(`[GDPR] User ${id} deleted: ${fingerprints.totalDocs} fingerprints removed, ${unlocks.totalDocs} unlocks anonymized`)
+  } catch (error) {
+    console.error(`[GDPR] Error cleaning up user ${id} data:`, error)
+    // Still log the deletion attempt even if cleanup fails
+    await createAuditLog(req.payload, {
+      action: 'account_deleted',
+      sourceType: 'system',
+      metadata: {
+        deletedUserEmail: deletedEmail,
+        deletedUserId: id,
+        cleanupError: String(error),
+        timestamp: new Date().toISOString(),
+      },
+    })
+  }
+}
 
 /**
  * SECURITY: Enforce default role for new users
@@ -67,6 +162,10 @@ export const Users: CollectionConfig = {
   admin: {
     defaultColumns: ['name', 'email', 'role', 'subscriptionStatus'],
     useAsTitle: 'name',
+  },
+  hooks: {
+    beforeDelete: [beforeDeleteUser],
+    afterDelete: [afterDeleteUser],
   },
   auth: {
     forgotPassword: {

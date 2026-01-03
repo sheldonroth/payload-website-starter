@@ -7,11 +7,30 @@ import { PayloadHandler } from 'payload'
  *
  * Registers or updates a device fingerprint for the One-Shot Engine.
  * Used by FingerprintJS Pro on the frontend to track devices.
+ *
+ * PRIVACY: Respects Global Privacy Control (GPC) signals
  */
 export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
     try {
         const body = await req.json?.() || {}
-        const { fingerprintHash, browser, os, deviceType } = body
+        const { fingerprintHash, browser, os, deviceType, gpcEnabled } = body
+
+        // Check for Global Privacy Control signal from client
+        // When GPC is enabled, we don't store fingerprints for tracking
+        const secGpcHeader = req.headers.get('sec-gpc')
+        const isGpcEnabled = gpcEnabled === true || secGpcHeader === '1'
+
+        if (isGpcEnabled) {
+            // GPC enabled - don't persist fingerprint, just return anonymous response
+            return Response.json({
+                success: true,
+                fingerprintId: null,
+                canUnlock: true,
+                remainingCredits: 1,
+                gpcRespected: true,
+                message: 'Global Privacy Control signal respected. Fingerprint not stored.',
+            })
+        }
 
         if (!fingerprintHash) {
             return Response.json(

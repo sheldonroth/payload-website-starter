@@ -62,7 +62,7 @@ export const Products: CollectionConfig = {
         delete: isAdmin, // Only admins can delete (product_editors cannot)
     },
     admin: {
-        useAsTitle: 'name', // Changed back from displayTitle - migration may not have run
+        useAsTitle: 'displayTitle',
         defaultColumns: ['brand', 'name', 'category', 'verdict', 'freshnessStatus', 'status'],
         listSearchableFields: ['name', 'brand', 'summary', 'upc'],
         group: 'Catalog',
@@ -554,6 +554,15 @@ export const Products: CollectionConfig = {
             hooks: {
                 beforeChange: [
                     ({ siblingData }) => {
+                        const brand = siblingData?.brand || ''
+                        const name = siblingData?.name || ''
+                        return brand && name ? `${brand} - ${name}` : name || brand || 'Unnamed Product'
+                    },
+                ],
+                afterRead: [
+                    // Dynamically compute displayTitle for existing products that don't have it
+                    ({ value, siblingData }) => {
+                        if (value) return value
                         const brand = siblingData?.brand || ''
                         const name = siblingData?.name || ''
                         return brand && name ? `${brand} - ${name}` : name || brand || 'Unnamed Product'

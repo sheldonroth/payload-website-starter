@@ -71,6 +71,9 @@ import { fingerprintRegisterHandler, fingerprintCheckHandler } from './endpoints
 import { productUnlockHandler, productUnlockStatusHandler } from './endpoints/product-unlock'
 import { trendingEngineHandler } from './endpoints/trending-engine'
 import { amazonValidateHandler } from './endpoints/amazon-validate'
+import { userDataExportHandler, userDeleteAccountHandler } from './endpoints/user-data-export'
+import { pollVoteHandler, pollsActiveHandler, pollGetHandler } from './endpoints/poll-vote'
+import { adminBackfillTitlesHandler } from './endpoints/admin-backfill-titles'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -413,6 +416,39 @@ export default buildConfig({
       path: '/amazon/validate',
       method: 'post',
       handler: amazonValidateHandler,
+    },
+    // GDPR/CCPA User Data Rights
+    {
+      path: '/user/export-data',
+      method: 'get',
+      handler: userDataExportHandler,
+    },
+    {
+      path: '/user/delete-account',
+      method: 'post',
+      handler: userDeleteAccountHandler,
+    },
+    // Poll Voting
+    {
+      path: '/polls/vote',
+      method: 'post',
+      handler: pollVoteHandler,
+    },
+    {
+      path: '/polls/active',
+      method: 'get',
+      handler: pollsActiveHandler,
+    },
+    {
+      path: '/polls/get',
+      method: 'get',
+      handler: pollGetHandler,
+    },
+    // Admin utilities
+    {
+      path: '/admin/backfill-titles',
+      method: 'post',
+      handler: adminBackfillTitlesHandler,
     },
   ],
   plugins: [
