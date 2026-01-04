@@ -5,10 +5,20 @@ import Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-12-15.clover',
-})
+// Lazy-initialize Stripe to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripe) {
+    const apiKey = process.env.STRIPE_SECRET_KEY
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured')
+    }
+    stripe = new Stripe(apiKey, {
+      apiVersion: '2025-12-15.clover',
+    })
+  }
+  return stripe
+}
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -117,7 +127,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET)
+    event = getStripe().webhooks.constructEvent(body, signature, WEBHOOK_SECRET)
   } catch (err) {
     console.error('[Stripe Webhook] Signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
@@ -169,7 +179,7 @@ export async function POST(request: Request) {
         }
 
         // Get subscription details
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
 
         await updateUserSubscription(payload, user.id, {
           subscriptionStatus: mapStripeStatus(subscription.status),
@@ -190,7 +200,7 @@ export async function POST(request: Request) {
         // Get customer email for fallback lookup
         let customerEmail: string | null = null
         try {
-          const customer = await stripe.customers.retrieve(customerId)
+          const customer = await getStripe().customers.retrieve(customerId)
           if (customer && !customer.deleted) {
             customerEmail = customer.email
           }
@@ -224,7 +234,7 @@ export async function POST(request: Request) {
 
         let customerEmail: string | null = null
         try {
-          const customer = await stripe.customers.retrieve(customerId)
+          const customer = await getStripe().customers.retrieve(customerId)
           if (customer && !customer.deleted) {
             customerEmail = customer.email
           }
