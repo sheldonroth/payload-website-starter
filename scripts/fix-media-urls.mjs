@@ -10,10 +10,15 @@ import pg from 'pg';
 import { list } from '@vercel/blob';
 
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const DB_URL = process.env.POSTGRES_URL || 'postgresql://neondb_owner:REDACTED@ep-little-heart-ah2lpao0-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const DB_URL = process.env.POSTGRES_URL;
 
 if (!BLOB_TOKEN) {
   console.error('ERROR: BLOB_READ_WRITE_TOKEN environment variable is required');
+  process.exit(1);
+}
+
+if (!DB_URL) {
+  console.error('ERROR: POSTGRES_URL environment variable is required');
   process.exit(1);
 }
 
