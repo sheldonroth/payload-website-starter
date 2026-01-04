@@ -85,6 +85,9 @@ export const SiteSettings: GlobalConfig = {
             ],
         },
         // === AUTOMATION THRESHOLDS ===
+        // TEMPORARILY DISABLED - Run scripts/add-automation-thresholds.sql first
+        // Then uncomment this block and redeploy
+        /*
         {
             name: 'automationThresholds',
             type: 'group',
@@ -166,5 +169,6 @@ export const SiteSettings: GlobalConfig = {
                 },
             ],
         },
+        */
     ],
 }
