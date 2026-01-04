@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-12-15.clover',
 })
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
@@ -252,7 +252,8 @@ export async function POST(request: Request) {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice
 
-        if (!invoice.subscription) {
+        // Check if this invoice is related to a subscription
+        if (!invoice.parent?.subscription_details) {
           // Not a subscription invoice
           break
         }
@@ -281,7 +282,8 @@ export async function POST(request: Request) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
 
-        if (!invoice.subscription) {
+        // Check if this invoice is related to a subscription
+        if (!invoice.parent?.subscription_details) {
           break
         }
 

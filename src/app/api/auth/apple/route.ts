@@ -161,29 +161,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Generate Payload JWT token for the user
-    const token = await payload.auth({
-      collection: 'users',
-      token: true,
-      // @ts-ignore - Payload internal method
-      user: payloadUser,
-    })
-
-    // Create a login token manually
-    const loginResult = await payload.login({
-      collection: 'users',
-      data: {
-        email: payloadUser.email,
-        // We use a workaround since we can't login with password
-      },
-      // Skip password check by using direct token generation
-    }).catch(() => null)
-
-    // Generate token directly using Payload's internal auth
-    const { generatePayloadCookie } = await import('payload')
-
-    // For OAuth, we need to generate a token without password
-    // Use Payload's internal method to sign a JWT
+    // Generate JWT token for the user (OAuth doesn't use password login)
     const jwt = await import('jsonwebtoken')
     const payloadSecret = process.env.PAYLOAD_SECRET
 
