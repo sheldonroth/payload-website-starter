@@ -19,6 +19,8 @@ import BatchBackgroundRemoval from '../BatchBackgroundRemoval'
 import ImageInternalizer from '../ImageInternalizer'
 import NewsletterExport from '../NewsletterExport'
 import EmailTester from '../EmailTester'
+import SystemHealthDashboard from '../SystemHealthDashboard'
+import FetchProduct from '../FetchProduct'
 
 import './index.scss'
 
@@ -114,14 +116,24 @@ const BeforeDashboard: React.FC = () => {
         Use the sidebar or quick links above to navigate. Click section headers to collapse/expand.
       </p>
 
-      {/* Magic Input - Primary Ingestion */}
+      {/* Fetch Product - One-Click Ingestion */}
       <div id="ai-tools-section">
-        <MagicInput />
+        <FetchProduct />
       </div>
+
+      {/* Magic Input - Multi-Product Ingestion */}
+      <CollapsibleSection title="Magic Input (Multi-Product)" icon="&#x2728;" defaultOpen={false}>
+        <MagicInput />
+      </CollapsibleSection>
 
       {/* AI Draft Inbox - Review Queue */}
       <CollapsibleSection title="AI Draft Inbox" icon="&#x1F4E5;" defaultOpen={true}>
         <AIDraftInbox />
+      </CollapsibleSection>
+
+      {/* System Health - Error Monitoring */}
+      <CollapsibleSection title="System Health" icon="&#x1F6A8;" defaultOpen={false}>
+        <SystemHealthDashboard />
       </CollapsibleSection>
 
       {/* Legacy Content Ingestion Tools (collapsed by default) */}

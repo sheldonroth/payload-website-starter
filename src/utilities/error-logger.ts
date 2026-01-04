@@ -28,6 +28,20 @@ interface LogErrorOptions {
     targetName?: string
     metadata?: Record<string, unknown>
     error?: Error | unknown
+    // Retry capability
+    retryable?: boolean
+    retryEndpoint?: string
+    retryPayload?: Record<string, unknown>
+}
+
+/**
+ * Mapping of error categories to their default retry endpoints
+ */
+const RETRY_ENDPOINTS: Partial<Record<ErrorCategory, string>> = {
+    image_processing_error: '/api/background/remove',
+    enrichment_error: '/api/category/enrich',
+    ai_classification_error: '/api/ingest',
+    ocr_extraction_error: '/api/products/extract-from-image',
 }
 
 /**
@@ -47,7 +61,18 @@ export async function logError(
     payload: { create: Function },
     options: LogErrorOptions
 ): Promise<void> {
-    const { category, message, targetCollection, targetId, targetName, metadata, error } = options
+    const {
+        category,
+        message,
+        targetCollection,
+        targetId,
+        targetName,
+        metadata,
+        error,
+        retryable,
+        retryEndpoint,
+        retryPayload,
+    } = options
 
     // Extract error details if provided
     const errorDetails: Record<string, unknown> = {}
@@ -60,6 +85,14 @@ export async function logError(
             errorDetails.errorRaw = String(error)
         }
     }
+
+    // Determine retry capability
+    const isRetryable = retryable ?? RETRY_ENDPOINTS[category] !== undefined
+    const endpoint = retryEndpoint ?? RETRY_ENDPOINTS[category]
+
+    // Build retry payload if retryable and not provided
+    const computedRetryPayload =
+        retryPayload ?? (isRetryable && targetId ? { productId: targetId } : undefined)
 
     await createAuditLog(payload, {
         action: 'error',
@@ -75,6 +108,10 @@ export async function logError(
             ...metadata,
             timestamp: new Date().toISOString(),
         },
+        // Retry fields
+        retryable: isRetryable,
+        retryEndpoint: endpoint,
+        retryPayload: computedRetryPayload,
     })
 
     // Also log to console for immediate visibility
@@ -82,6 +119,7 @@ export async function logError(
         targetCollection,
         targetId,
         targetName,
+        retryable: isRetryable,
         error: error instanceof Error ? error.message : error,
     })
 }

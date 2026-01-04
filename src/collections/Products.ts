@@ -31,6 +31,23 @@ import { extractAndPopulateProduct } from '../utilities/image-extraction'
 import { getThresholds } from '../utilities/get-thresholds'
 
 /**
+ * Check if a user has premium access (admin, member, or premium subscriber)
+ */
+function isPremiumUser(user: unknown): boolean {
+    if (!user) return false
+    const u = user as {
+        role?: string
+        memberState?: string
+        subscriptionStatus?: string
+        isAdmin?: boolean
+    }
+    if (u.role === 'admin' || u.isAdmin) return true
+    if (u.memberState === 'member') return true
+    if (u.subscriptionStatus === 'premium') return true
+    return false
+}
+
+/**
  * Field-level access control for premium content.
  * - Authenticated users (admin panel) can see everything
  * - Requests with valid x-api-key header (frontend server) can see everything
@@ -49,6 +66,37 @@ const premiumFieldAccess: FieldAccess = ({ req }) => {
 
     // Public API requests cannot read premium fields
     return false
+}
+
+/**
+ * Verdict-based field access control (Liability Shield).
+ * For AVOID products, sensitive lab data is restricted to:
+ * - CMS users (admin/editor)
+ * - Premium users (member, premium subscriber)
+ * - Requests with valid API key from trusted frontend
+ *
+ * This protects the company from liability by not exposing
+ * detailed ingredient/testing data for products marked as AVOID.
+ */
+const verdictBasedFieldAccess: FieldAccess = ({ doc, req }) => {
+    // CMS users (admin/editor) always see everything
+    if (req.user) {
+        const role = (req.user as { role?: string }).role
+        if (role === 'admin' || role === 'product_editor') return true
+    }
+
+    // Check for API key from trusted frontend
+    const apiKey = req.headers.get('x-api-key')
+    const expectedKey = process.env.PAYLOAD_API_SECRET
+    if (apiKey && expectedKey && apiKey === expectedKey) {
+        return true
+    }
+
+    // Non-AVOID products are visible to all
+    if (doc?.verdict !== 'avoid') return true
+
+    // For AVOID products, only premium users can see sensitive fields
+    return isPremiumUser(req.user)
 }
 
 export const Products: CollectionConfig = {
@@ -376,6 +424,41 @@ export const Products: CollectionConfig = {
                 }
 
                 return data;
+            },
+
+            // ============================================
+            // HOOK 6.5: AUTO-FLAG RESTRICTED LAB DATA
+            // When verdict becomes AVOID, auto-set the restricted flag
+            // ============================================
+            async ({ data, req, originalDoc }) => {
+                const justBecameAvoid = data?.verdict === 'avoid' && originalDoc?.verdict !== 'avoid'
+
+                if (justBecameAvoid) {
+                    data.hasRestrictedLabData = true
+
+                    // Log the auto-flagging
+                    await createAuditLog(req.payload, {
+                        action: 'ai_verdict_set',
+                        sourceType: 'system',
+                        targetCollection: 'products',
+                        targetId: originalDoc?.id,
+                        targetName: data.name,
+                        metadata: {
+                            previousVerdict: originalDoc?.verdict,
+                            newVerdict: 'avoid',
+                            autoFlaggedRestrictedLabData: true,
+                            shieldedFields: ['ingredientsList', 'ingredientsRaw', 'fullReview', 'testingInfo'],
+                        },
+                        performedBy: (req.user as { id?: number })?.id,
+                    })
+                }
+
+                // Clear flag if verdict is no longer AVOID
+                if (data?.verdict !== 'avoid' && originalDoc?.hasRestrictedLabData) {
+                    data.hasRestrictedLabData = false
+                }
+
+                return data
             },
 
             // ============================================
@@ -911,6 +994,9 @@ export const Products: CollectionConfig = {
             relationTo: 'ingredients',
             hasMany: true,
             label: 'Linked Ingredients',
+            access: {
+                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
+            },
             admin: {
                 description: 'Auto-populated from raw text, or manually link',
             },
@@ -919,6 +1005,9 @@ export const Products: CollectionConfig = {
             name: 'ingredientsRaw',
             type: 'textarea',
             label: 'Raw Ingredients Text',
+            access: {
+                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
+            },
             admin: {
                 description: 'Paste ingredients list - will auto-parse and link to Ingredients collection',
             },
@@ -1153,6 +1242,18 @@ export const Products: CollectionConfig = {
                 position: 'sidebar',
             },
         },
+        {
+            name: 'hasRestrictedLabData',
+            type: 'checkbox',
+            label: 'Lab Data Restricted',
+            defaultValue: false,
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'Auto-set when verdict is AVOID. Lab data hidden from non-premium users.',
+                condition: (data) => data?.verdict === 'avoid',
+            },
+        },
 
         // === PRICING ===
         {
@@ -1221,7 +1322,7 @@ export const Products: CollectionConfig = {
             type: 'richText',
             label: 'Full Review',
             access: {
-                read: premiumFieldAccess,
+                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
             },
         },
 
@@ -1287,7 +1388,7 @@ export const Products: CollectionConfig = {
             type: 'group',
             label: 'Testing Information',
             access: {
-                read: premiumFieldAccess,
+                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
             },
             fields: [
                 {
@@ -1382,6 +1483,43 @@ export const Products: CollectionConfig = {
                     defaultValue: false,
                     admin: {
                         description: "Selected as editor's top pick",
+                    },
+                },
+                // === SYSTEM-CALCULATED ARCHETYPES ===
+                {
+                    name: 'isArchetypePremium',
+                    type: 'checkbox',
+                    label: 'Archetype: Premium',
+                    defaultValue: false,
+                    admin: {
+                        description: 'System-calculated: Highest price in category. Enable "Override Archetype" to prevent auto-changes.',
+                    },
+                },
+                {
+                    name: 'isArchetypeValue',
+                    type: 'checkbox',
+                    label: 'Archetype: Best Value',
+                    defaultValue: false,
+                    admin: {
+                        description: 'System-calculated: Best score/price ratio in category. Enable "Override Archetype" to prevent auto-changes.',
+                    },
+                },
+                {
+                    name: 'archetypeOverride',
+                    type: 'checkbox',
+                    label: 'Override Archetype',
+                    defaultValue: false,
+                    admin: {
+                        description: 'Enable to prevent system from changing archetype badges on this product',
+                    },
+                },
+                {
+                    name: 'archetypeCalculatedAt',
+                    type: 'date',
+                    label: 'Last Calculated',
+                    admin: {
+                        readOnly: true,
+                        description: 'When archetype was last auto-calculated',
                     },
                 },
             ],

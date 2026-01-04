@@ -76,6 +76,8 @@ import { userDataExportHandler, userDeleteAccountHandler } from './endpoints/use
 import { pollVoteHandler, pollsActiveHandler, pollGetHandler } from './endpoints/poll-vote'
 import { adminBackfillTitlesHandler } from './endpoints/admin-backfill-titles'
 import { imageExtractHandler, imageExtractApplyHandler } from './endpoints/image-extract'
+import { errorRetryHandler } from './endpoints/error-retry'
+import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -494,6 +496,23 @@ export default buildConfig({
       path: '/admin/backfill-titles',
       method: 'post',
       handler: adminBackfillTitlesHandler,
+    },
+    // Error retry endpoint
+    {
+      path: '/error/retry',
+      method: 'post',
+      handler: errorRetryHandler,
+    },
+    // Product preview endpoints (One-Click Ingestion)
+    {
+      path: '/product/preview',
+      method: 'post',
+      handler: productPreviewHandler,
+    },
+    {
+      path: '/product/confirm',
+      method: 'post',
+      handler: productConfirmHandler,
     },
   ],
   plugins: [

@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/brand-trust",
       "schedule": "0 9 * * 0"
+    },
+    {
+      "path": "/api/cron/calculate-archetypes",
+      "schedule": "0 3 * * *"
     }
   ]
 }

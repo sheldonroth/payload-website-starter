@@ -39,6 +39,7 @@ import * as migration_20260102_030000_add_display_title from './20260102_030000_
 import * as migration_20260102_040000_add_amazon_link_validation from './20260102_040000_add_amazon_link_validation';
 import * as migration_20260103_000000_add_automation_thresholds from './20260103_000000_add_automation_thresholds';
 import * as migration_20260103_010000_add_automation_thresholds_v2 from './20260103_010000_add_automation_thresholds_v2';
+import * as migration_20260103_020000_zero_input_refactor from './20260103_020000_zero_input_refactor';
 
 export const migrations = [
   {
@@ -245,5 +246,10 @@ export const migrations = [
     up: migration_20260103_010000_add_automation_thresholds_v2.up,
     down: migration_20260103_010000_add_automation_thresholds_v2.down,
     name: '20260103_010000_add_automation_thresholds_v2'
+  },
+  {
+    up: migration_20260103_020000_zero_input_refactor.up,
+    down: migration_20260103_020000_zero_input_refactor.down,
+    name: '20260103_020000_zero_input_refactor'
   },
 ];

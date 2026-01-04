@@ -193,6 +193,56 @@ export const AuditLog: CollectionConfig = {
                 condition: (data) => !data?.success,
             },
         },
+
+        // === RETRY CAPABILITY ===
+        {
+            name: 'retryable',
+            type: 'checkbox',
+            defaultValue: false,
+            label: 'Can Retry',
+            admin: {
+                position: 'sidebar',
+                description: 'Whether this error can be retried',
+                condition: (data) => data?.action === 'error',
+            },
+        },
+        {
+            name: 'retryEndpoint',
+            type: 'text',
+            label: 'Retry Endpoint',
+            admin: {
+                description: 'API endpoint to call for retry',
+                condition: (data) => data?.retryable,
+            },
+        },
+        {
+            name: 'retryPayload',
+            type: 'json',
+            label: 'Retry Payload',
+            admin: {
+                description: 'Data to send when retrying',
+                condition: (data) => data?.retryable,
+            },
+        },
+        {
+            name: 'retryCount',
+            type: 'number',
+            defaultValue: 0,
+            label: 'Retry Attempts',
+            admin: {
+                description: 'Number of retry attempts made',
+                condition: (data) => data?.retryable,
+            },
+        },
+        {
+            name: 'resolvedAt',
+            type: 'date',
+            label: 'Resolved At',
+            admin: {
+                description: 'When this error was resolved',
+                condition: (data) => data?.action === 'error',
+            },
+        },
     ],
     timestamps: true,
 }
@@ -218,6 +268,10 @@ export async function createAuditLog(
         performedBy?: number
         success?: boolean
         errorMessage?: string
+        // Retry capability fields
+        retryable?: boolean
+        retryEndpoint?: string
+        retryPayload?: Record<string, unknown>
     }
 ): Promise<void> {
     try {
@@ -226,6 +280,7 @@ export async function createAuditLog(
             data: {
                 ...data,
                 success: data.success ?? true,
+                retryable: data.retryable ?? false,
             },
         })
     } catch (error) {
