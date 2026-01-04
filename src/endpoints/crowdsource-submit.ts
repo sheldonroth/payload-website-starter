@@ -1,6 +1,7 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
 import { parseAndLinkIngredients } from '../utilities/smart-automation'
+import { extractProductFromImage } from '../utilities/image-extraction'
 
 /**
  * Crowdsource Submission Endpoint
@@ -62,74 +63,6 @@ function checkSubmissionRateLimit(key: string): boolean {
 
     limit.count++
     return true
-}
-
-// Extract product info from image using GPT-4 Vision
-async function extractProductFromImage(
-    imageBase64: string
-): Promise<{
-    productName?: string
-    brand?: string
-    upc?: string
-    ingredients?: string
-    confidence: number
-    error?: string
-}> {
-    const openaiKey = process.env.OPENAI_API_KEY
-    if (!openaiKey) {
-        return { confidence: 0, error: 'AI extraction not configured' }
-    }
-
-    try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${openaiKey}`,
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a product label reader. Extract product information from the image.
-Return ONLY valid JSON with this schema:
-{
-  "productName": "Full product name",
-  "brand": "Brand name",
-  "upc": "UPC/barcode if visible",
-  "ingredients": "Full ingredient list if visible",
-  "confidence": 0.95
-}
-If a field is not visible, omit it.`,
-                    },
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: 'Extract product info from this label:' },
-                            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
-                        ],
-                    },
-                ],
-                max_tokens: 1500,
-                response_format: { type: 'json_object' },
-            }),
-        })
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            return { confidence: 0, error: `AI service error: ${response.status}` }
-        }
-
-        const data = await response.json()
-        const content = data.choices?.[0]?.message?.content
-        if (!content) return { confidence: 0, error: 'AI returned empty response' }
-
-        return JSON.parse(content)
-    } catch (error) {
-        console.error('Failed to extract from image:', error)
-        return { confidence: 0, error: 'AI extraction failed' }
-    }
 }
 
 // Check for duplicate products

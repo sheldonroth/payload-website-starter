@@ -1,4 +1,7 @@
 import type { Payload } from 'payload'
+import { levenshteinDistance } from './fuzzy-match'
+import { getThresholds } from './get-thresholds'
+import { createAuditLog } from '../collections/AuditLog'
 
 /**
  * Smart Automation Utilities
@@ -8,6 +11,7 @@ import type { Payload } from 'payload'
  * - Evaluating VerdictRules
  * - Detecting conflicts
  * - Creating/linking categories hierarchically
+ * - Fuzzy ingredient matching with Levenshtein distance
  */
 
 // ============================================
@@ -17,9 +21,12 @@ import type { Payload } from 'payload'
 interface ParsedIngredient {
     name: string
     matched: boolean
+    matchType?: 'exact' | 'alias' | 'partial' | 'fuzzy'
+    matchedName?: string // The ingredient name we matched to
     ingredientId?: number
     verdict?: string
     aliases?: string[]
+    fuzzyDistance?: number // Levenshtein distance if fuzzy matched
 }
 
 interface ParseResult {
@@ -82,13 +89,16 @@ export async function parseAndLinkIngredients(
             return [s]
         })
 
+    // Fetch thresholds for fuzzy matching
+    const thresholds = await getThresholds(payload)
+
     // Fetch all ingredients with aliases for matching
     const allIngredients = await payload.find({
         collection: 'ingredients',
-        limit: 1000,
+        limit: 2000,
     })
 
-    const ingredientMap = new Map<string, { id: number; verdict: string; name: string }>()
+    const ingredientMap = new Map<string, { id: number; verdict: string; name: string; isAlias: boolean }>()
 
     // Build lookup map with name and aliases
     for (const ing of allIngredients.docs) {
@@ -104,6 +114,7 @@ export async function parseAndLinkIngredients(
             id: ingData.id,
             verdict: ingData.verdict,
             name: ingData.name,
+            isAlias: false,
         })
 
         // Add aliases
@@ -114,11 +125,15 @@ export async function parseAndLinkIngredients(
                         id: ingData.id,
                         verdict: ingData.verdict,
                         name: ingData.name,
+                        isAlias: true,
                     })
                 }
             }
         }
     }
+
+    // Track fuzzy matches for audit logging
+    const fuzzyMatches: Array<{ input: string; matchedTo: string; distance: number }> = []
 
     // Match each raw ingredient
     let worstVerdict: 'recommend' | 'caution' | 'avoid' = 'recommend'
@@ -154,14 +169,52 @@ export async function parseAndLinkIngredients(
 
         // Try exact match
         let match = ingredientMap.get(normalized)
+        let matchType: 'exact' | 'alias' | 'partial' | 'fuzzy' = 'exact'
+        let fuzzyDistance: number | undefined
+
+        if (match) {
+            matchType = match.isAlias ? 'alias' : 'exact'
+        }
 
         // Try partial match if no exact
         if (!match) {
             for (const [key, value] of ingredientMap) {
                 if (normalized.includes(key) || key.includes(normalized)) {
                     match = value
+                    matchType = 'partial'
                     break
                 }
+            }
+        }
+
+        // Try fuzzy match if no exact/partial and fuzzy matching is enabled
+        if (!match && thresholds.enableFuzzyMatching && normalized.length >= 4) {
+            let bestDistance = Infinity
+            let bestMatch: { id: number; verdict: string; name: string; isAlias: boolean } | undefined = undefined
+
+            for (const [key, value] of ingredientMap) {
+                // Only fuzzy match on main names (not aliases) to reduce noise
+                if (value.isAlias) continue
+
+                // Only consider ingredients of similar length
+                if (Math.abs(normalized.length - key.length) > thresholds.fuzzyMatchThreshold + 2) continue
+
+                const distance = levenshteinDistance(normalized, key)
+                if (distance <= thresholds.fuzzyMatchThreshold && distance < bestDistance) {
+                    bestDistance = distance
+                    bestMatch = value
+                }
+            }
+
+            if (bestMatch) {
+                match = bestMatch
+                matchType = 'fuzzy'
+                fuzzyDistance = bestDistance
+                fuzzyMatches.push({
+                    input: normalized,
+                    matchedTo: bestMatch.name,
+                    distance: bestDistance,
+                })
             }
         }
 
@@ -170,8 +223,11 @@ export async function parseAndLinkIngredients(
             result.parsedIngredients.push({
                 name: rawName,
                 matched: true,
+                matchType,
+                matchedName: match.name,
                 ingredientId: match.id,
                 verdict: match.verdict,
+                fuzzyDistance,
             })
 
             // Track worst verdict
@@ -186,6 +242,25 @@ export async function parseAndLinkIngredients(
                 name: rawName,
                 matched: false,
             })
+        }
+    }
+
+    // Log fuzzy matches to audit log for review
+    if (fuzzyMatches.length > 0) {
+        try {
+            await createAuditLog(payload, {
+                action: 'ai_ingredient_parsed',
+                sourceType: 'system',
+                targetCollection: 'ingredients',
+                metadata: {
+                    fuzzyMatchesCount: fuzzyMatches.length,
+                    fuzzyMatches,
+                    threshold: thresholds.fuzzyMatchThreshold,
+                    note: 'Review these fuzzy matches for accuracy',
+                },
+            })
+        } catch {
+            // Non-critical, continue
         }
     }
 

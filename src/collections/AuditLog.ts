@@ -52,6 +52,8 @@ export const AuditLog: CollectionConfig = {
                 { label: '📰 Article Generated', value: 'article_generated' },
                 { label: '⚠️ Conflict Detected', value: 'conflict_detected' },
                 { label: '🔍 Freshness Check', value: 'freshness_check' },
+                { label: '📝 AI Draft Created', value: 'ai_draft_created' },
+                { label: '❌ Error', value: 'error' },
             ],
             admin: {
                 position: 'sidebar',
@@ -101,6 +103,7 @@ export const AuditLog: CollectionConfig = {
                 { label: 'Videos', value: 'videos' },
                 { label: 'Articles', value: 'articles' },
                 { label: 'Polls', value: 'investigation-polls' },
+                { label: 'User Submissions', value: 'user-submissions' },
             ],
         },
         {

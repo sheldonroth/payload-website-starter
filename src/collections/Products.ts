@@ -25,6 +25,10 @@ import {
 } from '../utilities/smart-automation'
 import { debouncedRecalculateFeaturedProduct } from '../utilities/featured-product'
 import { createAuditLog } from './AuditLog'
+import { classifyCategory } from '../utilities/ai-category'
+import { populateSafeAlternatives } from '../utilities/safe-alternatives'
+import { extractAndPopulateProduct } from '../utilities/image-extraction'
+import { getThresholds } from '../utilities/get-thresholds'
 
 /**
  * Field-level access control for premium content.
@@ -433,6 +437,70 @@ export const Products: CollectionConfig = {
                 }
                 return data
             },
+
+            // ============================================
+            // HOOK 9: AI CATEGORY CLASSIFICATION
+            // Auto-suggest category for new products
+            // ============================================
+            async ({ data, req, operation }) => {
+                // Only on create and if no category set
+                if (operation !== 'create') return data
+                if (data?.category) return data
+
+                // Check if AI categories are enabled and product has a name
+                if (!data?.name) return data
+
+                try {
+                    const result = await classifyCategory(req.payload, {
+                        name: data.name,
+                        brand: data.brand,
+                        ingredientsRaw: data.ingredientsRaw,
+                    })
+
+                    if (result.autoAssigned && result.suggestion?.categoryId) {
+                        data.category = result.suggestion.categoryId
+                        console.log(`[AI Category] Auto-assigned "${result.suggestion.categoryName}" to "${data.name}"`)
+                    } else if (result.suggestion?.categoryName) {
+                        // Store suggestion for manual review
+                        data.pendingCategoryName = result.suggestion.categoryName
+                        console.log(`[AI Category] Suggested "${result.suggestion.categoryName}" for "${data.name}" (${result.suggestion.confidence}% confidence)`)
+                    }
+                } catch (error) {
+                    console.error('[AI Category] Classification failed:', error)
+                }
+
+                return data
+            },
+
+            // ============================================
+            // HOOK 10: OCR IMAGE EXTRACTION
+            // Auto-extract product info from uploaded image
+            // ============================================
+            async ({ data, req, operation }) => {
+                // Only on create and if image is provided but name is empty
+                if (operation !== 'create') return data
+                if (data?.name) return data // Already has a name
+                if (!data?.image) return data
+
+                try {
+                    const result = await extractAndPopulateProduct(req.payload, {
+                        name: data.name,
+                        brand: data.brand,
+                        ingredientsRaw: data.ingredientsRaw,
+                        upc: data.upc,
+                        image: data.image,
+                    })
+
+                    if (result.updated) {
+                        Object.assign(data, result.fields)
+                        console.log(`[OCR] Extracted fields for product: ${Object.keys(result.fields).join(', ')}`)
+                    }
+                } catch (error) {
+                    console.error('[OCR] Extraction failed:', error)
+                }
+
+                return data
+            },
         ],
 
         // ============================================
@@ -578,6 +646,34 @@ export const Products: CollectionConfig = {
                             } catch (error) {
                                 console.error(`Failed to update productCount for ingredient ${ingredientId}:`, error)
                             }
+                        }
+                    }, 100)
+                }
+
+                return doc
+            },
+
+            // ============================================
+            // HOOK: AUTO-SUGGEST SAFE ALTERNATIVES
+            // Populate comparedWith for AVOID products
+            // ============================================
+            async ({ doc, previousDoc, req }) => {
+                // Only process if:
+                // 1. Product just became 'avoid' verdict
+                // 2. Product just became 'published'
+                // 3. comparedWith is empty
+                const justBecameAvoid = doc.verdict === 'avoid' && previousDoc?.verdict !== 'avoid'
+                const justPublished = doc.status === 'published' && previousDoc?.status !== 'published'
+                const isPublishedAvoid = doc.status === 'published' && doc.verdict === 'avoid'
+                const hasNoAlternatives = !doc.comparedWith || doc.comparedWith.length === 0
+
+                if ((justBecameAvoid || justPublished) && isPublishedAvoid && hasNoAlternatives) {
+                    // Process in background to not block save
+                    setTimeout(async () => {
+                        try {
+                            await populateSafeAlternatives(req.payload, doc.id)
+                        } catch (error) {
+                            console.error('[Safe Alternatives] Failed to populate:', error)
                         }
                     }, 100)
                 }

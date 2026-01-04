@@ -75,6 +75,7 @@ import { amazonValidateHandler } from './endpoints/amazon-validate'
 import { userDataExportHandler, userDeleteAccountHandler } from './endpoints/user-data-export'
 import { pollVoteHandler, pollsActiveHandler, pollGetHandler } from './endpoints/poll-vote'
 import { adminBackfillTitlesHandler } from './endpoints/admin-backfill-titles'
+import { imageExtractHandler, imageExtractApplyHandler } from './endpoints/image-extract'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -439,6 +440,17 @@ export default buildConfig({
       path: '/products/unlock/status',
       method: 'get',
       handler: productUnlockStatusHandler,
+    },
+    // Image OCR Extraction
+    {
+      path: '/products/extract-from-image',
+      method: 'post',
+      handler: imageExtractHandler,
+    },
+    {
+      path: '/products/extract-from-image/apply',
+      method: 'post',
+      handler: imageExtractApplyHandler,
     },
     {
       path: '/trending/update',
