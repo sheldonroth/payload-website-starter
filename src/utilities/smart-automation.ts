@@ -38,10 +38,11 @@ interface ParseResult {
 
 /**
  * Parse raw ingredients text and match to existing ingredients
+ * NOTE: Ingredient matching disabled - Ingredients collection archived
  */
 export async function parseAndLinkIngredients(
     rawText: string,
-    payload: Payload
+    _payload: Payload
 ): Promise<ParseResult> {
     const result: ParseResult = {
         linkedIds: [],
@@ -53,6 +54,25 @@ export async function parseAndLinkIngredients(
     if (!rawText?.trim()) {
         return result
     }
+
+    // Ingredient matching disabled - just parse names without linking
+    const names = rawText
+        .split(/[,;]/)
+        .map(s => s.trim())
+        .filter(s => s.length > 1)
+
+    result.unmatched = names
+    result.parsedIngredients = names.map(name => ({
+        name,
+        matched: false,
+    }))
+
+    return result
+
+    // NOTE: All code below is disabled - Ingredients collection archived
+    /* eslint-disable @typescript-eslint/no-unreachable */
+    if (false) {
+        // Original code kept for reference but never executes
 
     // Pre-process text for better parsing
     let processedText = rawText
@@ -271,40 +291,23 @@ export async function parseAndLinkIngredients(
     if (result.linkedIds.length > 0) {
         result.autoVerdict = worstVerdict
     }
+    } // End of if (false) block
+    /* eslint-enable @typescript-eslint/no-unreachable */
 
     return result
 }
 
 /**
  * Create missing ingredients as "unknown" verdict
+ * NOTE: Disabled - Ingredients collection archived
  */
 export async function createMissingIngredients(
-    unmatchedNames: string[],
-    payload: Payload,
-    sourceVideoId?: number
+    _unmatchedNames: string[],
+    _payload: Payload,
+    _sourceVideoId?: number
 ): Promise<number[]> {
-    const createdIds: number[] = []
-
-    for (const name of unmatchedNames) {
-        try {
-            const created = await payload.create({
-                collection: 'ingredients',
-                data: {
-                    name: name.trim(),
-                    verdict: 'unknown',
-                    reason: 'Auto-created from product ingredients - needs research',
-                    autoFlagProducts: false, // Don't cascade until researched
-                    ...(sourceVideoId ? { sourceVideo: sourceVideoId } : {}),
-                },
-            })
-            createdIds.push(created.id as number)
-        } catch (error) {
-            // Might fail if duplicate - ignore
-            console.log(`Could not create ingredient "${name}":`, error)
-        }
-    }
-
-    return createdIds
+    // Ingredients creation disabled - collection archived
+    return []
 }
 
 // ============================================
@@ -367,20 +370,8 @@ export async function evaluateVerdictRules(
         return result
     }
 
-    // Get ingredient verdicts if we have ingredients
+    // NOTE: Ingredient verdicts lookup disabled - Ingredients collection archived
     const ingredientVerdicts = new Map<number, string>()
-    if (productData.ingredientsList?.length) {
-        const ingredients = await payload.find({
-            collection: 'ingredients',
-            where: { id: { in: productData.ingredientsList } },
-            limit: 100,
-        })
-
-        for (const ing of ingredients.docs) {
-            const ingData = ing as { id: number; verdict: string }
-            ingredientVerdicts.set(ingData.id, ingData.verdict)
-        }
-    }
 
     // Evaluate each rule
     for (const ruleDoc of rulesResult.docs) {
@@ -584,43 +575,32 @@ export interface ConflictResult {
  * Detect conflicts between product verdict and its ingredients/rules
  */
 export async function detectConflicts(
-    productData: {
+    _productData: {
         verdict?: string
         ingredientsList?: number[]
         verdictOverride?: boolean
         category?: number
     },
-    payload: Payload
+    _payload: Payload
 ): Promise<ConflictResult> {
+    // NOTE: Conflict detection disabled - Ingredients collection archived
+    // Always return no conflicts
+    return {
+        hasConflicts: false,
+        conflicts: [],
+        canSave: true,
+    }
+
+    // Dead code below - kept for reference
+    /* eslint-disable @typescript-eslint/no-unreachable */
     const result: ConflictResult = {
         hasConflicts: false,
         conflicts: [],
         canSave: true,
     }
 
-    // Skip if no ingredients
-    if (!productData.ingredientsList?.length) {
-        return result
-    }
-
-    // Fetch ingredient verdicts
-    const ingredients = await payload.find({
-        collection: 'ingredients',
-        where: { id: { in: productData.ingredientsList } },
-        limit: 100,
-    })
-
     const avoidIngredients: string[] = []
     const cautionIngredients: string[] = []
-
-    for (const ing of ingredients.docs) {
-        const ingData = ing as { name: string; verdict: string }
-        if (ingData.verdict === 'avoid') {
-            avoidIngredients.push(ingData.name)
-        } else if (ingData.verdict === 'caution') {
-            cautionIngredients.push(ingData.name)
-        }
-    }
 
     // Check for verdict mismatches
     if (productData.verdict === 'recommend') {

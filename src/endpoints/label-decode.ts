@@ -137,55 +137,16 @@ Return ONLY a valid JSON object with this exact schema:
             return Response.json({ error: 'Failed to parse AI response' }, { status: 500 })
         }
 
-        // Parse and link ingredients using existing utility
-        const ingredientsRaw = parsed.ingredients.join(', ')
-        const parseResult = await parseAndLinkIngredients(ingredientsRaw, req.payload)
+        // NOTE: Ingredient linking disabled - Ingredients collection archived
+        // Just return parsed ingredient names without verdicts
+        const decodedIngredients: DecodedIngredient[] = parsed.ingredients.map(name => ({
+            name,
+            verdict: 'unknown' as const,
+            confidence: parsed.confidence,
+        }))
 
-        // Build result with linked ingredient details
-        const decodedIngredients: DecodedIngredient[] = []
         const flaggedToxins: string[] = []
-
-        // Get full ingredient details for linked ones
-        if (parseResult.linkedIds.length > 0) {
-            const linkedIngredients = await req.payload.find({
-                collection: 'ingredients',
-                where: { id: { in: parseResult.linkedIds } },
-                limit: 100,
-            })
-
-            for (const ing of linkedIngredients.docs) {
-                const ingredient = ing as { id: number; name: string; verdict?: string }
-                decodedIngredients.push({
-                    name: ingredient.name,
-                    linkedId: ingredient.id,
-                    verdict: (ingredient.verdict as 'safe' | 'caution' | 'avoid' | 'unknown') || 'unknown',
-                    confidence: parsed.confidence,
-                })
-
-                if (ingredient.verdict === 'avoid') {
-                    flaggedToxins.push(ingredient.name)
-                }
-            }
-        }
-
-        // Add unmatched ingredients
-        for (const name of parseResult.unmatched) {
-            decodedIngredients.push({
-                name,
-                verdict: 'unknown',
-                confidence: parsed.confidence,
-            })
-        }
-
-        // Determine auto-verdict
-        let autoVerdict: 'recommend' | 'caution' | 'avoid' | undefined
-        if (flaggedToxins.length > 0) {
-            autoVerdict = 'avoid'
-        } else if (decodedIngredients.some(i => i.verdict === 'caution')) {
-            autoVerdict = 'caution'
-        } else if (decodedIngredients.length > 0 && decodedIngredients.every(i => i.verdict === 'safe' || i.verdict === 'unknown')) {
-            autoVerdict = parseResult.linkedIds.length > 0 ? 'recommend' : undefined
-        }
+        const autoVerdict: 'recommend' | 'caution' | 'avoid' | undefined = undefined
 
         // Auto-apply to product if requested
         let updatedProductId: number | undefined

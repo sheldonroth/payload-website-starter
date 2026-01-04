@@ -242,23 +242,7 @@ export const contentAmplifyHandler: PayloadHandler = async (req: PayloadRequest)
                 ingredients: product.ingredientsList?.map(i => i.name),
             }
             result.sourceName = product.name
-        } else if (ingredientId) {
-            const ingredient = await req.payload.findByID({
-                collection: 'ingredients',
-                id: ingredientId,
-            }) as {
-                name: string
-                verdict?: string
-                reason?: string
-            }
-
-            sourceData = {
-                type: 'ingredient',
-                name: ingredient.name,
-                verdict: ingredient.verdict,
-                reason: ingredient.reason,
-            }
-            result.sourceName = ingredient.name
+        // NOTE: Ingredient branch removed - Ingredients collection archived
         } else {
             const article = await req.payload.findByID({
                 collection: 'articles',

@@ -327,51 +327,14 @@ async function fetchEFSAJournal(): Promise<RegulatoryUpdate[]> {
 
 /**
  * Match regulatory update to ingredients in our database
+ * NOTE: Disabled - Ingredients collection has been archived
  */
 async function matchToIngredients(
-    update: RegulatoryUpdate,
-    payload: Payload
+    _update: RegulatoryUpdate,
+    _payload: Payload
 ): Promise<number[]> {
-    const matchedIds: number[] = []
-
-    // Get all substances mentioned
-    const substances = update.substances || []
-
-    // Also try to extract from title/summary
-    const text = `${update.title} ${update.summary || ''}`.toLowerCase()
-
-    // Search our ingredients for matches
-    if (substances.length > 0 || text.length > 50) {
-        const ingredients = await payload.find({
-            collection: 'ingredients',
-            limit: 1000,
-        })
-
-        for (const ing of ingredients.docs) {
-            const ingredient = ing as { id: number; name: string; aliases?: Array<{ alias: string }> }
-            const names = [ingredient.name.toLowerCase()]
-
-            // Add aliases
-            if (ingredient.aliases) {
-                for (const a of ingredient.aliases) {
-                    names.push(a.alias.toLowerCase())
-                }
-            }
-
-            // Check if any name appears in update
-            for (const name of names) {
-                if (
-                    substances.some(s => s.toLowerCase().includes(name)) ||
-                    text.includes(name)
-                ) {
-                    matchedIds.push(ingredient.id)
-                    break
-                }
-            }
-        }
-    }
-
-    return matchedIds
+    // Ingredients matching disabled - collection archived
+    return []
 }
 
 export const regulatoryMonitorHandler: PayloadHandler = async (req: PayloadRequest) => {
