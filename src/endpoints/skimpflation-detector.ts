@@ -107,14 +107,11 @@ async function scrapeProductPrices(
     const { limit = 50, retailer } = options
     const results: ScrapeResult[] = []
 
-    // Get products with Amazon or other retailer URLs
+    // Get products with purchaseLinks
     const products = await payload.find({
         collection: 'products',
         where: {
-            or: [
-                { amazonUrl: { exists: true } },
-                { purchaseUrl: { exists: true } },
-            ],
+            'purchaseLinks.0.url': { exists: true },
         },
         limit,
     })
@@ -123,95 +120,100 @@ async function scrapeProductPrices(
         const productData = product as {
             id: number
             name: string
-            amazonUrl?: string
-            purchaseUrl?: string
+            purchaseLinks?: Array<{ retailer?: string; url?: string; price?: string }>
             ingredientsRaw?: string
         }
 
-        // Determine URL and retailer
-        let url = productData.amazonUrl || productData.purchaseUrl
-        let detectedRetailer = 'unknown'
-
-        if (url) {
-            if (url.includes('amazon.com')) detectedRetailer = 'amazon'
-            else if (url.includes('walmart.com')) detectedRetailer = 'walmart'
-            else if (url.includes('target.com')) detectedRetailer = 'target'
-            else if (url.includes('costco.com')) detectedRetailer = 'costco'
-        }
-
-        if (retailer && detectedRetailer !== retailer) {
-            continue // Skip if retailer filter doesn't match
-        }
-
-        if (!url) {
+        // Get all purchase links for this product
+        const links = productData.purchaseLinks || []
+        if (links.length === 0) {
             results.push({
                 productId: productData.id,
                 productName: productData.name,
-                retailer: detectedRetailer,
+                retailer: 'unknown',
                 success: false,
-                error: 'No URL available',
+                error: 'No purchase links available',
             })
             continue
         }
 
-        // Scrape the price
-        const scrapeResult = await scrapeProductPrice(url, detectedRetailer)
+        // Process each purchase link
+        for (const link of links) {
+            const url = link.url
+            if (!url) continue
 
-        if (scrapeResult.price) {
-            // Store in price history
-            const sizeNormalized = scrapeResult.size ? normalizeSizeToOz(scrapeResult.size) : undefined
+            // Detect retailer from URL or use provided name
+            let detectedRetailer = link.retailer?.toLowerCase() || 'unknown'
+            if (detectedRetailer === 'unknown') {
+                if (url.includes('amazon.com')) detectedRetailer = 'amazon'
+                else if (url.includes('walmart.com')) detectedRetailer = 'walmart'
+                else if (url.includes('target.com')) detectedRetailer = 'target'
+                else if (url.includes('costco.com')) detectedRetailer = 'costco'
+            }
 
-            // Count ingredients for skimpflation tracking
-            const ingredientCount = productData.ingredientsRaw
-                ? productData.ingredientsRaw.split(',').length
-                : undefined
+            if (retailer && detectedRetailer !== retailer.toLowerCase()) {
+                continue // Skip if retailer filter doesn't match
+            }
 
-            try {
-                await (payload.create as Function)({
-                    collection: 'price-history',
-                    data: {
-                        product: productData.id,
-                        price: scrapeResult.price,
-                        salePrice: scrapeResult.salePrice,
-                        size: scrapeResult.size,
-                        sizeNormalized,
+            // Scrape the price
+            const scrapeResult = await scrapeProductPrice(url, detectedRetailer)
+
+            if (scrapeResult.price) {
+                // Store in price history
+                const sizeNormalized = scrapeResult.size ? normalizeSizeToOz(scrapeResult.size) : undefined
+
+                // Count ingredients for skimpflation tracking
+                const ingredientCount = productData.ingredientsRaw
+                    ? productData.ingredientsRaw.split(',').length
+                    : undefined
+
+                try {
+                    await (payload.create as Function)({
+                        collection: 'price-history',
+                        data: {
+                            product: productData.id,
+                            price: scrapeResult.price,
+                            salePrice: scrapeResult.salePrice,
+                            size: scrapeResult.size,
+                            sizeNormalized,
+                            retailer: detectedRetailer,
+                            sourceUrl: url,
+                            capturedAt: new Date().toISOString(),
+                            ingredientsSnapshot: productData.ingredientsRaw,
+                            ingredientCount,
+                        },
+                    })
+
+                    results.push({
+                        productId: productData.id,
+                        productName: productData.name,
                         retailer: detectedRetailer,
-                        sourceUrl: url,
-                        capturedAt: new Date().toISOString(),
-                        ingredientsSnapshot: productData.ingredientsRaw,
-                        ingredientCount,
-                    },
-                })
-
-                results.push({
-                    productId: productData.id,
-                    productName: productData.name,
-                    retailer: detectedRetailer,
-                    price: scrapeResult.price,
-                    size: scrapeResult.size,
-                    success: true,
-                })
-            } catch (error) {
+                        price: scrapeResult.price,
+                        size: scrapeResult.size,
+                        success: true,
+                    })
+                } catch (error) {
+                    results.push({
+                        productId: productData.id,
+                        productName: productData.name,
+                        retailer: detectedRetailer,
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Database error',
+                    })
+                }
+            } else {
                 results.push({
                     productId: productData.id,
                     productName: productData.name,
                     retailer: detectedRetailer,
                     success: false,
-                    error: error instanceof Error ? error.message : 'Database error',
+                    error: scrapeResult.error || 'Could not extract price',
                 })
             }
-        } else {
-            results.push({
-                productId: productData.id,
-                productName: productData.name,
-                retailer: detectedRetailer,
-                success: false,
-                error: scrapeResult.error || 'Could not extract price',
-            })
-        }
 
-        // Rate limit between scrapes
-        await new Promise(resolve => setTimeout(resolve, 1000))
+            // Rate limit between scrapes
+            await new Promise(resolve => setTimeout(resolve, 1000))
+        }
     }
 
     return results

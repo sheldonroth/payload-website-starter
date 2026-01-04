@@ -308,7 +308,7 @@ export interface Post {
  */
 export interface Media {
   id: number;
-  alt?: string | null;
+  alt: string;
   caption?: {
     root: {
       type: string;
@@ -554,7 +554,7 @@ export interface Product {
   /**
    * Final verdict on this product
    */
-  verdict: 'recommend' | 'avoid';
+  verdict: 'recommend' | 'caution' | 'avoid';
   /**
    * Brief explanation of why this verdict was given
    */
@@ -562,7 +562,7 @@ export interface Product {
   /**
    * System-calculated from ingredients + rules
    */
-  autoVerdict?: ('recommend' | 'avoid') | null;
+  autoVerdict?: ('recommend' | 'caution' | 'avoid') | null;
   /**
    * Enable to manually set verdict different from auto-calculated
    */

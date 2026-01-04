@@ -7,6 +7,10 @@ import type { Payload } from 'payload'
  * Uses a scoring algorithm based on badges, verdict, image quality, and recency.
  */
 
+// Debounce map to prevent race conditions when multiple products are updated simultaneously
+const pendingRecalculations = new Map<number, NodeJS.Timeout>()
+const DEBOUNCE_DELAY_MS = 500 // Wait 500ms for more updates before recalculating
+
 interface ProductForScoring {
     id: number
     name?: string
@@ -244,4 +248,32 @@ export async function recalculateAllFeaturedProducts(
     console.log(`[Featured Product] Bulk recalculation complete: ${updated} updated, ${failed} failed`)
 
     return { success: true, updated, failed, results }
+}
+
+/**
+ * Debounced version of recalculateFeaturedProduct
+ * Coalesces multiple rapid calls for the same category into a single recalculation.
+ * Use this from hooks to prevent race conditions when multiple products update simultaneously.
+ */
+export function debouncedRecalculateFeaturedProduct(
+    categoryId: number,
+    payload: Payload
+): void {
+    // Clear any existing pending recalculation for this category
+    const existingTimeout = pendingRecalculations.get(categoryId)
+    if (existingTimeout) {
+        clearTimeout(existingTimeout)
+    }
+
+    // Schedule new recalculation after debounce delay
+    const timeout = setTimeout(async () => {
+        pendingRecalculations.delete(categoryId)
+        try {
+            await recalculateFeaturedProduct(categoryId, payload)
+        } catch (error) {
+            console.error(`[Featured Product] Debounced recalculation error for category ${categoryId}:`, error)
+        }
+    }, DEBOUNCE_DELAY_MS)
+
+    pendingRecalculations.set(categoryId, timeout)
 }

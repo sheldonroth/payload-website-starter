@@ -17,12 +17,13 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 import {
     parseAndLinkIngredients,
+    createMissingIngredients,
     evaluateVerdictRules,
     detectConflicts,
     hydrateCategory,
     calculateFreshness,
 } from '../utilities/smart-automation'
-import { recalculateFeaturedProduct } from '../utilities/featured-product'
+import { debouncedRecalculateFeaturedProduct } from '../utilities/featured-product'
 import { createAuditLog } from './AuditLog'
 
 /**
@@ -107,9 +108,23 @@ export const Products: CollectionConfig = {
                             data.ingredientsList = parseResult.linkedIds;
                         }
 
-                        // Track unmatched ingredients
+                        // Track unmatched ingredients and create them in database
                         if (parseResult.unmatched.length > 0) {
                             data.unmatchedIngredients = parseResult.unmatched.map(name => ({ name }));
+
+                            // Create missing ingredients as "unknown" verdict for later research
+                            const newIngredientIds = await createMissingIngredients(
+                                parseResult.unmatched,
+                                req.payload
+                            );
+
+                            // Add newly created ingredients to the linked list
+                            if (newIngredientIds.length > 0) {
+                                data.ingredientsList = [
+                                    ...(data.ingredientsList || []),
+                                    ...newIngredientIds,
+                                ];
+                            }
                         }
 
                         // Set auto-verdict from parsed ingredients
@@ -242,9 +257,15 @@ export const Products: CollectionConfig = {
             },
 
             // ============================================
-            // HOOK 5: AUTO-VERDICT from ingredients (existing + enhanced)
+            // HOOK 5: AUTO-VERDICT from ingredients (fallback only)
+            // Skipped if VerdictRules already set a verdict (ruleApplied)
             // ============================================
             async ({ data, req }) => {
+                // Skip if a rule already applied verdict (HOOK 4 takes precedence)
+                if (data?.ruleApplied) {
+                    return data;
+                }
+
                 // Only calculate if ingredientsList is provided and not overridden
                 if (data?.ingredientsList?.length > 0 && !data?.verdictOverride) {
                     try {
@@ -258,13 +279,15 @@ export const Products: CollectionConfig = {
                             limit: 100,
                         });
 
-                        // Determine auto-verdict: avoid if any ingredient is avoid, otherwise recommend
-                        let worstVerdict = 'recommend' as 'recommend' | 'avoid';
+                        // Determine auto-verdict: avoid if any ingredient is avoid, caution if any caution, otherwise recommend
+                        let worstVerdict = 'recommend' as 'recommend' | 'caution' | 'avoid';
                         for (const ing of ingredients.docs) {
                             const ingVerdict = (ing as { verdict?: string }).verdict;
                             if (ingVerdict === 'avoid') {
                                 worstVerdict = 'avoid';
                                 break;
+                            } else if (ingVerdict === 'caution' && worstVerdict !== 'avoid') {
+                                worstVerdict = 'caution';
                             }
                         }
 
@@ -506,21 +529,13 @@ export const Products: CollectionConfig = {
                     !isPublished || categoryChanged
                 )
 
-                // Recalculate in background to not block response
-                if (shouldRecalculate || shouldRecalculatePrevious) {
-                    setTimeout(async () => {
-                        try {
-                            if (shouldRecalculate && currentCategoryId) {
-                                await recalculateFeaturedProduct(currentCategoryId, req.payload)
-                            }
-                            // If category changed, also recalculate the old category
-                            if (shouldRecalculatePrevious && previousCategoryId && previousCategoryId !== currentCategoryId) {
-                                await recalculateFeaturedProduct(previousCategoryId, req.payload)
-                            }
-                        } catch (error) {
-                            console.error('[Featured Product] Recalculation error:', error)
-                        }
-                    }, 100)
+                // Recalculate in background using debounced function to prevent race conditions
+                if (shouldRecalculate && currentCategoryId) {
+                    debouncedRecalculateFeaturedProduct(currentCategoryId, req.payload)
+                }
+                // If category changed, also recalculate the old category
+                if (shouldRecalculatePrevious && previousCategoryId && previousCategoryId !== currentCategoryId) {
+                    debouncedRecalculateFeaturedProduct(previousCategoryId, req.payload)
                 }
 
                 return doc
@@ -663,7 +678,7 @@ export const Products: CollectionConfig = {
             },
         },
 
-        // === BINARY VERDICT SYSTEM ===
+        // === VERDICT SYSTEM ===
         {
             name: 'verdict',
             type: 'select',
@@ -672,6 +687,7 @@ export const Products: CollectionConfig = {
             index: true, // Added for query performance
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
+                { label: '⚠️ CAUTION', value: 'caution' },
                 { label: '🚫 AVOID', value: 'avoid' },
             ],
             admin: {
@@ -692,6 +708,7 @@ export const Products: CollectionConfig = {
             type: 'select',
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
+                { label: '⚠️ CAUTION', value: 'caution' },
                 { label: '🚫 AVOID', value: 'avoid' },
             ],
             admin: {

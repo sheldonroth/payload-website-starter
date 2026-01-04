@@ -65,6 +65,7 @@ import { brandTrustHandler, brandSyncHandler } from './endpoints/brand-trust'
 import { populateBrandsHandler } from './endpoints/populate-brands'
 import { productRequestsListHandler, productRequestsCreateHandler, productRequestVoteHandler } from './endpoints/product-requests'
 import { userWatchlistGetHandler, userWatchlistAddHandler, userWatchlistRemoveHandler, checkWatchlistConflictsHandler } from './endpoints/user-watchlist'
+import { savedProductsGetHandler, savedProductsAddHandler, savedProductsRemoveHandler, savedArticlesGetHandler, savedArticlesAddHandler, savedArticlesRemoveHandler } from './endpoints/user-saved-items'
 import { productAlternativesHandler } from './endpoints/product-alternatives'
 import { recalculateFeaturedHandler } from './endpoints/featured-products'
 import { fingerprintRegisterHandler, fingerprintCheckHandler } from './endpoints/fingerprint'
@@ -378,6 +379,38 @@ export default buildConfig({
       path: '/users/me/watchlist/check',
       method: 'post',
       handler: checkWatchlistConflictsHandler,
+    },
+    // User Saved Products Endpoints
+    {
+      path: '/users/me/saved-products',
+      method: 'get',
+      handler: savedProductsGetHandler,
+    },
+    {
+      path: '/users/me/saved-products',
+      method: 'post',
+      handler: savedProductsAddHandler,
+    },
+    {
+      path: '/users/me/saved-products',
+      method: 'delete',
+      handler: savedProductsRemoveHandler,
+    },
+    // User Saved Articles Endpoints
+    {
+      path: '/users/me/saved-articles',
+      method: 'get',
+      handler: savedArticlesGetHandler,
+    },
+    {
+      path: '/users/me/saved-articles',
+      method: 'post',
+      handler: savedArticlesAddHandler,
+    },
+    {
+      path: '/users/me/saved-articles',
+      method: 'delete',
+      handler: savedArticlesRemoveHandler,
     },
     // Product Alternatives (Find Safe Alternative)
     {

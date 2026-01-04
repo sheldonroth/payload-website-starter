@@ -368,3 +368,71 @@ export const brandSyncHandler: PayloadHandler = async (req: PayloadRequest) => {
         }, { status: 500 })
     }
 }
+
+/**
+ * Cron job wrapper for brand trust calculation
+ */
+export async function runBrandTrustCalculation(payload: Payload): Promise<TrustResult> {
+    const result: TrustResult = {
+        success: true,
+        brandsProcessed: 0,
+        calculations: [],
+        errors: [],
+    }
+
+    try {
+        // Get all brands
+        const brands = await (payload.find as Function)({
+            collection: 'brands',
+            limit: 500,
+        })
+
+        for (const brand of brands.docs) {
+            const brandData = brand as { id: number; name: string }
+
+            try {
+                const calculation = await calculateBrandTrust(brandData.id, payload)
+
+                if (calculation) {
+                    await (payload.update as Function)({
+                        collection: 'brands',
+                        id: brandData.id,
+                        data: {
+                            trustScore: calculation.trustScore,
+                            trustGrade: calculation.trustGrade,
+                            scoreBreakdown: calculation.breakdown,
+                            productCount: calculation.stats.productCount,
+                            avoidCount: calculation.stats.avoidCount,
+                            recallCount: calculation.stats.recallCount,
+                            trustScoreLastCalculated: new Date().toISOString(),
+                        },
+                    })
+
+                    result.calculations.push(calculation)
+                    result.brandsProcessed++
+                }
+            } catch (error) {
+                result.errors.push(`Failed to calculate ${brandData.name}: ${error instanceof Error ? error.message : 'unknown'}`)
+            }
+        }
+
+        // Create audit log
+        await createAuditLog(payload, {
+            action: 'freshness_check',
+            sourceType: 'system',
+            metadata: {
+                type: 'brand_trust_cron',
+                brandsProcessed: result.brandsProcessed,
+                averageTrustScore: result.calculations.length > 0
+                    ? Math.round(result.calculations.reduce((sum, c) => sum + c.trustScore, 0) / result.calculations.length)
+                    : 0,
+            },
+        })
+
+        return result
+    } catch (error) {
+        result.success = false
+        result.errors.push(error instanceof Error ? error.message : 'Unknown error')
+        return result
+    }
+}
