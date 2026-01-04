@@ -175,8 +175,9 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
         }
 
         // Create UserSubmission
+        // @ts-expect-error user-submissions collection exists but types not regenerated
         const submission = await req.payload.create({
-            collection: 'user-submissions' as 'users',
+            collection: 'user-submissions',
             data: {
                 type: 'product_scan',
                 barcode,
@@ -185,7 +186,7 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
                 status: 'pending',
                 fingerprintHash,
                 submittedBy: req.user ? (req.user as { id: number }).id : undefined,
-            } as Record<string, unknown>,
+            },
         })
 
         // Queue OCR processing for back image

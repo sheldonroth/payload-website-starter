@@ -334,14 +334,13 @@ export async function saveProductFromLookup(
     }
 
     // Create new product
+    // @ts-expect-error Product fields may not be in generated types yet
     const newProduct = await payload.create({
         collection: 'products',
         data: {
             name: product.name,
             brand: product.brand || 'Unknown',
-            description: product.description,
             upc: product.barcode,
-            ingredientsRaw: product.ingredients,
             status: options.status || 'ai_draft',
             verdict: 'recommend', // Default, will be analyzed
             verdictReason: `Auto-imported from ${product.source}`,

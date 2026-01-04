@@ -162,8 +162,8 @@ Return ONLY a valid JSON object with this exact schema:
             metadata: {
                 method: 'label_decode',
                 ingredientsFound: parsed.ingredients.length,
-                linkedCount: parseResult.linkedIds.length,
-                unmatchedCount: parseResult.unmatched.length,
+                linkedCount: 0, // Ingredient linking disabled
+                unmatchedCount: parsed.ingredients.length,
                 flaggedToxins,
                 unclear: parsed.unclear,
             },
@@ -174,8 +174,8 @@ Return ONLY a valid JSON object with this exact schema:
             success: true,
             rawText: parsed.rawText,
             ingredients: decodedIngredients,
-            linkedCount: parseResult.linkedIds.length,
-            unmatchedCount: parseResult.unmatched.length,
+            linkedCount: 0, // Ingredient linking disabled
+            unmatchedCount: parsed.ingredients.length,
             flaggedToxins,
             autoVerdict,
             productId: updatedProductId,

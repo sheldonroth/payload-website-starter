@@ -187,7 +187,7 @@ export async function notifyProductTestingComplete(
 
         // Mark subscription as notified
         const updatedSubscriptions = (tokenDoc.productSubscriptions || []).map(
-          (sub: { barcode: string; subscribedAt: string; notified: boolean }) => {
+          (sub) => {
             if (sub.barcode === barcode) {
               return { ...sub, notified: true }
             }

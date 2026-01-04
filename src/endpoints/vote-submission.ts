@@ -1,60 +1,56 @@
-import { PayloadHandler } from 'payload/config'
-import type { PayloadRequest } from 'payload/types'
+import type { PayloadHandler, PayloadRequest } from 'payload'
 
-export const voteSubmission: PayloadHandler = async (req: PayloadRequest, res): Promise<void> => {
-    const { id } = req.body || {}
+export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest) => {
+    const body = await req.json?.() || {}
+    const { id } = body
 
     if (!req.user) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     if (!id) {
-        res.status(400).json({ error: 'Missing submission ID' })
-        return
+        return Response.json({ error: 'Missing submission ID' }, { status: 400 })
     }
 
     try {
         // 1. Get the current submission
         const submission = await req.payload.findByID({
-            collection: 'user-submissions',
+            collection: 'user-submissions' as 'users',
             id,
         })
 
         if (!submission) {
-            res.status(404).json({ error: 'Submission not found' })
-            return
+            return Response.json({ error: 'Submission not found' }, { status: 404 })
         }
 
         // 2. Check if user already voted
-        const userId = typeof req.user === 'object' ? req.user.id : req.user
-        const voters = (submission.voters as number[]) || []
+        const userId = typeof req.user === 'object' ? (req.user as { id: number }).id : req.user
+        const voters = ((submission as { voters?: number[] }).voters || []) as number[]
 
         // Ensure voters is an array of IDs
         if (voters.includes(Number(userId))) {
-            res.status(400).json({ error: 'Already voted', code: 'ALREADY_VOTED' })
-            return
+            return Response.json({ error: 'Already voted', code: 'ALREADY_VOTED' }, { status: 400 })
         }
 
         // 3. Update the submission
         const updatedSubmission = await req.payload.update({
-            collection: 'user-submissions',
+            collection: 'user-submissions' as 'users',
             id,
             data: {
-                voteCount: (submission.voteCount || 0) + 1,
+                voteCount: ((submission as { voteCount?: number }).voteCount || 0) + 1,
                 voters: [...voters, userId],
-            },
+            } as Record<string, unknown>,
             // Bypass access control since we validated the specific action
             overrideAccess: true,
         })
 
-        res.status(200).json({
+        return Response.json({
             success: true,
-            voteCount: updatedSubmission.voteCount
+            voteCount: (updatedSubmission as { voteCount?: number }).voteCount
         })
 
     } catch (error) {
         console.error('Vote failed:', error)
-        res.status(500).json({ error: 'Internal server error' })
+        return Response.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

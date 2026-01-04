@@ -85,22 +85,14 @@ import { userSubscriptionHandler } from './endpoints/user-subscription'
 import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler } from './endpoints/product-vote'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
+import { voteSubmissionHandler } from './endpoints/vote-submission'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-import { voteSubmission } from './endpoints/vote-submission'
-
 export default buildConfig({
-  endpoints: [
-    {
-      path: '/vote-submission',
-      method: 'post',
-      handler: voteSubmission,
-    },
-  ],
   admin: {
     components: {
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
@@ -584,6 +576,12 @@ export default buildConfig({
       path: '/scanner/submit',
       method: 'post',
       handler: scannerSubmitHandler,
+    },
+    // Vote Submission (for UserSubmissions voting)
+    {
+      path: '/vote-submission',
+      method: 'post',
+      handler: voteSubmissionHandler,
     },
   ],
   plugins: [

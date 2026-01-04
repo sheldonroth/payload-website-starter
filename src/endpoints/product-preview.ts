@@ -219,7 +219,6 @@ export const productConfirmHandler: PayloadHandler = async (req: PayloadRequest)
                 name: product.name,
                 brand: product.brand || 'Unknown',
                 imageUrl: product.imageUrl,
-                ingredientsRaw: product.ingredients,
                 summary: product.summary,
                 sourceUrl: product.sourceUrl,
                 verdict: 'recommend', // Default

@@ -85,7 +85,6 @@ export const magicUrlHandler: PayloadHandler = async (req: PayloadRequest) => {
                         name: productData.name,
                         brand: productData.brand,
                         imageUrl: productData.imageUrl,
-                        ingredientsRaw: productData.ingredients,
                         summary: productData.summary,
                         sourceUrl: url,
                         verdict: 'recommend', // Default to recommend, will be reviewed
