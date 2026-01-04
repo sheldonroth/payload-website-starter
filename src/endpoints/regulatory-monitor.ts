@@ -96,50 +96,170 @@ async function fetchFDAFederalRegister(): Promise<RegulatoryUpdate[]> {
 
 /**
  * Check California Prop 65 list for new additions
- * Note: OEHHA doesn't have a public API, so this checks their data file
+ * Uses multiple strategies with fallbacks for robustness
  */
 async function fetchProp65Updates(): Promise<RegulatoryUpdate[]> {
     const updates: RegulatoryUpdate[] = []
+    const errors: string[] = []
 
+    // Strategy 1: Try OEHHA's JSON data endpoint (most reliable if available)
     try {
-        // OEHHA publishes a downloadable list - we'd need to parse it
-        // For now, check the news/press releases page
-        const response = await fetch(
-            'https://oehha.ca.gov/proposition-65/proposition-65-list',
-            { headers: { 'User-Agent': 'ProductReportCMS/1.0' } }
+        const jsonResponse = await fetch(
+            'https://oehha.ca.gov/proposition-65/proposition-65-list/api/list',
+            {
+                headers: { 'User-Agent': 'ProductReportCMS/1.0', 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(10000),
+            }
         )
 
-        if (!response.ok) {
-            console.error('Prop 65 page error:', response.status)
-            return []
-        }
+        if (jsonResponse.ok) {
+            const data = await jsonResponse.json()
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-        const html = await response.text()
+            // Process JSON data if available
+            if (Array.isArray(data)) {
+                for (const item of data.slice(0, 50)) {
+                    const listingDate = item.listing_date || item.date_added
+                    if (listingDate && new Date(listingDate) >= thirtyDaysAgo) {
+                        updates.push({
+                            source: 'prop65',
+                            referenceId: `prop65-${item.id || item.chemical_id || listingDate}`,
+                            title: `Prop 65: ${item.chemical_name || item.name || 'Unknown substance'}`,
+                            effectiveDate: listingDate,
+                            url: 'https://oehha.ca.gov/proposition-65/proposition-65-list',
+                            substances: [item.chemical_name || item.name].filter(Boolean),
+                            changeType: 'warning',
+                        })
+                    }
+                }
 
-        // Look for recent additions mentioned in page
-        // This is a simplified check - production would parse the full list
-        const recentAdditions = html.match(/Added to the list[^<]*(\d{1,2}\/\d{1,2}\/\d{4})[^<]*:([^<]+)/gi)
-
-        if (recentAdditions) {
-            for (const match of recentAdditions.slice(0, 10)) {
-                const dateMatch = match.match(/(\d{1,2}\/\d{1,2}\/\d{4})/)
-                const substanceMatch = match.match(/:(.+)$/i)
-
-                if (substanceMatch) {
-                    updates.push({
-                        source: 'prop65',
-                        referenceId: `prop65-${dateMatch?.[1] || 'unknown'}`,
-                        title: `Prop 65 Addition: ${substanceMatch[1].trim()}`,
-                        effectiveDate: dateMatch?.[1],
-                        url: 'https://oehha.ca.gov/proposition-65/proposition-65-list',
-                        substances: [substanceMatch[1].trim()],
-                        changeType: 'warning',
-                    })
+                if (updates.length > 0) {
+                    console.log(`[Prop 65] Found ${updates.length} updates via JSON API`)
+                    return updates
                 }
             }
         }
     } catch (error) {
-        console.error('Failed to fetch Prop 65 updates:', error)
+        errors.push(`JSON API: ${error instanceof Error ? error.message : 'failed'}`)
+    }
+
+    // Strategy 2: Try the HTML page with multiple parsing patterns
+    try {
+        const response = await fetch(
+            'https://oehha.ca.gov/proposition-65/proposition-65-list',
+            {
+                headers: { 'User-Agent': 'ProductReportCMS/1.0' },
+                signal: AbortSignal.timeout(15000),
+            }
+        )
+
+        if (!response.ok) {
+            errors.push(`HTML page: HTTP ${response.status}`)
+        } else {
+            const html = await response.text()
+
+            // Pattern 1: "Added to the list MM/DD/YYYY: Substance"
+            const pattern1 = html.match(/Added to the list[^<]*?(\d{1,2}\/\d{1,2}\/\d{4})[^<]*?:([^<]+)/gi)
+
+            // Pattern 2: Date in table cells with substance names
+            const pattern2 = html.match(/<td[^>]*>(\d{1,2}\/\d{1,2}\/\d{4})<\/td>\s*<td[^>]*>([^<]+)<\/td>/gi)
+
+            // Pattern 3: List items with dates
+            const pattern3 = html.match(/<li[^>]*>[^<]*(\d{1,2}\/\d{1,2}\/\d{4})[^<]*[-–:]([^<]+)<\/li>/gi)
+
+            const allMatches = [...(pattern1 || []), ...(pattern2 || []), ...(pattern3 || [])]
+
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            const seenSubstances = new Set<string>()
+
+            for (const match of allMatches.slice(0, 20)) {
+                const dateMatch = match.match(/(\d{1,2}\/\d{1,2}\/\d{4})/)
+                // Extract substance after date or colon
+                const substanceMatch = match.match(/(?::|[-–]|<\/td>\s*<td[^>]*>)\s*([^<]+)/i)
+
+                if (dateMatch && substanceMatch) {
+                    const substance = substanceMatch[1].trim().replace(/\s+/g, ' ')
+
+                    // Skip if we've seen this substance or if it's too short
+                    if (seenSubstances.has(substance.toLowerCase()) || substance.length < 3) {
+                        continue
+                    }
+
+                    // Check if date is within last 30 days
+                    const dateParts = dateMatch[1].split('/')
+                    const listingDate = new Date(
+                        parseInt(dateParts[2]),
+                        parseInt(dateParts[0]) - 1,
+                        parseInt(dateParts[1])
+                    )
+
+                    if (listingDate >= thirtyDaysAgo) {
+                        seenSubstances.add(substance.toLowerCase())
+                        updates.push({
+                            source: 'prop65',
+                            referenceId: `prop65-${dateMatch[1].replace(/\//g, '-')}-${substance.substring(0, 20)}`,
+                            title: `Prop 65 Addition: ${substance}`,
+                            effectiveDate: dateMatch[1],
+                            url: 'https://oehha.ca.gov/proposition-65/proposition-65-list',
+                            substances: [substance],
+                            changeType: 'warning',
+                        })
+                    }
+                }
+            }
+
+            if (updates.length > 0) {
+                console.log(`[Prop 65] Found ${updates.length} updates via HTML parsing`)
+            }
+        }
+    } catch (error) {
+        errors.push(`HTML page: ${error instanceof Error ? error.message : 'failed'}`)
+    }
+
+    // Strategy 3: Check OEHHA news/press releases as fallback
+    if (updates.length === 0) {
+        try {
+            const newsResponse = await fetch(
+                'https://oehha.ca.gov/proposition-65/news',
+                {
+                    headers: { 'User-Agent': 'ProductReportCMS/1.0' },
+                    signal: AbortSignal.timeout(10000),
+                }
+            )
+
+            if (newsResponse.ok) {
+                const newsHtml = await newsResponse.text()
+
+                // Look for news items about list additions
+                const newsItems = newsHtml.match(/<h\d[^>]*>.*?(?:added|listing|chemical).*?<\/h\d>/gi) || []
+
+                for (const item of newsItems.slice(0, 5)) {
+                    const cleanTitle = item.replace(/<[^>]+>/g, '').trim()
+                    if (cleanTitle.length > 10) {
+                        updates.push({
+                            source: 'prop65',
+                            referenceId: `prop65-news-${Date.now()}-${updates.length}`,
+                            title: `Prop 65 News: ${cleanTitle.substring(0, 100)}`,
+                            url: 'https://oehha.ca.gov/proposition-65/news',
+                            changeType: 'warning',
+                        })
+                    }
+                }
+
+                if (updates.length > 0) {
+                    console.log(`[Prop 65] Found ${updates.length} updates via news page`)
+                }
+            }
+        } catch (error) {
+            errors.push(`News page: ${error instanceof Error ? error.message : 'failed'}`)
+        }
+    }
+
+    // Log errors if all strategies failed
+    if (updates.length === 0 && errors.length > 0) {
+        console.error('[Prop 65] All fetch strategies failed:', errors.join('; '))
     }
 
     return updates

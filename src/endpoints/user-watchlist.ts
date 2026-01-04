@@ -10,10 +10,15 @@ interface WatchlistItem {
 // Maximum number of ingredients a user can add to their watchlist
 const MAX_WATCHLIST_SIZE = 500
 
+// Default pagination settings
+const DEFAULT_PAGE_SIZE = 50
+const MAX_PAGE_SIZE = 100
+
 /**
  * User Ingredient Watchlist Endpoints
  *
  * GET /api/users/me/watchlist - Get user's ingredient watchlist
+ *   Query params: page (default 1), limit (default 50, max 100)
  * POST /api/users/me/watchlist - Add ingredient to watchlist
  * DELETE /api/users/me/watchlist - Remove ingredient from watchlist
  */
@@ -26,16 +31,37 @@ export const userWatchlistGetHandler: PayloadHandler = async (req: PayloadReques
     }
 
     try {
+        // Parse pagination params from URL
+        const url = new URL(req.url || '', 'http://localhost')
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10))
+        const limit = Math.min(
+            MAX_PAGE_SIZE,
+            Math.max(1, parseInt(url.searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10))
+        )
+
         const user = await req.payload.findByID({
             collection: 'users',
             id: req.user.id,
         })
 
-        const watchlist = ((user as any).ingredientWatchlist || []) as WatchlistItem[]
+        const fullWatchlist = ((user as any).ingredientWatchlist || []) as WatchlistItem[]
+        const totalCount = fullWatchlist.length
+        const totalPages = Math.ceil(totalCount / limit)
+
+        // Apply pagination
+        const startIndex = (page - 1) * limit
+        const endIndex = startIndex + limit
+        const paginatedWatchlist = fullWatchlist.slice(startIndex, endIndex)
 
         return Response.json({
-            watchlist,
-            count: watchlist.length,
+            watchlist: paginatedWatchlist,
+            count: paginatedWatchlist.length,
+            totalCount,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
         })
     } catch (error) {
         console.error('Get watchlist error:', error)

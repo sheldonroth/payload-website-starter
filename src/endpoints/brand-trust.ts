@@ -127,30 +127,92 @@ async function calculateBrandTrust(
     const transparency = (productsWithIngredients / productCount) * 100
 
     // === CONSISTENCY (15% weight) ===
-    // Check for skimpflation/shrinkflation anomalies
-    // For now, use a placeholder - would check price-history in production
-    const consistency = 80 // Placeholder - would calculate from price history
+    // Check for skimpflation/shrinkflation anomalies from price history
+    let consistency = 100 // Start at 100, penalize for anomalies
+
+    // Get price history records for this brand's products
+    const productIds = products.docs.map((p: { id: number }) => p.id)
+    if (productIds.length > 0) {
+        const priceHistory = await (payload.find as Function)({
+            collection: 'price-history',
+            where: {
+                product: { in: productIds },
+            },
+            limit: 500,
+            sort: '-recordedAt',
+        })
+
+        // Check for price increases or size decreases (shrinkflation indicators)
+        let anomalyCount = 0
+        const productHistories = new Map<number, Array<{ price?: number; size?: string; recordedAt: string }>>()
+
+        for (const record of priceHistory.docs) {
+            const rec = record as { product: number | { id: number }; price?: number; size?: string; recordedAt: string }
+            const prodId = typeof rec.product === 'number' ? rec.product : rec.product?.id
+            if (prodId) {
+                if (!productHistories.has(prodId)) {
+                    productHistories.set(prodId, [])
+                }
+                productHistories.get(prodId)!.push(rec)
+            }
+        }
+
+        // Analyze each product's history for anomalies
+        for (const [, history] of productHistories) {
+            if (history.length >= 2) {
+                // Sort by date (newest first)
+                history.sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+
+                for (let i = 0; i < history.length - 1; i++) {
+                    const newer = history[i]
+                    const older = history[i + 1]
+
+                    // Check for price increase > 10%
+                    if (newer.price && older.price && newer.price > older.price * 1.10) {
+                        anomalyCount++
+                    }
+
+                    // Check for size decrease (simple string comparison for now)
+                    if (newer.size && older.size && newer.size < older.size) {
+                        anomalyCount++
+                    }
+                }
+            }
+        }
+
+        // Penalize 10 points per anomaly, max 50 point penalty
+        consistency = Math.max(50, 100 - Math.min(anomalyCount * 10, 50))
+    }
 
     // === RESPONSIVENESS (10% weight) ===
-    // Check for reaction reports and resolutions
-    const reactionReports = await (payload.find as Function)({
-        collection: 'user-submissions',
-        where: {
-            type: { equals: 'reaction_report' },
-            status: { equals: 'verified' },
-        },
-        limit: 100,
-    })
+    // Check for reaction reports on this brand's products
+    let responsiveness = 100 // Start at 100, penalize for unaddressed reports
 
-    // Filter for this brand's products
-    const brandReports = reactionReports.docs.filter((r: unknown) => {
-        const report = r as { product?: number | { brand?: string } }
-        // Would need to join with products to get brand
-        return false // Placeholder
-    }).length
+    if (productIds.length > 0) {
+        const reactionReports = await (payload.find as Function)({
+            collection: 'user-submissions',
+            where: {
+                and: [
+                    { type: { equals: 'reaction_report' } },
+                    { product: { in: productIds } },
+                ],
+            },
+            limit: 100,
+        })
 
-    // Score: Start at 80, penalize for unaddressed reports
-    const responsiveness = Math.max(0, 80 - (brandReports * 5))
+        const totalReports = reactionReports.totalDocs || 0
+        const verifiedReports = reactionReports.docs.filter((r: { status?: string }) =>
+            r.status === 'verified'
+        ).length
+        const resolvedReports = reactionReports.docs.filter((r: { status?: string }) =>
+            r.status === 'resolved'
+        ).length
+
+        // Penalize for unresolved verified reports
+        const unresolvedCount = verifiedReports - resolvedReports
+        // Also slight penalty for total reports (indicates product issues)
+        responsiveness = Math.max(0, 100 - (unresolvedCount * 15) - (totalReports * 2))
+    }
 
     // === CALCULATE OVERALL TRUST SCORE ===
     const trustScore = Math.round(
