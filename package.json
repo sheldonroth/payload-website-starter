@@ -61,6 +61,7 @@
     "react-hook-form": "7.45.4",
     "resend": "^6.6.0",
     "sharp": "0.34.2",
+    "stripe": "^20.1.0",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
     "youtube-transcript": "^1.2.1"
