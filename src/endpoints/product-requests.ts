@@ -1,4 +1,5 @@
 import type { PayloadHandler, PayloadRequest, Where } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
  * Product Request Queue Endpoints
@@ -78,6 +79,13 @@ export const productRequestsListHandler: PayloadHandler = async (req: PayloadReq
 }
 
 export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadRequest) => {
+    // Rate limiting - 20 requests per minute
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
+    }
+
     // Require authentication
     if (!req.user) {
         return Response.json(
@@ -165,6 +173,13 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
  * DELETE /api/product-requests/vote - Remove vote (login required)
  */
 export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequest) => {
+    // Rate limiting - 20 votes per minute
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
+    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.resetAt)
+    }
+
     // Require authentication
     if (!req.user) {
         return Response.json(

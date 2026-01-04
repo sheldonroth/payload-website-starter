@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { createAuditLog } from './AuditLog'
+import { isAdmin } from '../access/roleAccess'
 
 /**
  * Ingredients Collection
@@ -18,6 +19,9 @@ export const Ingredients: CollectionConfig = {
     slug: 'ingredients',
     access: {
         read: () => true,
+        create: isAdmin,
+        update: isAdmin,
+        delete: isAdmin,
     },
     admin: {
         useAsTitle: 'name',

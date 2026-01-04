@@ -1,8 +1,9 @@
 import type { CollectionConfig } from 'payload'
+import { isAdmin } from '../access/roleAccess'
 
 /**
  * Verdict Rules Collection
- * 
+ *
  * Defines automated rules for product verdicts based on ingredients.
  * When a rule matches, it can:
  * - Set autoVerdict on a product
@@ -13,6 +14,9 @@ export const VerdictRules: CollectionConfig = {
     slug: 'verdict-rules',
     access: {
         read: () => true,
+        create: isAdmin,
+        update: isAdmin,
+        delete: isAdmin,
     },
     admin: {
         useAsTitle: 'name',

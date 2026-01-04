@@ -1,4 +1,5 @@
 import { PayloadHandler } from 'payload'
+import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
  * Poll Voting Endpoint
@@ -15,6 +16,13 @@ interface VoteRequest {
 }
 
 export const pollVoteHandler: PayloadHandler = async (req) => {
+  // Rate limiting - 20 votes per minute per IP/user
+  const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
+  const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit.resetAt)
+  }
+
   try {
     const body = await req.json?.() as VoteRequest | undefined
 

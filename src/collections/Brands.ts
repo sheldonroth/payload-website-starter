@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { isAdmin } from '../access/roleAccess'
 
 /**
  * Brands Collection
@@ -16,9 +17,9 @@ export const Brands: CollectionConfig = {
     slug: 'brands',
     access: {
         read: () => true,
-        create: ({ req }) => !!req.user,
-        update: ({ req }) => !!req.user,
-        delete: ({ req }) => !!req.user,
+        create: isAdmin,
+        update: isAdmin,
+        delete: isAdmin,
     },
     admin: {
         useAsTitle: 'name',
