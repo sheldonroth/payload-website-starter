@@ -1680,14 +1680,18 @@ export interface AuditLog {
     | 'poll_closed'
     | 'article_generated'
     | 'conflict_detected'
-    | 'freshness_check';
+    | 'freshness_check'
+    | 'ai_draft_created'
+    | 'error';
   sourceType?: ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule') | null;
   /**
    * Video ID, URL, UPC, or rule ID
    */
   sourceId?: string | null;
   sourceUrl?: string | null;
-  targetCollection?: ('products' | 'ingredients' | 'categories' | 'videos' | 'articles' | 'investigation-polls') | null;
+  targetCollection?:
+    | ('products' | 'ingredients' | 'categories' | 'videos' | 'articles' | 'investigation-polls' | 'user-submissions')
+    | null;
   targetId?: number | null;
   /**
    * Human-readable name for quick reference
@@ -3806,6 +3810,39 @@ export interface SiteSetting {
     siteName?: string | null;
     siteDescription?: string | null;
   };
+  /**
+   * Configure automation behavior for Zero-Input CMS features
+   */
+  automationThresholds?: {
+    /**
+     * Products older than this are marked as stale (default: 180 days)
+     */
+    freshnessThresholdDays?: number | null;
+    /**
+     * Max character difference for fuzzy ingredient matching (default: 2)
+     */
+    fuzzyMatchThreshold?: number | null;
+    /**
+     * Max safe alternatives to suggest for AVOID products (default: 3)
+     */
+    autoAlternativesLimit?: number | null;
+    /**
+     * Minimum confidence (%) for auto-assigning AI-suggested categories (default: 70%)
+     */
+    aiCategoryConfidence?: number | null;
+    /**
+     * Use Levenshtein distance to match similar ingredient names
+     */
+    enableFuzzyMatching?: boolean | null;
+    /**
+     * Use AI to suggest categories for new products
+     */
+    enableAICategories?: boolean | null;
+    /**
+     * Automatically suggest safe alternatives for AVOID products
+     */
+    enableAutoAlternatives?: boolean | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -3890,6 +3927,17 @@ export interface SiteSettingsSelect<T extends boolean = true> {
     | {
         siteName?: T;
         siteDescription?: T;
+      };
+  automationThresholds?:
+    | T
+    | {
+        freshnessThresholdDays?: T;
+        fuzzyMatchThreshold?: T;
+        autoAlternativesLimit?: T;
+        aiCategoryConfidence?: T;
+        enableFuzzyMatching?: T;
+        enableAICategories?: T;
+        enableAutoAlternatives?: T;
       };
   updatedAt?: T;
   createdAt?: T;
