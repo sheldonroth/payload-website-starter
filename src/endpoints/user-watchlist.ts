@@ -7,6 +7,9 @@ interface WatchlistItem {
     dateAdded: string
 }
 
+// Maximum number of ingredients a user can add to their watchlist
+const MAX_WATCHLIST_SIZE = 500
+
 /**
  * User Ingredient Watchlist Endpoints
  *
@@ -69,6 +72,14 @@ export const userWatchlistAddHandler: PayloadHandler = async (req: PayloadReques
         })
 
         const currentWatchlist = ((user as any).ingredientWatchlist || []) as WatchlistItem[]
+
+        // Check if watchlist is at maximum size
+        if (currentWatchlist.length >= MAX_WATCHLIST_SIZE) {
+            return Response.json(
+                { error: `Watchlist is full (maximum ${MAX_WATCHLIST_SIZE} ingredients)` },
+                { status: 400 }
+            )
+        }
 
         // Check if already in watchlist
         if (currentWatchlist.some(item => item.ingredientId === ingredientId)) {

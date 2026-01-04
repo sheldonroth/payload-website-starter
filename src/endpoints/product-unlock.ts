@@ -185,11 +185,12 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
                 memberState = (existingUserDoc.memberState as typeof memberState) || 'virgin'
             } else {
                 // Create new user
+                // SECURITY: Use crypto.randomUUID() for strong password entropy
                 const newUser = await req.payload.create({
                     collection: 'users',
                     data: {
                         email,
-                        password: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+                        password: crypto.randomUUID() + crypto.randomUUID(), // 256-bit entropy
                         memberState: 'trial', // First unlock moves to trial
                         freeUnlockCredits: 0, // Used their one credit
                     },

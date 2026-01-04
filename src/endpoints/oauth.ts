@@ -1,5 +1,6 @@
 import type { Endpoint } from 'payload'
 import jwt from 'jsonwebtoken'
+import * as jose from 'jose'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
@@ -44,6 +45,36 @@ function getStateFromCookies(cookieHeader: string | null, cookieName: string): s
         if (name === cookieName) return value
     }
     return null
+}
+
+// SECURITY: Verify Apple ID token signature using Apple's public keys
+// This prevents accepting forged tokens
+async function verifyAppleIdToken(idToken: string): Promise<{
+    sub: string
+    email?: string
+    email_verified?: boolean
+} | null> {
+    try {
+        // Fetch Apple's public keys (JWKS)
+        const JWKS = jose.createRemoteJWKSet(
+            new URL('https://appleid.apple.com/auth/keys')
+        )
+
+        // Verify the token signature and claims
+        const { payload } = await jose.jwtVerify(idToken, JWKS, {
+            issuer: 'https://appleid.apple.com',
+            audience: process.env.APPLE_CLIENT_ID,
+        })
+
+        return {
+            sub: payload.sub as string,
+            email: payload.email as string | undefined,
+            email_verified: payload.email_verified as boolean | undefined,
+        }
+    } catch (error) {
+        console.error('[OAuth] Apple token verification failed:', error)
+        return null
+    }
 }
 
 // Helper to create a session token for the user
@@ -330,12 +361,15 @@ const appleOAuthCallback: Endpoint = {
                 return Response.redirect(`${FRONTEND_URL}/login?error=no_token`)
             }
 
-            // Decode the ID token (in production, you should verify the signature)
-            const parts = idToken.split('.')
-            const tokenPayload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+            // SECURITY: Verify Apple ID token signature against Apple's public keys
+            const verifiedPayload = await verifyAppleIdToken(idToken)
+            if (!verifiedPayload) {
+                console.error('[OAuth] Apple token verification failed - rejecting login')
+                return Response.redirect(`${FRONTEND_URL}/login?error=token_verification_failed`)
+            }
 
-            const appleUserId = tokenPayload.sub
-            const email = tokenPayload.email
+            const appleUserId = verifiedPayload.sub
+            const email = verifiedPayload.email
 
             // Parse user info if provided (only on first login)
             let userName = null
