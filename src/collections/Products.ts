@@ -16,9 +16,6 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
 import {
-    parseAndLinkIngredients,
-    createMissingIngredients,
-    evaluateVerdictRules,
     detectConflicts,
     hydrateCategory,
     calculateFreshness,
@@ -125,7 +122,7 @@ export const Products: CollectionConfig = {
             // Check if the request is explicitly filtering for ai_draft status
             const url = req.url || ''
             const isFilteringForAIDrafts = url.includes('where[status][equals]=ai_draft') ||
-                                           url.includes('where%5Bstatus%5D%5Bequals%5D=ai_draft')
+                url.includes('where%5Bstatus%5D%5Bequals%5D=ai_draft')
 
             // If explicitly requesting AI drafts, show them (return null = no base filter)
             if (isFilteringForAIDrafts) {
@@ -140,73 +137,7 @@ export const Products: CollectionConfig = {
     },
     hooks: {
         beforeChange: [
-            // ============================================
-            // HOOK 1: AUTO-PARSE INGREDIENTS from raw text
-            // ============================================
-            async ({ data, req, originalDoc }) => {
-                // Only parse if ingredientsRaw changed and ingredientsList is empty
-                const rawChanged = data?.ingredientsRaw !== originalDoc?.ingredientsRaw;
-                const hasNoLinks = !data?.ingredientsList?.length;
-
-                if (rawChanged && data?.ingredientsRaw && hasNoLinks) {
-                    try {
-                        const parseResult = await parseAndLinkIngredients(
-                            data.ingredientsRaw,
-                            req.payload
-                        );
-
-                        // Auto-populate ingredientsList
-                        if (parseResult.linkedIds.length > 0) {
-                            data.ingredientsList = parseResult.linkedIds;
-                        }
-
-                        // Track unmatched ingredients and create them in database
-                        if (parseResult.unmatched.length > 0) {
-                            data.unmatchedIngredients = parseResult.unmatched.map(name => ({ name }));
-
-                            // Create missing ingredients as "unknown" verdict for later research
-                            const newIngredientIds = await createMissingIngredients(
-                                parseResult.unmatched,
-                                req.payload
-                            );
-
-                            // Add newly created ingredients to the linked list
-                            if (newIngredientIds.length > 0) {
-                                data.ingredientsList = [
-                                    ...(data.ingredientsList || []),
-                                    ...newIngredientIds,
-                                ];
-                            }
-                        }
-
-                        // Set auto-verdict from parsed ingredients
-                        if (parseResult.autoVerdict && !data.verdictOverride) {
-                            data.autoVerdict = parseResult.autoVerdict;
-                            if (!data.verdict) {
-                                data.verdict = parseResult.autoVerdict;
-                            }
-                        }
-
-                        // Create audit log
-                        await createAuditLog(req.payload, {
-                            action: 'ai_ingredient_parsed',
-                            sourceType: 'system',
-                            targetCollection: 'products',
-                            targetId: originalDoc?.id,
-                            targetName: data.name,
-                            metadata: {
-                                matched: parseResult.linkedIds.length,
-                                unmatched: parseResult.unmatched,
-                                autoVerdict: parseResult.autoVerdict,
-                            },
-                            performedBy: (req.user as { id?: number })?.id,
-                        });
-                    } catch (error) {
-                        console.error('Auto-parse ingredients failed:', error);
-                    }
-                }
-                return data;
-            },
+            // NOTE: HOOK 1 (Ingredient parsing) REMOVED - Liability Shield
 
             // ============================================
             // HOOK 3: INSTANT CATEGORY HYDRATION
@@ -243,130 +174,16 @@ export const Products: CollectionConfig = {
                 return data;
             },
 
-            // ============================================
-            // HOOK 4: VERDICT RULES ENGINE
-            // ============================================
-            async ({ data, req }) => {
-                // Evaluate VerdictRules
-                if (data?.ingredientsList?.length > 0 || data?.category) {
-                    try {
-                        const ingredientIds = (data.ingredientsList || []).map(
-                            (ing: number | { id: number }) => typeof ing === 'number' ? ing : ing.id
-                        );
-
-                        const ruleResult = await evaluateVerdictRules(
-                            {
-                                ingredientsList: ingredientIds,
-                                category: typeof data.category === 'number' ? data.category : data.category?.id,
-                                verdict: data.verdict,
-                            },
-                            req.payload
-                        );
-
-                        // Apply suggested verdict from rules (if no override)
-                        if (ruleResult.suggestedVerdict && !data.verdictOverride) {
-                            data.ruleApplied = ruleResult.evaluations
-                                .filter(e => e.matched)
-                                .map(e => e.ruleName)
-                                .join(', ');
-
-                            if (!data.verdict) {
-                                data.verdict = ruleResult.suggestedVerdict;
-                            }
-                            data.autoVerdict = ruleResult.suggestedVerdict;
-                        }
-
-                        // Add warnings to conflicts
-                        if (ruleResult.warnings.length > 0) {
-                            const existingConflicts = (data.conflicts?.detected || []) as string[];
-                            data.conflicts = {
-                                detected: [...existingConflicts, ...ruleResult.warnings],
-                                lastChecked: new Date().toISOString(),
-                            };
-                        }
-
-                        // Log rule applications
-                        for (const evaluation of ruleResult.evaluations.filter(e => e.matched)) {
-                            await createAuditLog(req.payload, {
-                                action: 'rule_applied',
-                                sourceType: 'rule',
-                                sourceId: String(evaluation.ruleId),
-                                targetCollection: 'products',
-                                targetId: data.id,
-                                targetName: data.name,
-                                metadata: {
-                                    ruleName: evaluation.ruleName,
-                                    action: evaluation.action,
-                                },
-                                performedBy: (req.user as { id?: number })?.id,
-                            });
-                        }
-                    } catch (error) {
-                        console.error('VerdictRules evaluation failed:', error);
-                    }
-                }
-                return data;
-            },
-
-            // ============================================
-            // HOOK 5: AUTO-VERDICT from ingredients (fallback only)
-            // Skipped if VerdictRules already set a verdict (ruleApplied)
-            // ============================================
-            async ({ data, req }) => {
-                // Skip if a rule already applied verdict (HOOK 4 takes precedence)
-                if (data?.ruleApplied) {
-                    return data;
-                }
-
-                // Only calculate if ingredientsList is provided and not overridden
-                if (data?.ingredientsList?.length > 0 && !data?.verdictOverride) {
-                    try {
-                        const ingredientIds = data.ingredientsList.map((ing: number | { id: number }) =>
-                            typeof ing === 'number' ? ing : ing.id
-                        );
-
-                        const ingredients = await req.payload.find({
-                            collection: 'ingredients',
-                            where: { id: { in: ingredientIds } },
-                            limit: 100,
-                        });
-
-                        // Determine auto-verdict: avoid if any ingredient is avoid, caution if any caution, otherwise recommend
-                        let worstVerdict = 'recommend' as 'recommend' | 'caution' | 'avoid';
-                        for (const ing of ingredients.docs) {
-                            const ingVerdict = (ing as { verdict?: string }).verdict;
-                            if (ingVerdict === 'avoid') {
-                                worstVerdict = 'avoid';
-                                break;
-                            } else if (ingVerdict === 'caution' && worstVerdict !== 'avoid') {
-                                worstVerdict = 'caution';
-                            }
-                        }
-
-                        data.autoVerdict = worstVerdict;
-
-                        if (!data.verdict) {
-                            data.verdict = worstVerdict;
-                        }
-                    } catch (error) {
-                        console.error('Auto-verdict calculation failed:', error);
-                    }
-                }
-                return data;
-            },
+            // NOTE: HOOK 4 (Verdict Rules with Ingredients) REMOVED - Liability Shield
+            // NOTE: HOOK 5 (Auto-verdict from Ingredients) REMOVED - Liability Shield
 
             // ============================================
             // HOOK 6: HARD GUARDRAILS - Block conflicting saves
             // ============================================
             async ({ data, req, originalDoc }) => {
-                const ingredientIds = (data?.ingredientsList || []).map(
-                    (ing: number | { id: number }) => typeof ing === 'number' ? ing : ing.id
-                );
-
                 const conflictResult = await detectConflicts(
                     {
                         verdict: data?.verdict,
-                        ingredientsList: ingredientIds,
                         verdictOverride: data?.verdictOverride,
                         category: typeof data?.category === 'number' ? data.category : data?.category?.id,
                     },
@@ -447,7 +264,7 @@ export const Products: CollectionConfig = {
                             previousVerdict: originalDoc?.verdict,
                             newVerdict: 'avoid',
                             autoFlaggedRestrictedLabData: true,
-                            shieldedFields: ['ingredientsList', 'ingredientsRaw', 'fullReview', 'testingInfo'],
+                            shieldedFields: ['fullReview', 'testingInfo'],
                         },
                         performedBy: (req.user as { id?: number })?.id,
                     })
@@ -692,49 +509,8 @@ export const Products: CollectionConfig = {
                 return doc
             },
 
-            // ============================================
-            // HOOK: UPDATE INGREDIENT PRODUCT COUNTS
-            // Maintains reverse relationship for efficient lookups
-            // ============================================
-            async ({ doc, previousDoc, req }) => {
-                // Get current and previous ingredient lists
-                const currentIngredients = (doc.ingredientsList || []) as number[]
-                const previousIngredients = (previousDoc?.ingredientsList || []) as number[]
+            // NOTE: UPDATE INGREDIENT PRODUCT COUNTS hook REMOVED - Liability Shield
 
-                // Find ingredients that were added or removed
-                const addedIngredients = currentIngredients.filter(id => !previousIngredients.includes(id))
-                const removedIngredients = previousIngredients.filter(id => !currentIngredients.includes(id))
-
-                // Update counts for affected ingredients (in background to not block save)
-                const ingredientsToUpdate = [...new Set([...addedIngredients, ...removedIngredients])]
-
-                if (ingredientsToUpdate.length > 0) {
-                    setTimeout(async () => {
-                        for (const ingredientId of ingredientsToUpdate) {
-                            try {
-                                // Count products containing this ingredient
-                                const productCount = await req.payload.count({
-                                    collection: 'products',
-                                    where: {
-                                        ingredientsList: { contains: ingredientId },
-                                    },
-                                })
-
-                                // Update the ingredient's productCount
-                                await req.payload.update({
-                                    collection: 'ingredients',
-                                    id: ingredientId,
-                                    data: { productCount: productCount.totalDocs },
-                                })
-                            } catch (error) {
-                                console.error(`Failed to update productCount for ingredient ${ingredientId}:`, error)
-                            }
-                        }
-                    }, 100)
-                }
-
-                return doc
-            },
 
             // ============================================
             // HOOK: AUTO-SUGGEST SAFE ALTERNATIVES
@@ -987,47 +763,8 @@ export const Products: CollectionConfig = {
             },
         },
 
-        // === INGREDIENTS ===
-        {
-            name: 'ingredientsList',
-            type: 'relationship',
-            relationTo: 'ingredients',
-            hasMany: true,
-            label: 'Linked Ingredients',
-            access: {
-                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
-            },
-            admin: {
-                description: 'Auto-populated from raw text, or manually link',
-            },
-        },
-        {
-            name: 'ingredientsRaw',
-            type: 'textarea',
-            label: 'Raw Ingredients Text',
-            access: {
-                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
-            },
-            admin: {
-                description: 'Paste ingredients list - will auto-parse and link to Ingredients collection',
-            },
-        },
-        {
-            name: 'unmatchedIngredients',
-            type: 'array',
-            label: 'Unmatched Ingredients',
-            admin: {
-                description: 'Ingredients that could not be auto-matched (need manual research)',
-                condition: (data) => data?.unmatchedIngredients?.length > 0,
-            },
-            fields: [
-                {
-                    name: 'name',
-                    type: 'text',
-                    required: true,
-                },
-            ],
-        },
+        // NOTE: INGREDIENTS fields REMOVED - Liability Shield
+
 
         // === SOURCE TRACKING ===
         {

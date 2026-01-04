@@ -15,47 +15,7 @@ export const Categories: CollectionConfig = {
     group: 'Catalog',
   },
   hooks: {
-    beforeChange: [
-      // ============================================
-      // INHERIT HARMFUL INGREDIENTS FROM PARENT
-      // Child categories automatically inherit parent's harmful ingredients
-      // ============================================
-      async ({ data, req, operation }) => {
-        // Only inherit on create or when parent changes
-        if ((operation === 'create' || data?.parent) && data?.parent) {
-          try {
-            const parentId = typeof data.parent === 'number' ? data.parent : data.parent?.id;
-            if (!parentId) return data;
-
-            const parent = await req.payload.findByID({
-              collection: 'categories',
-              id: parentId,
-            });
-
-            if (parent) {
-              const parentData = parent as {
-                harmfulIngredients?: Array<{ ingredient: string; reason?: string }>;
-                qualityIndicators?: Array<{ indicator: string; description?: string }>;
-              };
-
-              // Inherit harmful ingredients if child has none
-              if (parentData.harmfulIngredients?.length && !data.harmfulIngredients?.length) {
-                data.harmfulIngredients = parentData.harmfulIngredients;
-                data.inheritedFromParent = true;
-              }
-
-              // Inherit quality indicators if child has none
-              if (parentData.qualityIndicators?.length && !data.qualityIndicators?.length) {
-                data.qualityIndicators = parentData.qualityIndicators;
-              }
-            }
-          } catch (error) {
-            console.error('Failed to inherit from parent category:', error);
-          }
-        }
-        return data;
-      },
-    ],
+    beforeChange: [],
   },
   fields: [
     {
@@ -250,55 +210,66 @@ export const Categories: CollectionConfig = {
       },
     },
     // ============================================
-    // Category Enricher Research Fields
+    // Liability Shield Content - What We Found
+    // (No specific ingredient names - uses risk categories)
     // ============================================
     {
-      name: 'harmfulIngredients',
-      type: 'array',
-      label: 'Harmful Ingredients to Avoid',
+      name: 'whatWeFound',
+      type: 'richText',
+      label: 'What We Found (Public)',
       admin: {
-        description: 'Ingredients flagged in research videos',
+        description: 'Public-facing summary of issues found in bad products. NO specific ingredient names.',
+      },
+    },
+    {
+      name: 'freeFromList',
+      type: 'array',
+      label: 'Good Products Are Free From',
+      admin: {
+        description: 'Risk categories that safe products avoid (e.g., "Endocrine Disruptors", "Heavy Metals")',
       },
       fields: [
         {
-          name: 'ingredient',
+          name: 'riskCategory',
           type: 'text',
           required: true,
+          admin: {
+            placeholder: 'e.g., Endocrine Disruptors, Heavy Metals, Artificial Colors',
+          },
         },
         {
-          name: 'reason',
+          name: 'description',
           type: 'text',
           admin: {
-            description: 'Why it should be avoided',
+            placeholder: 'Brief explanation of why this is harmful',
           },
         },
       ],
     },
     {
-      name: 'qualityIndicators',
+      name: 'avoidReasons',
       type: 'array',
-      label: 'Quality Indicators',
+      label: 'Why Products Fail Our Tests',
       admin: {
-        description: 'What to look for in good products',
+        description: 'Reasons products get AVOID verdict (generic, no ingredient names)',
       },
       fields: [
         {
-          name: 'indicator',
+          name: 'reason',
           type: 'text',
           required: true,
-        },
-        {
-          name: 'description',
-          type: 'text',
+          admin: {
+            placeholder: 'e.g., "Contains compounds linked to hormone disruption"',
+          },
         },
       ],
     },
     {
       name: 'researchNotes',
       type: 'textarea',
-      label: 'Research Notes',
+      label: 'Internal Research Notes',
       admin: {
-        description: 'AI-extracted research findings from video transcripts',
+        description: 'Internal notes (not shown publicly)',
       },
     },
     {

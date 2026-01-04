@@ -41,6 +41,8 @@ import * as migration_20260103_000000_add_automation_thresholds from './20260103
 import * as migration_20260103_010000_add_automation_thresholds_v2 from './20260103_010000_add_automation_thresholds_v2';
 import * as migration_20260103_020000_zero_input_refactor from './20260103_020000_zero_input_refactor';
 import * as migration_20260104_000000_fix_archetype_column_names from './20260104_000000_fix_archetype_column_names';
+import * as migration_20260104_010000_create_product_votes from './20260104_010000_create_product_votes';
+import * as migration_20260104_020000_create_push_tokens from './20260104_020000_create_push_tokens';
 
 export const migrations = [
   {
@@ -257,5 +259,15 @@ export const migrations = [
     up: migration_20260104_000000_fix_archetype_column_names.up,
     down: migration_20260104_000000_fix_archetype_column_names.down,
     name: '20260104_000000_fix_archetype_column_names'
+  },
+  {
+    up: migration_20260104_010000_create_product_votes.up,
+    down: migration_20260104_010000_create_product_votes.down,
+    name: '20260104_010000_create_product_votes'
+  },
+  {
+    up: migration_20260104_020000_create_push_tokens.up,
+    down: migration_20260104_020000_create_push_tokens.down,
+    name: '20260104_020000_create_push_tokens'
   },
 ];

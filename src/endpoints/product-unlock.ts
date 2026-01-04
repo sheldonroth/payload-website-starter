@@ -1,4 +1,5 @@
 import { PayloadHandler } from 'payload'
+import { renderOneShotReceipt, emailSubjects } from '../email'
 
 /**
  * Product Unlock Endpoint
@@ -281,6 +282,32 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
             })
 
             memberState = newMemberState
+        }
+
+        // Send One-Shot receipt email for free credit unlocks
+        if (unlockType === 'free_credit' && email) {
+            try {
+                const productName = (product as { name: string }).name
+                const productSlug = (product as { slug: string }).slug
+                const userName = email.split('@')[0]
+
+                const html = await renderOneShotReceipt({
+                    userName,
+                    productName,
+                    productSlug,
+                })
+
+                await req.payload.sendEmail({
+                    to: email,
+                    subject: emailSubjects.oneShotReceipt(productName),
+                    html,
+                })
+
+                console.log(`[One-Shot] Receipt email sent to ${email}`)
+            } catch (emailError) {
+                // Don't fail the unlock if email fails
+                console.error('[One-Shot] Failed to send receipt email:', emailError)
+            }
         }
 
         return Response.json({

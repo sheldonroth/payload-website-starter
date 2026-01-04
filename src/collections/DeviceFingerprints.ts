@@ -151,10 +151,30 @@ export const DeviceFingerprints: CollectionConfig = {
             },
         },
         {
+            name: 'suspiciousScore',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 100,
+            admin: {
+                position: 'sidebar',
+                description: 'Abuse likelihood score (0-100). Auto-calculated by cron.',
+            },
+        },
+        {
             name: 'emailsUsed',
             type: 'json',
             admin: {
                 description: 'List of email addresses used with this fingerprint',
+            },
+        },
+        {
+            name: 'totalUnlocks',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Total unlocks across all time (for abuse detection)',
             },
         },
     ],

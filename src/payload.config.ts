@@ -16,7 +16,7 @@ import { Articles } from './collections/Articles'
 import { Videos } from './collections/Videos'
 import { InvestigationPolls } from './collections/InvestigationPolls'
 import { SponsoredTestRequests } from './collections/SponsoredTestRequests'
-import { Ingredients } from './collections/Ingredients'
+// import { Ingredients } from './collections/Ingredients' // REMOVED - Liability Shield
 import { VerdictRules } from './collections/VerdictRules'
 import { AuditLog } from './collections/AuditLog'
 import { Users } from './collections/Users'
@@ -27,6 +27,8 @@ import { UserSubmissions } from './collections/UserSubmissions'
 import { DeviceFingerprints } from './collections/DeviceFingerprints'
 import { ProductUnlocks } from './collections/ProductUnlocks'
 import { TrendingNews } from './collections/TrendingNews'
+import { ProductVotes } from './collections/ProductVotes'
+import { PushTokens } from './collections/PushTokens'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -80,13 +82,25 @@ import { errorRetryHandler } from './endpoints/error-retry'
 import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
 import { appVersionHandler } from './endpoints/app-version'
 import { userSubscriptionHandler } from './endpoints/user-subscription'
+import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler } from './endpoints/product-vote'
+import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
+import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+import { voteSubmission } from './endpoints/vote-submission'
+
 export default buildConfig({
+  endpoints: [
+    {
+      path: '/vote-submission',
+      method: 'post',
+      handler: voteSubmission,
+    },
+  ],
   admin: {
     components: {
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
@@ -157,7 +171,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, Ingredients, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -527,6 +541,49 @@ export default buildConfig({
       path: '/user-subscription',
       method: 'get',
       handler: userSubscriptionHandler,
+    },
+    // Product Voting (Proof of Possession)
+    {
+      path: '/product-vote',
+      method: 'post',
+      handler: productVoteHandler,
+    },
+    {
+      path: '/product-vote/status',
+      method: 'get',
+      handler: productVoteStatusHandler,
+    },
+    {
+      path: '/product-vote/leaderboard',
+      method: 'get',
+      handler: productVoteLeaderboardHandler,
+    },
+    // Push Token Registration & Subscriptions
+    {
+      path: '/push-tokens/register',
+      method: 'post',
+      handler: pushTokenRegisterHandler,
+    },
+    {
+      path: '/push-tokens/subscribe',
+      method: 'post',
+      handler: pushTokenSubscribeHandler,
+    },
+    {
+      path: '/push-tokens/unsubscribe',
+      method: 'post',
+      handler: pushTokenUnsubscribeHandler,
+    },
+    // Scanner (Mobile App Barcode Scanning)
+    {
+      path: '/scanner/lookup',
+      method: 'post',
+      handler: scannerLookupHandler,
+    },
+    {
+      path: '/scanner/submit',
+      method: 'post',
+      handler: scannerSubmitHandler,
     },
   ],
   plugins: [

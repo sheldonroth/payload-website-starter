@@ -3,6 +3,7 @@ import type { CollectionConfig, FieldHook, CollectionAfterDeleteHook, Collection
 import { authenticated } from '../../access/authenticated'
 import { isSelfOrAdmin } from '../../access/isSelfOrAdmin'
 import { createAuditLog } from '../AuditLog'
+import { sendWelcomeEmail, syncToResendAudience } from './hooks'
 
 /**
  * GDPR/CCPA COMPLIANCE: Account Deletion Cleanup
@@ -166,6 +167,7 @@ export const Users: CollectionConfig = {
   hooks: {
     beforeDelete: [beforeDeleteUser],
     afterDelete: [afterDeleteUser],
+    afterChange: [sendWelcomeEmail, syncToResendAudience],
   },
   auth: {
     forgotPassword: {
