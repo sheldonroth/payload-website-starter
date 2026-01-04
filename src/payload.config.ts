@@ -78,6 +78,7 @@ import { adminBackfillTitlesHandler } from './endpoints/admin-backfill-titles'
 import { imageExtractHandler, imageExtractApplyHandler } from './endpoints/image-extract'
 import { errorRetryHandler } from './endpoints/error-retry'
 import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
+import { appVersionHandler } from './endpoints/app-version'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -513,6 +514,12 @@ export default buildConfig({
       path: '/product/confirm',
       method: 'post',
       handler: productConfirmHandler,
+    },
+    // App Version Check (Force Update)
+    {
+      path: '/app-version',
+      method: 'get',
+      handler: appVersionHandler,
     },
   ],
   plugins: [
