@@ -76,7 +76,6 @@ export interface Config {
     categories: Category;
     'investigation-polls': InvestigationPoll;
     'sponsored-test-requests': SponsoredTestRequest;
-    ingredients: Ingredient;
     'verdict-rules': VerdictRule;
     'audit-log': AuditLog;
     users: User;
@@ -87,6 +86,8 @@ export interface Config {
     'device-fingerprints': DeviceFingerprint;
     'product-unlocks': ProductUnlock;
     'trending-news': TrendingNew;
+    'product-votes': ProductVote;
+    'push-tokens': PushToken;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -113,7 +114,6 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'investigation-polls': InvestigationPollsSelect<false> | InvestigationPollsSelect<true>;
     'sponsored-test-requests': SponsoredTestRequestsSelect<false> | SponsoredTestRequestsSelect<true>;
-    ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
     'verdict-rules': VerdictRulesSelect<false> | VerdictRulesSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -124,6 +124,8 @@ export interface Config {
     'device-fingerprints': DeviceFingerprintsSelect<false> | DeviceFingerprintsSelect<true>;
     'product-unlocks': ProductUnlocksSelect<false> | ProductUnlocksSelect<true>;
     'trending-news': TrendingNewsSelect<false> | TrendingNewsSelect<true>;
+    'product-votes': ProductVotesSelect<false> | ProductVotesSelect<true>;
+    'push-tokens': PushTokensSelect<false> | PushTokensSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -471,30 +473,44 @@ export interface Category {
    */
   aiSource?: string | null;
   /**
-   * Ingredients flagged in research videos
+   * Public-facing summary of issues found in bad products. NO specific ingredient names.
    */
-  harmfulIngredients?:
-    | {
-        ingredient: string;
-        /**
-         * Why it should be avoided
-         */
-        reason?: string | null;
-        id?: string | null;
-      }[]
-    | null;
+  whatWeFound?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
   /**
-   * What to look for in good products
+   * Risk categories that safe products avoid (e.g., "Endocrine Disruptors", "Heavy Metals")
    */
-  qualityIndicators?:
+  freeFromList?:
     | {
-        indicator: string;
+        riskCategory: string;
         description?: string | null;
         id?: string | null;
       }[]
     | null;
   /**
-   * AI-extracted research findings from video transcripts
+   * Reasons products get AVOID verdict (generic, no ingredient names)
+   */
+  avoidReasons?:
+    | {
+        reason: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Internal notes (not shown publicly)
    */
   researchNotes?: string | null;
   /**
@@ -577,23 +593,6 @@ export interface Product {
    * Name of VerdictRule(s) that set the verdict
    */
   ruleApplied?: string | null;
-  /**
-   * Auto-populated from raw text, or manually link
-   */
-  ingredientsList?: (number | Ingredient)[] | null;
-  /**
-   * Paste ingredients list - will auto-parse and link to Ingredients collection
-   */
-  ingredientsRaw?: string | null;
-  /**
-   * Ingredients that could not be auto-matched (need manual research)
-   */
-  unmatchedIngredients?:
-    | {
-        name: string;
-        id?: string | null;
-      }[]
-    | null;
   /**
    * Universal Product Code for barcode scanning
    */
@@ -955,6 +954,10 @@ export interface DeviceFingerprint {
    */
   suspiciousActivity?: boolean | null;
   /**
+   * Abuse likelihood score (0-100). Auto-calculated by cron.
+   */
+  suspiciousScore?: number | null;
+  /**
    * List of email addresses used with this fingerprint
    */
   emailsUsed?:
@@ -966,88 +969,10 @@ export interface DeviceFingerprint {
     | number
     | boolean
     | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Ingredient database with verdicts that cascade to products
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ingredients".
- */
-export interface Ingredient {
-  id: number;
   /**
-   * Primary name (e.g., "Red Dye 40")
+   * Total unlocks across all time (for abuse detection)
    */
-  name: string;
-  /**
-   * Other names this ingredient goes by
-   */
-  aliases?:
-    | {
-        alias: string;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Final verdict on this ingredient
-   */
-  verdict: 'safe' | 'caution' | 'avoid' | 'unknown';
-  /**
-   * Brief explanation of the verdict
-   */
-  reason?: string | null;
-  category?:
-    | (
-        | 'artificial_colors'
-        | 'artificial_sweeteners'
-        | 'preservatives'
-        | 'emulsifiers'
-        | 'heavy_metals'
-        | 'pesticides'
-        | 'vitamins_minerals'
-        | 'proteins'
-        | 'fats_oils'
-        | 'sugars'
-        | 'fibers'
-        | 'other'
-      )
-    | null;
-  /**
-   * Which product categories is this ingredient relevant to?
-   */
-  productCategories?: (number | Category)[] | null;
-  /**
-   * Videos, studies, or reports that informed this verdict
-   */
-  sources?:
-    | {
-        type?: ('video' | 'study' | 'lab_report' | 'government') | null;
-        reference?: string | null;
-        /**
-         * Brief note about this source
-         */
-        notes?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Main video where this ingredient was discussed
-   */
-  sourceVideo?: (number | null) | Video;
-  /**
-   * When AVOID, automatically flag products containing this
-   */
-  autoFlagProducts?: boolean | null;
-  /**
-   * Products currently flagged due to this ingredient
-   */
-  flaggedProductCount?: number | null;
-  /**
-   * Total products containing this ingredient. To view products, use Products collection filter: ingredientsList contains [ingredient ID]
-   */
-  productCount?: number | null;
+  totalUnlocks?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1121,10 +1046,6 @@ export interface Video {
    * Products that were created from analyzing this video
    */
   extractedProducts?: (number | Product)[] | null;
-  /**
-   * Ingredients discussed in this video
-   */
-  extractedIngredients?: (number | Ingredient)[] | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1648,10 +1569,6 @@ export interface VerdictRule {
    */
   conditionType: 'contains_ingredient' | 'missing_ingredient' | 'ingredient_verdict' | 'category_match';
   /**
-   * Which ingredients trigger this rule
-   */
-  ingredientCondition?: (number | Ingredient)[] | null;
-  /**
    * Match based on ingredient verdicts
    */
   ingredientVerdictCondition?: ('avoid' | 'caution' | 'safe_only') | null;
@@ -2039,10 +1956,6 @@ export interface RegulatoryChange {
    */
   complianceDeadline?: string | null;
   /**
-   * Ingredients directly affected by this regulation
-   */
-  affectedIngredients?: (number | Ingredient)[] | null;
-  /**
    * Product categories this regulation applies to
    */
   affectedCategories?: (number | Category)[] | null;
@@ -2262,6 +2175,156 @@ export interface TrendingNew {
    * Which brand name/alias matched
    */
   matchedTerms?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Product testing votes from barcode scans (Proof of Possession)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-votes".
+ */
+export interface ProductVote {
+  id: number;
+  /**
+   * UPC/EAN barcode of the product
+   */
+  barcode: string;
+  /**
+   * Product name (if known from Open Food Facts or user submission)
+   */
+  productName?: string | null;
+  /**
+   * Brand name (if known)
+   */
+  brand?: string | null;
+  /**
+   * Product image URL (if available from external source)
+   */
+  imageUrl?: string | null;
+  /**
+   * Total weighted vote score (Search=1x, Scan=5x, Member=20x)
+   */
+  totalWeightedVotes: number;
+  /**
+   * Number of text searches for this product
+   */
+  searchCount?: number | null;
+  /**
+   * Number of barcode scans (non-member)
+   */
+  scanCount?: number | null;
+  /**
+   * Number of barcode scans by members
+   */
+  memberScanCount?: number | null;
+  /**
+   * Count of unique devices/users who voted
+   */
+  uniqueVoters?: number | null;
+  /**
+   * Weighted vote threshold to trigger lab testing
+   */
+  fundingThreshold?: number | null;
+  /**
+   * Percentage progress toward testing threshold (0-100)
+   */
+  fundingProgress?: number | null;
+  status: 'collecting_votes' | 'threshold_reached' | 'queued' | 'testing' | 'complete';
+  /**
+   * When the voting threshold was reached
+   */
+  thresholdReachedAt?: string | null;
+  /**
+   * The tested product (set when testing is complete)
+   */
+  linkedProduct?: (number | null) | Product;
+  /**
+   * Array of device fingerprints who voted (for uniqueness)
+   */
+  voterFingerprints?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of user IDs/emails to notify when testing completes
+   */
+  notifyOnComplete?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Cached data from Open Food Facts API
+   */
+  openFoodFactsData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Current rank in the voting queue (1 = most wanted)
+   */
+  rank?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Expo push notification tokens for mobile devices
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-tokens".
+ */
+export interface PushToken {
+  id: number;
+  /**
+   * Expo push token (ExponentPushToken[...])
+   */
+  token: string;
+  /**
+   * Device fingerprint hash for anonymous user tracking
+   */
+  fingerprintHash?: string | null;
+  platform?: ('ios' | 'android') | null;
+  /**
+   * Whether this token is still valid for sending notifications
+   */
+  isActive?: boolean | null;
+  /**
+   * Last time a notification was sent to this token
+   */
+  lastUsed?: string | null;
+  /**
+   * Number of consecutive failed notification attempts
+   */
+  failureCount?: number | null;
+  /**
+   * Products this device wants to be notified about when testing completes
+   */
+  productSubscriptions?:
+    | {
+        barcode: string;
+        subscribedAt?: string | null;
+        /**
+         * Whether the user has been notified about this product
+         */
+        notified?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2492,10 +2555,6 @@ export interface PayloadLockedDocument {
         value: number | SponsoredTestRequest;
       } | null)
     | ({
-        relationTo: 'ingredients';
-        value: number | Ingredient;
-      } | null)
-    | ({
         relationTo: 'verdict-rules';
         value: number | VerdictRule;
       } | null)
@@ -2534,6 +2593,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'trending-news';
         value: number | TrendingNew;
+      } | null)
+    | ({
+        relationTo: 'product-votes';
+        value: number | ProductVote;
+      } | null)
+    | ({
+        relationTo: 'push-tokens';
+        value: number | PushToken;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2806,14 +2873,6 @@ export interface ProductsSelect<T extends boolean = true> {
   verdictOverriddenBy?: T;
   verdictOverriddenAt?: T;
   ruleApplied?: T;
-  ingredientsList?: T;
-  ingredientsRaw?: T;
-  unmatchedIngredients?:
-    | T
-    | {
-        name?: T;
-        id?: T;
-      };
   upc?: T;
   amazonAsin?: T;
   amazonLinkStatus?: T;
@@ -2943,7 +3002,6 @@ export interface VideosSelect<T extends boolean = true> {
   transcriptUpdatedAt?: T;
   analyzedAt?: T;
   extractedProducts?: T;
-  extractedIngredients?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3059,18 +3117,18 @@ export interface CategoriesSelect<T extends boolean = true> {
   inheritedFromParent?: T;
   aiSuggested?: T;
   aiSource?: T;
-  harmfulIngredients?:
+  whatWeFound?: T;
+  freeFromList?:
     | T
     | {
-        ingredient?: T;
-        reason?: T;
+        riskCategory?: T;
+        description?: T;
         id?: T;
       };
-  qualityIndicators?:
+  avoidReasons?:
     | T
     | {
-        indicator?: T;
-        description?: T;
+        reason?: T;
         id?: T;
       };
   researchNotes?: T;
@@ -3127,44 +3185,12 @@ export interface SponsoredTestRequestsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ingredients_select".
- */
-export interface IngredientsSelect<T extends boolean = true> {
-  name?: T;
-  aliases?:
-    | T
-    | {
-        alias?: T;
-        id?: T;
-      };
-  verdict?: T;
-  reason?: T;
-  category?: T;
-  productCategories?: T;
-  sources?:
-    | T
-    | {
-        type?: T;
-        reference?: T;
-        notes?: T;
-        id?: T;
-      };
-  sourceVideo?: T;
-  autoFlagProducts?: T;
-  flaggedProductCount?: T;
-  productCount?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "verdict-rules_select".
  */
 export interface VerdictRulesSelect<T extends boolean = true> {
   name?: T;
   description?: T;
   conditionType?: T;
-  ingredientCondition?: T;
   ingredientVerdictCondition?: T;
   categoryCondition?: T;
   action?: T;
@@ -3350,7 +3376,6 @@ export interface RegulatoryChangesSelect<T extends boolean = true> {
   announcedDate?: T;
   effectiveDate?: T;
   complianceDeadline?: T;
-  affectedIngredients?: T;
   affectedCategories?: T;
   affectedSubstances?:
     | T
@@ -3429,7 +3454,9 @@ export interface DeviceFingerprintsSelect<T extends boolean = true> {
   isBanned?: T;
   banReason?: T;
   suspiciousActivity?: T;
+  suspiciousScore?: T;
   emailsUsed?: T;
+  totalUnlocks?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3466,6 +3493,54 @@ export interface TrendingNewsSelect<T extends boolean = true> {
   sentiment?: T;
   relevanceScore?: T;
   matchedTerms?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-votes_select".
+ */
+export interface ProductVotesSelect<T extends boolean = true> {
+  barcode?: T;
+  productName?: T;
+  brand?: T;
+  imageUrl?: T;
+  totalWeightedVotes?: T;
+  searchCount?: T;
+  scanCount?: T;
+  memberScanCount?: T;
+  uniqueVoters?: T;
+  fundingThreshold?: T;
+  fundingProgress?: T;
+  status?: T;
+  thresholdReachedAt?: T;
+  linkedProduct?: T;
+  voterFingerprints?: T;
+  notifyOnComplete?: T;
+  openFoodFactsData?: T;
+  rank?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-tokens_select".
+ */
+export interface PushTokensSelect<T extends boolean = true> {
+  token?: T;
+  fingerprintHash?: T;
+  platform?: T;
+  isActive?: T;
+  lastUsed?: T;
+  failureCount?: T;
+  productSubscriptions?:
+    | T
+    | {
+        barcode?: T;
+        subscribedAt?: T;
+        notified?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
