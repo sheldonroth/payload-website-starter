@@ -31,52 +31,26 @@ export const RegulatoryChanges: CollectionConfig = {
     hooks: {
         afterChange: [
             async ({ doc, operation, req }) => {
-                // When a new regulatory change is published, notify affected products
+                // When a new regulatory change is published, create audit log
+                // NOTE: Ingredients-based product cascade removed - Ingredients collection archived
                 if (operation === 'create' && doc.status === 'published') {
                     try {
-                        const affectedIngredientIds = doc.affectedIngredients || []
+                        // Create audit log for the regulatory change
+                        await createAuditLog(req.payload, {
+                            action: 'regulatory_alert',
+                            sourceType: 'system',
+                            sourceId: doc.referenceId,
+                            sourceUrl: doc.sourceUrl,
+                            metadata: {
+                                regulatorySource: doc.source,
+                                changeType: doc.changeType,
+                                effectiveDate: doc.effectiveDate,
+                            },
+                        })
 
-                        if (affectedIngredientIds.length > 0) {
-                            // Find all products using these ingredients
-                            const affectedProducts = await req.payload.find({
-                                collection: 'products',
-                                where: {
-                                    ingredientsList: { in: affectedIngredientIds },
-                                },
-                                limit: 500,
-                            })
-
-                            // Mark products for review
-                            for (const product of affectedProducts.docs) {
-                                const productData = product as { id: number; name: string }
-                                await req.payload.update({
-                                    collection: 'products',
-                                    id: productData.id,
-                                    data: {
-                                        freshnessStatus: 'needs_review',
-                                    } as Record<string, unknown>,
-                                })
-                            }
-
-                            // Create audit log
-                            await createAuditLog(req.payload, {
-                                action: 'regulatory_alert',
-                                sourceType: 'system',
-                                sourceId: doc.referenceId,
-                                sourceUrl: doc.sourceUrl,
-                                metadata: {
-                                    regulatorySource: doc.source,
-                                    changeType: doc.changeType,
-                                    affectedIngredientsCount: affectedIngredientIds.length,
-                                    affectedProductsCount: affectedProducts.totalDocs,
-                                    effectiveDate: doc.effectiveDate,
-                                },
-                            })
-
-                            console.log(`Regulatory alert: ${affectedProducts.totalDocs} products affected by ${doc.title}`)
-                        }
+                        console.log(`Regulatory alert created: ${doc.title}`)
                     } catch (error) {
-                        console.error('Failed to process regulatory change cascade:', error)
+                        console.error('Failed to process regulatory change:', error)
                     }
                 }
                 return doc
@@ -194,16 +168,7 @@ export const RegulatoryChanges: CollectionConfig = {
         },
 
         // === AFFECTED ITEMS ===
-        {
-            name: 'affectedIngredients',
-            type: 'relationship',
-            relationTo: 'ingredients',
-            hasMany: true,
-            label: 'Affected Ingredients',
-            admin: {
-                description: 'Ingredients directly affected by this regulation',
-            },
-        },
+        // NOTE: affectedIngredients field removed - Ingredients collection archived
         {
             name: 'affectedCategories',
             type: 'relationship',

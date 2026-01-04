@@ -57,19 +57,7 @@ export const VerdictRules: CollectionConfig = {
                 description: 'What triggers this rule',
             },
         },
-        {
-            name: 'ingredientCondition',
-            type: 'relationship',
-            relationTo: 'ingredients',
-            hasMany: true,
-            label: 'Ingredients',
-            admin: {
-                description: 'Which ingredients trigger this rule',
-                condition: (data) => 
-                    data?.conditionType === 'contains_ingredient' || 
-                    data?.conditionType === 'missing_ingredient',
-            },
-        },
+        // NOTE: ingredientCondition field removed - Ingredients collection archived
         {
             name: 'ingredientVerdictCondition',
             type: 'select',
