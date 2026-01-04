@@ -85,15 +85,12 @@ export const SiteSettings: GlobalConfig = {
             ],
         },
         // === AUTOMATION THRESHOLDS ===
-        // TEMPORARILY DISABLED - Run scripts/add-automation-thresholds.sql first
-        // Then uncomment this block and redeploy
-        /*
         {
             name: 'automationThresholds',
             type: 'group',
             label: 'Automation Thresholds',
             admin: {
-                description: 'Configure automation behavior for Zero-Input CMS features',
+                description: 'Configure thresholds for automated features',
             },
             fields: [
                 {
@@ -101,74 +98,65 @@ export const SiteSettings: GlobalConfig = {
                     type: 'number',
                     label: 'Freshness Threshold (Days)',
                     defaultValue: 180,
-                    min: 30,
-                    max: 365,
                     admin: {
-                        description: 'Products older than this are marked as stale (default: 180 days)',
+                        description: 'Products older than this are considered stale for re-enrichment',
                     },
                 },
                 {
                     name: 'fuzzyMatchThreshold',
                     type: 'number',
-                    label: 'Fuzzy Match Threshold (Levenshtein Distance)',
+                    label: 'Fuzzy Match Threshold',
                     defaultValue: 2,
-                    min: 1,
-                    max: 5,
                     admin: {
-                        description: 'Max character difference for fuzzy ingredient matching (default: 2)',
+                        description: 'Maximum Levenshtein distance for fuzzy ingredient matching (1-3 recommended)',
                     },
                 },
                 {
                     name: 'autoAlternativesLimit',
                     type: 'number',
-                    label: 'Auto-Suggest Alternatives Limit',
+                    label: 'Auto Alternatives Limit',
                     defaultValue: 3,
-                    min: 1,
-                    max: 10,
                     admin: {
-                        description: 'Max safe alternatives to suggest for AVOID products (default: 3)',
+                        description: 'Maximum number of safe alternatives to auto-suggest',
                     },
                 },
                 {
                     name: 'aiCategoryConfidence',
                     type: 'number',
-                    label: 'AI Category Classification Confidence',
+                    label: 'AI Category Confidence (%)',
                     defaultValue: 70,
-                    min: 50,
-                    max: 100,
                     admin: {
-                        description: 'Minimum confidence (%) for auto-assigning AI-suggested categories (default: 70%)',
+                        description: 'Minimum confidence for auto-assigning AI-suggested categories (0-100)',
                     },
                 },
                 {
                     name: 'enableFuzzyMatching',
                     type: 'checkbox',
-                    label: 'Enable Fuzzy Ingredient Matching',
+                    label: 'Enable Fuzzy Matching',
                     defaultValue: true,
                     admin: {
-                        description: 'Use Levenshtein distance to match similar ingredient names',
+                        description: 'Use fuzzy matching for ingredient linking',
                     },
                 },
                 {
-                    name: 'enableAICategories',
+                    name: 'enableAiCategories',
                     type: 'checkbox',
-                    label: 'Enable AI Category Classification',
+                    label: 'Enable AI Categories',
                     defaultValue: true,
                     admin: {
-                        description: 'Use AI to suggest categories for new products',
+                        description: 'Auto-suggest categories using AI',
                     },
                 },
                 {
                     name: 'enableAutoAlternatives',
                     type: 'checkbox',
-                    label: 'Enable Auto-Suggest Alternatives',
+                    label: 'Enable Auto Alternatives',
                     defaultValue: true,
                     admin: {
-                        description: 'Automatically suggest safe alternatives for AVOID products',
+                        description: 'Auto-suggest safe alternatives for avoided products',
                     },
                 },
             ],
         },
-        */
     ],
 }
