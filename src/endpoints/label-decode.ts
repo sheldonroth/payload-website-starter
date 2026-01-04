@@ -148,26 +148,8 @@ Return ONLY a valid JSON object with this exact schema:
         const flaggedToxins: string[] = []
         const autoVerdict: 'recommend' | 'caution' | 'avoid' | undefined = undefined
 
-        // Auto-apply to product if requested
-        let updatedProductId: number | undefined
-        if (autoApply && productId) {
-            try {
-                await req.payload.update({
-                    collection: 'products',
-                    id: productId,
-                    data: {
-                        ingredientsRaw,
-                        ingredientsList: parseResult.linkedIds,
-                        unmatchedIngredients: parseResult.unmatched.map(name => ({ name })),
-                        autoVerdict,
-                        verdict: autoVerdict || 'pending',
-                    } as Record<string, unknown>,
-                })
-                updatedProductId = productId
-            } catch (updateError) {
-                console.error('Failed to update product:', updateError)
-            }
-        }
+        // NOTE: Auto-apply to product disabled - Ingredients collection archived
+        const updatedProductId: number | undefined = undefined
 
         // Create audit log
         await createAuditLog(req.payload, {
