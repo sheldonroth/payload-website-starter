@@ -123,13 +123,6 @@ export const DeviceFingerprints: CollectionConfig = {
 
         // === FRAUD PREVENTION ===
         {
-            name: 'ipCountry',
-            type: 'text',
-            admin: {
-                description: 'Country from IP (for fraud detection)',
-            },
-        },
-        {
             name: 'isBanned',
             type: 'checkbox',
             defaultValue: false,

@@ -540,6 +540,50 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+
+            // ============================================
+            // HOOK: UPDATE INGREDIENT PRODUCT COUNTS
+            // Maintains reverse relationship for efficient lookups
+            // ============================================
+            async ({ doc, previousDoc, req }) => {
+                // Get current and previous ingredient lists
+                const currentIngredients = (doc.ingredientsList || []) as number[]
+                const previousIngredients = (previousDoc?.ingredientsList || []) as number[]
+
+                // Find ingredients that were added or removed
+                const addedIngredients = currentIngredients.filter(id => !previousIngredients.includes(id))
+                const removedIngredients = previousIngredients.filter(id => !currentIngredients.includes(id))
+
+                // Update counts for affected ingredients (in background to not block save)
+                const ingredientsToUpdate = [...new Set([...addedIngredients, ...removedIngredients])]
+
+                if (ingredientsToUpdate.length > 0) {
+                    setTimeout(async () => {
+                        for (const ingredientId of ingredientsToUpdate) {
+                            try {
+                                // Count products containing this ingredient
+                                const productCount = await req.payload.count({
+                                    collection: 'products',
+                                    where: {
+                                        ingredientsList: { contains: ingredientId },
+                                    },
+                                })
+
+                                // Update the ingredient's productCount
+                                await req.payload.update({
+                                    collection: 'ingredients',
+                                    id: ingredientId,
+                                    data: { productCount: productCount.totalDocs },
+                                })
+                            } catch (error) {
+                                console.error(`Failed to update productCount for ingredient ${ingredientId}:`, error)
+                            }
+                        }
+                    }, 100)
+                }
+
+                return doc
+            },
         ],
 
         // TEMPORARILY DISABLED - afterRead hook causing API timeouts
@@ -921,11 +965,13 @@ export const Products: CollectionConfig = {
             defaultValue: 1,
             admin: {
                 position: 'sidebar',
-                description: 'Number of sources that mentioned this product',
+                description: 'Number of video/article sources that mentioned this product. Auto-updated when sources are linked.',
             },
         },
 
         // === AI EXTRACTION METADATA ===
+        // These fields are populated when products are created via AI extraction
+        // (video transcript analysis, crowdsource submissions, automated imports)
         {
             name: 'aiConfidence',
             type: 'select',
@@ -936,7 +982,7 @@ export const Products: CollectionConfig = {
             ],
             admin: {
                 position: 'sidebar',
-                description: 'AI confidence in extraction accuracy',
+                description: 'AI confidence level when this product was auto-extracted. Set during AI import workflow.',
                 condition: (data) => data?.status === 'ai_draft',
             },
         },
@@ -948,10 +994,11 @@ export const Products: CollectionConfig = {
                 { label: 'Video Analysis', value: 'video_watching' },
                 { label: 'Profile Scrape', value: 'profile' },
                 { label: 'Manual Entry', value: 'manual' },
+                { label: 'Crowdsource', value: 'crowdsource' },
             ],
             admin: {
                 position: 'sidebar',
-                description: 'How the AI extracted this product',
+                description: 'Method used to extract this product. Set during AI import workflow.',
                 condition: (data) => data?.status === 'ai_draft',
             },
         },
@@ -960,7 +1007,7 @@ export const Products: CollectionConfig = {
             type: 'number',
             admin: {
                 position: 'sidebar',
-                description: 'Times mentioned in source video',
+                description: 'Times product was mentioned in source video/content. Higher = more relevant.',
                 condition: (data) => data?.status === 'ai_draft',
             },
         },

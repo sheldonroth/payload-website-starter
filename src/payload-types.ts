@@ -617,19 +617,19 @@ export interface Product {
    */
   sourceVideo?: (number | null) | Video;
   /**
-   * Number of sources that mentioned this product
+   * Number of video/article sources that mentioned this product. Auto-updated when sources are linked.
    */
   sourceCount?: number | null;
   /**
-   * AI confidence in extraction accuracy
+   * AI confidence level when this product was auto-extracted. Set during AI import workflow.
    */
   aiConfidence?: ('high' | 'medium' | 'low') | null;
   /**
-   * How the AI extracted this product
+   * Method used to extract this product. Set during AI import workflow.
    */
-  aiSourceType?: ('transcript' | 'video_watching' | 'profile' | 'manual') | null;
+  aiSourceType?: ('transcript' | 'video_watching' | 'profile' | 'manual' | 'crowdsource') | null;
   /**
-   * Times mentioned in source video
+   * Times product was mentioned in source video/content. Higher = more relevant.
    */
   aiMentions?: number | null;
   /**
@@ -923,10 +923,6 @@ export interface DeviceFingerprint {
    */
   unlockCreditsUsed?: number | null;
   /**
-   * Country from IP (for fraud detection)
-   */
-  ipCountry?: string | null;
-  /**
    * Block this device from unlocking
    */
   isBanned?: boolean | null;
@@ -1028,6 +1024,10 @@ export interface Ingredient {
    * Products currently flagged due to this ingredient
    */
   flaggedProductCount?: number | null;
+  /**
+   * Total products containing this ingredient. To view products, use Products collection filter: ingredientsList contains [ingredient ID]
+   */
+  productCount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -3095,6 +3095,7 @@ export interface IngredientsSelect<T extends boolean = true> {
   sourceVideo?: T;
   autoFlagProducts?: T;
   flaggedProductCount?: T;
+  productCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3363,7 +3364,6 @@ export interface DeviceFingerprintsSelect<T extends boolean = true> {
   firstSeenAt?: T;
   lastSeenAt?: T;
   unlockCreditsUsed?: T;
-  ipCountry?: T;
   isBanned?: T;
   banReason?: T;
   suspiciousActivity?: T;

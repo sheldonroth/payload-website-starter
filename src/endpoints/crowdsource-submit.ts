@@ -41,6 +41,7 @@ interface SubmissionResult {
     }
     pointsAwarded?: number
     message: string
+    warnings?: string[]
 }
 
 // Rate limiting for submissions
@@ -72,10 +73,11 @@ async function extractProductFromImage(
     upc?: string
     ingredients?: string
     confidence: number
+    error?: string
 }> {
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) {
-        return { confidence: 0 }
+        return { confidence: 0, error: 'AI extraction not configured' }
     }
 
     try {
@@ -115,17 +117,18 @@ If a field is not visible, omit it.`,
         })
 
         if (!response.ok) {
-            return { confidence: 0 }
+            const errorData = await response.json().catch(() => ({}))
+            return { confidence: 0, error: `AI service error: ${response.status}` }
         }
 
         const data = await response.json()
         const content = data.choices?.[0]?.message?.content
-        if (!content) return { confidence: 0 }
+        if (!content) return { confidence: 0, error: 'AI returned empty response' }
 
         return JSON.parse(content)
     } catch (error) {
         console.error('Failed to extract from image:', error)
-        return { confidence: 0 }
+        return { confidence: 0, error: 'AI extraction failed' }
     }
 }
 
@@ -205,6 +208,7 @@ export const crowdsourceSubmitHandler: PayloadHandler = async (req: PayloadReque
         const result: SubmissionResult = {
             success: false,
             message: '',
+            warnings: [],
         }
 
         // Process images if provided
@@ -229,6 +233,15 @@ export const crowdsourceSubmitHandler: PayloadHandler = async (req: PayloadReque
                 }
                 aiConfidence = Math.round(extracted.confidence * 100)
                 result.extractedData = extractedData
+            } else {
+                // Report AI extraction failure to user
+                if (extracted.error) {
+                    result.warnings!.push(`Image processing: ${extracted.error}. Your submission was still saved for manual review.`)
+                } else if (extracted.confidence > 0 && extracted.confidence <= 0.5) {
+                    result.warnings!.push('Image quality was too low for automatic extraction. Your submission was saved for manual review.')
+                } else {
+                    result.warnings!.push('Could not extract product info from image. Your submission was saved for manual review.')
+                }
             }
         }
 
@@ -325,8 +338,14 @@ export const crowdsourceSubmitHandler: PayloadHandler = async (req: PayloadReque
                 aiConfidence,
                 isDuplicate: result.isDuplicate,
                 extractedProductName: extractedData?.productName,
+                aiWarnings: result.warnings,
             },
         })
+
+        // Clean up response - remove empty warnings array
+        if (result.warnings && result.warnings.length === 0) {
+            delete result.warnings
+        }
 
         return Response.json(result)
     } catch (error) {

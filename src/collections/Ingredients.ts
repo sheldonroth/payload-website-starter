@@ -390,6 +390,18 @@ export const Ingredients: CollectionConfig = {
                 description: 'Products currently flagged due to this ingredient',
             },
         },
+
+        // === REVERSE RELATIONSHIP ===
+        {
+            name: 'productCount',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                readOnly: true,
+                description: 'Total products containing this ingredient. To view products, use Products collection filter: ingredientsList contains [ingredient ID]',
+            },
+        },
     ],
     timestamps: true,
 }
