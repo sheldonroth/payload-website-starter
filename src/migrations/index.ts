@@ -40,6 +40,7 @@ import * as migration_20260102_040000_add_amazon_link_validation from './2026010
 import * as migration_20260103_000000_add_automation_thresholds from './20260103_000000_add_automation_thresholds';
 import * as migration_20260103_010000_add_automation_thresholds_v2 from './20260103_010000_add_automation_thresholds_v2';
 import * as migration_20260103_020000_zero_input_refactor from './20260103_020000_zero_input_refactor';
+import * as migration_20260104_000000_fix_archetype_column_names from './20260104_000000_fix_archetype_column_names';
 
 export const migrations = [
   {
@@ -251,5 +252,10 @@ export const migrations = [
     up: migration_20260103_020000_zero_input_refactor.up,
     down: migration_20260103_020000_zero_input_refactor.down,
     name: '20260103_020000_zero_input_refactor'
+  },
+  {
+    up: migration_20260104_000000_fix_archetype_column_names.up,
+    down: migration_20260104_000000_fix_archetype_column_names.down,
+    name: '20260104_000000_fix_archetype_column_names'
   },
 ];
