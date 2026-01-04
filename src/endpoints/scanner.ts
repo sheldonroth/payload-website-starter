@@ -174,9 +174,8 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
             images.push({ image: backImageId, imageType: 'back' })
         }
 
-        // Create UserSubmission
-        // @ts-expect-error user-submissions collection exists but types not regenerated
-        const submission = await req.payload.create({
+        // Create UserSubmission (use Function cast to bypass strict type checking)
+        const submission = await (req.payload.create as Function)({
             collection: 'user-submissions',
             data: {
                 type: 'product_scan',

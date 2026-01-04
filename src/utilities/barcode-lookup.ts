@@ -334,7 +334,6 @@ export async function saveProductFromLookup(
     }
 
     // Create new product
-    // @ts-expect-error Product fields may not be in generated types yet
     const newProduct = await payload.create({
         collection: 'products',
         data: {
