@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic'
 // Maximum number of items a user can save
 const MAX_SAVED_ARTICLES = 500
 
+// Helper to ensure savedArticleIds is always an array
+function getSavedArray(savedArticleIds: unknown): number[] {
+    if (Array.isArray(savedArticleIds)) {
+        return savedArticleIds
+    }
+    return []
+}
+
 /**
  * GET /api/users/me/saved-articles
  * Get user's saved article IDs
@@ -31,7 +39,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Login required' }, { status: 401 })
         }
 
-        const savedArticleIds = ((user as any).savedArticleIds || []) as number[]
+        const savedArticleIds = getSavedArray((user as any).savedArticleIds)
 
         return NextResponse.json({
             savedArticleIds,
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid articleId' }, { status: 400 })
         }
 
-        const currentSaved = ((user as any).savedArticleIds || []) as number[]
+        const currentSaved = getSavedArray((user as any).savedArticleIds)
 
         // Check size limit
         if (currentSaved.length >= MAX_SAVED_ARTICLES) {
@@ -155,7 +163,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Invalid articleId' }, { status: 400 })
         }
 
-        const currentSaved = ((user as any).savedArticleIds || []) as number[]
+        const currentSaved = getSavedArray((user as any).savedArticleIds)
 
         // Check if saved
         if (!currentSaved.includes(numericId)) {

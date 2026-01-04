@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic'
 // Maximum number of items a user can save
 const MAX_SAVED_PRODUCTS = 500
 
+// Helper to ensure savedProductIds is always an array
+function getSavedArray(savedProductIds: unknown): number[] {
+    if (Array.isArray(savedProductIds)) {
+        return savedProductIds
+    }
+    return []
+}
+
 /**
  * GET /api/users/me/saved-products
  * Get user's saved product IDs
@@ -33,7 +41,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Login required' }, { status: 401 })
         }
 
-        const savedProductIds = ((user as any).savedProductIds || []) as number[]
+        const savedProductIds = getSavedArray((user as any).savedProductIds)
 
         return NextResponse.json({
             savedProductIds,
@@ -80,7 +88,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid productId' }, { status: 400 })
         }
 
-        const currentSaved = ((user as any).savedProductIds || []) as number[]
+        const currentSaved = getSavedArray((user as any).savedProductIds)
 
         // Check size limit
         if (currentSaved.length >= MAX_SAVED_PRODUCTS) {
@@ -157,7 +165,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Invalid productId' }, { status: 400 })
         }
 
-        const currentSaved = ((user as any).savedProductIds || []) as number[]
+        const currentSaved = getSavedArray((user as any).savedProductIds)
 
         // Check if saved
         if (!currentSaved.includes(numericId)) {
