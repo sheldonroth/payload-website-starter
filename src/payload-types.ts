@@ -649,6 +649,10 @@ export interface Product {
    */
   freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
   status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
+  /**
+   * Auto-set when verdict is AVOID. Lab data hidden from non-premium users.
+   */
+  hasRestrictedLabData?: boolean | null;
   priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
   pros?:
     | {
@@ -727,6 +731,22 @@ export interface Product {
      * Selected as editor's top pick
      */
     isEditorsChoice?: boolean | null;
+    /**
+     * System-calculated: Highest price in category. Enable "Override Archetype" to prevent auto-changes.
+     */
+    isArchetypePremium?: boolean | null;
+    /**
+     * System-calculated: Best score/price ratio in category. Enable "Override Archetype" to prevent auto-changes.
+     */
+    isArchetypeValue?: boolean | null;
+    /**
+     * Enable to prevent system from changing archetype badges on this product
+     */
+    archetypeOverride?: boolean | null;
+    /**
+     * When archetype was last auto-calculated
+     */
+    archetypeCalculatedAt?: string | null;
   };
   /**
    * Auto-calculated from brand trending status
@@ -1747,6 +1767,34 @@ export interface AuditLog {
   performedBy?: (number | null) | User;
   success?: boolean | null;
   errorMessage?: string | null;
+  /**
+   * Whether this error can be retried
+   */
+  retryable?: boolean | null;
+  /**
+   * API endpoint to call for retry
+   */
+  retryEndpoint?: string | null;
+  /**
+   * Data to send when retrying
+   */
+  retryPayload?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Number of retry attempts made
+   */
+  retryCount?: number | null;
+  /**
+   * When this error was resolved
+   */
+  resolvedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2780,6 +2828,7 @@ export interface ProductsSelect<T extends boolean = true> {
   conflicts?: T;
   freshnessStatus?: T;
   status?: T;
+  hasRestrictedLabData?: T;
   priceRange?: T;
   pros?:
     | T
@@ -2821,6 +2870,10 @@ export interface ProductsSelect<T extends boolean = true> {
         isRecommended?: T;
         isBestValue?: T;
         isEditorsChoice?: T;
+        isArchetypePremium?: T;
+        isArchetypeValue?: T;
+        archetypeOverride?: T;
+        archetypeCalculatedAt?: T;
       };
   trending?:
     | T
@@ -3142,6 +3195,11 @@ export interface AuditLogSelect<T extends boolean = true> {
   performedBy?: T;
   success?: T;
   errorMessage?: T;
+  retryable?: T;
+  retryEndpoint?: T;
+  retryPayload?: T;
+  retryCount?: T;
+  resolvedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3811,35 +3869,35 @@ export interface SiteSetting {
     siteDescription?: string | null;
   };
   /**
-   * Configure automation behavior for Zero-Input CMS features
+   * Configure thresholds for automated features
    */
   automationThresholds?: {
     /**
-     * Products older than this are marked as stale (default: 180 days)
+     * Products older than this are considered stale for re-enrichment
      */
     freshnessThresholdDays?: number | null;
     /**
-     * Max character difference for fuzzy ingredient matching (default: 2)
+     * Maximum Levenshtein distance for fuzzy ingredient matching (1-3 recommended)
      */
     fuzzyMatchThreshold?: number | null;
     /**
-     * Max safe alternatives to suggest for AVOID products (default: 3)
+     * Maximum number of safe alternatives to auto-suggest
      */
     autoAlternativesLimit?: number | null;
     /**
-     * Minimum confidence (%) for auto-assigning AI-suggested categories (default: 70%)
+     * Minimum confidence for auto-assigning AI-suggested categories (0-100)
      */
     aiCategoryConfidence?: number | null;
     /**
-     * Use Levenshtein distance to match similar ingredient names
+     * Use fuzzy matching for ingredient linking
      */
     enableFuzzyMatching?: boolean | null;
     /**
-     * Use AI to suggest categories for new products
+     * Auto-suggest categories using AI
      */
-    enableAICategories?: boolean | null;
+    enableAiCategories?: boolean | null;
     /**
-     * Automatically suggest safe alternatives for AVOID products
+     * Auto-suggest safe alternatives for avoided products
      */
     enableAutoAlternatives?: boolean | null;
   };
@@ -3936,7 +3994,7 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         autoAlternativesLimit?: T;
         aiCategoryConfidence?: T;
         enableFuzzyMatching?: T;
-        enableAICategories?: T;
+        enableAiCategories?: T;
         enableAutoAlternatives?: T;
       };
   updatedAt?: T;
