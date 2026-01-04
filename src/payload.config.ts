@@ -79,6 +79,7 @@ import { imageExtractHandler, imageExtractApplyHandler } from './endpoints/image
 import { errorRetryHandler } from './endpoints/error-retry'
 import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
 import { appVersionHandler } from './endpoints/app-version'
+import { userSubscriptionHandler } from './endpoints/user-subscription'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -520,6 +521,12 @@ export default buildConfig({
       path: '/app-version',
       method: 'get',
       handler: appVersionHandler,
+    },
+    // User Subscription Status (for frontend auth)
+    {
+      path: '/user-subscription',
+      method: 'get',
+      handler: userSubscriptionHandler,
     },
   ],
   plugins: [
