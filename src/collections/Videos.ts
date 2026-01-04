@@ -257,15 +257,6 @@ export const Videos: CollectionConfig = {
                 description: 'Products that were created from analyzing this video',
             },
         },
-        {
-            name: 'extractedIngredients',
-            type: 'relationship',
-            relationTo: 'ingredients',
-            hasMany: true,
-            label: 'Ingredients Mentioned',
-            admin: {
-                description: 'Ingredients discussed in this video',
-            },
-        },
+        // Note: extractedIngredients field removed - Ingredients collection was archived
     ],
 }
