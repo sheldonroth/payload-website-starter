@@ -177,6 +177,86 @@ export const DeviceFingerprints: CollectionConfig = {
                 description: 'Total unlocks across all time (for abuse detection)',
             },
         },
+
+        // === BEHAVIOR METRICS (Cortex Analytics) ===
+        {
+            name: 'behaviorMetrics',
+            type: 'group',
+            admin: {
+                description: 'Behavioral data for adaptive paywalling',
+            },
+            fields: [
+                {
+                    name: 'totalScans',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Total barcode scans',
+                    },
+                },
+                {
+                    name: 'avoidHits',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Number of AVOID verdicts seen',
+                    },
+                },
+                {
+                    name: 'sessionCount',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Total app sessions',
+                    },
+                },
+                {
+                    name: 'searchCount',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Total product searches',
+                    },
+                },
+                {
+                    name: 'voteCount',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Total votes cast',
+                    },
+                },
+                {
+                    name: 'cohort',
+                    type: 'select',
+                    defaultValue: 'experiment',
+                    options: [
+                        { label: 'Experiment', value: 'experiment' },
+                        { label: 'Control', value: 'control' },
+                        { label: 'Holdout', value: 'holdout' },
+                    ],
+                    admin: {
+                        description: 'A/B test cohort assignment',
+                    },
+                },
+                {
+                    name: 'paywallsShown',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Number of times paywall was displayed',
+                    },
+                },
+                {
+                    name: 'paywallsDismissed',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Number of times paywall was dismissed',
+                    },
+                },
+            ],
+        },
     ],
     timestamps: true,
 }

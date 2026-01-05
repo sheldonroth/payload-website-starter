@@ -88,6 +88,7 @@ export interface Config {
     'trending-news': TrendingNew;
     'product-votes': ProductVote;
     'push-tokens': PushToken;
+    feedback: Feedback;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -126,6 +127,7 @@ export interface Config {
     'trending-news': TrendingNewsSelect<false> | TrendingNewsSelect<true>;
     'product-votes': ProductVotesSelect<false> | ProductVotesSelect<true>;
     'push-tokens': PushTokensSelect<false> | PushTokensSelect<true>;
+    feedback: FeedbackSelect<false> | FeedbackSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -973,6 +975,43 @@ export interface DeviceFingerprint {
    * Total unlocks across all time (for abuse detection)
    */
   totalUnlocks?: number | null;
+  /**
+   * Behavioral data for adaptive paywalling
+   */
+  behaviorMetrics?: {
+    /**
+     * Total barcode scans
+     */
+    totalScans?: number | null;
+    /**
+     * Number of AVOID verdicts seen
+     */
+    avoidHits?: number | null;
+    /**
+     * Total app sessions
+     */
+    sessionCount?: number | null;
+    /**
+     * Total product searches
+     */
+    searchCount?: number | null;
+    /**
+     * Total votes cast
+     */
+    voteCount?: number | null;
+    /**
+     * A/B test cohort assignment
+     */
+    cohort?: ('experiment' | 'control' | 'holdout') | null;
+    /**
+     * Number of times paywall was displayed
+     */
+    paywallsShown?: number | null;
+    /**
+     * Number of times paywall was dismissed
+     */
+    paywallsDismissed?: number | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -2252,6 +2291,22 @@ export interface ProductVote {
     | boolean
     | null;
   /**
+   * Users who added photos to this request (bounty votes +10x). Structure: [{ fingerprintId, userId?, submissionId, contributedAt, bonusWeight: 10 }]
+   */
+  photoContributors?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Count of users who contributed photos (bounty voters)
+   */
+  totalContributors?: number | null;
+  /**
    * Array of user IDs/emails to notify when testing completes
    */
   notifyOnComplete?:
@@ -2324,6 +2379,43 @@ export interface PushToken {
         notified?: boolean | null;
         id?: string | null;
       }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedback".
+ */
+export interface Feedback {
+  id: number;
+  message: string;
+  /**
+   * User email if authenticated
+   */
+  email?: string | null;
+  /**
+   * Linked user account if authenticated
+   */
+  user?: (number | null) | User;
+  platform: 'ios' | 'android' | 'web';
+  source?: string | null;
+  status?: ('new' | 'reviewed' | 'actioned' | 'archived') | null;
+  /**
+   * Internal notes about this feedback
+   */
+  adminNotes?: string | null;
+  /**
+   * Additional data (app version, subscription status, etc.)
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
     | null;
   updatedAt: string;
   createdAt: string;
@@ -2601,6 +2693,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'push-tokens';
         value: number | PushToken;
+      } | null)
+    | ({
+        relationTo: 'feedback';
+        value: number | Feedback;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -3457,6 +3553,18 @@ export interface DeviceFingerprintsSelect<T extends boolean = true> {
   suspiciousScore?: T;
   emailsUsed?: T;
   totalUnlocks?: T;
+  behaviorMetrics?:
+    | T
+    | {
+        totalScans?: T;
+        avoidHits?: T;
+        sessionCount?: T;
+        searchCount?: T;
+        voteCount?: T;
+        cohort?: T;
+        paywallsShown?: T;
+        paywallsDismissed?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3516,6 +3624,8 @@ export interface ProductVotesSelect<T extends boolean = true> {
   thresholdReachedAt?: T;
   linkedProduct?: T;
   voterFingerprints?: T;
+  photoContributors?: T;
+  totalContributors?: T;
   notifyOnComplete?: T;
   openFoodFactsData?: T;
   rank?: T;
@@ -3541,6 +3651,22 @@ export interface PushTokensSelect<T extends boolean = true> {
         notified?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedback_select".
+ */
+export interface FeedbackSelect<T extends boolean = true> {
+  message?: T;
+  email?: T;
+  user?: T;
+  platform?: T;
+  source?: T;
+  status?: T;
+  adminNotes?: T;
+  metadata?: T;
   updatedAt?: T;
   createdAt?: T;
 }
