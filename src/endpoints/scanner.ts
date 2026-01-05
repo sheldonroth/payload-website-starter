@@ -11,6 +11,7 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { lookupBarcode, saveProductFromLookup, BarcodeProduct } from '../utilities/barcode-lookup'
 import { createAuditLog } from '../collections/AuditLog'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 /**
  * POST /api/scanner/lookup
@@ -263,12 +264,12 @@ async function uploadMedia(
 }
 
 /**
- * Process back image with OCR (label-decode)
+ * Process back image with OCR using Gemini Vision
  */
 async function processBackImage(
     mediaId: number,
     payload: PayloadRequest['payload']
-): Promise<{ success: boolean; ingredients?: string; error?: string }> {
+): Promise<{ success: boolean; ingredients?: string; rawText?: string; confidence?: number; error?: string }> {
     try {
         // Get media URL
         const media = await payload.findByID({
@@ -285,26 +286,28 @@ async function processBackImage(
             return { success: false, error: 'Media URL not available' }
         }
 
-        // Call GPT-4 Vision for OCR
-        const openaiKey = process.env.OPENAI_API_KEY
-        if (!openaiKey) {
-            console.warn('[Scanner] OpenAI API key not configured, skipping OCR')
+        // Use Gemini Vision for OCR
+        const geminiKey = process.env.GEMINI_API_KEY
+        if (!geminiKey) {
+            console.warn('[Scanner] Gemini API key not configured, skipping OCR')
             return { success: false, error: 'OCR not configured' }
         }
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${openaiKey}`,
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are an expert at reading nutrition and ingredient labels from product photos.
-Extract ALL ingredients from the label image.
+        // Fetch image and convert to base64
+        const imageResponse = await fetch(mediaUrl)
+        if (!imageResponse.ok) {
+            return { success: false, error: 'Failed to fetch image' }
+        }
+        const imageBuffer = await imageResponse.arrayBuffer()
+        const base64Image = Buffer.from(imageBuffer).toString('base64')
+        const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg'
+
+        // Initialize Gemini
+        const genAI = new GoogleGenerativeAI(geminiKey)
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+        const prompt = `You are an expert at reading nutrition and ingredient labels from product photos.
+Extract ALL ingredients from this label image.
 
 Rules:
 1. Extract every ingredient mentioned, including sub-ingredients in parentheses
@@ -313,44 +316,40 @@ Rules:
 4. List in order of appearance (highest to lowest by weight)
 5. If parts are unclear, note them
 
-Return ONLY valid JSON:
+Return ONLY valid JSON in this exact format:
 {
   "rawText": "Full text from the label",
   "ingredients": ["ingredient1", "ingredient2", ...],
   "confidence": 0.95,
   "unclear": ["any unclear parts"]
 }`
-                    },
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: 'Extract all ingredients from this product label:' },
-                            { type: 'image_url', image_url: { url: mediaUrl } },
-                        ],
-                    },
-                ],
-                max_tokens: 2000,
-                response_format: { type: 'json_object' },
-            }),
-        })
 
-        if (!response.ok) {
-            console.error('[Scanner] OpenAI API error:', await response.text())
-            return { success: false, error: 'OCR API error' }
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    mimeType,
+                    data: base64Image,
+                },
+            },
+        ])
+
+        const responseText = result.response.text()
+
+        // Extract JSON from response
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+            console.error('[Scanner] No JSON in Gemini response:', responseText)
+            return { success: false, error: 'Invalid OCR response format' }
         }
 
-        const data = await response.json()
-        const content = data.choices?.[0]?.message?.content
-
-        if (!content) {
-            return { success: false, error: 'No OCR response' }
-        }
-
-        const parsed = JSON.parse(content)
+        const parsed = JSON.parse(jsonMatch[0])
 
         return {
             success: true,
             ingredients: parsed.ingredients?.join(', '),
+            rawText: parsed.rawText,
+            confidence: parsed.confidence,
         }
     } catch (error) {
         console.error('[Scanner] OCR processing error:', error)
