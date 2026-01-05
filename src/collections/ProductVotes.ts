@@ -184,6 +184,22 @@ export const ProductVotes: CollectionConfig = {
             },
         },
         {
+            name: 'photoContributors',
+            type: 'json',
+            defaultValue: [],
+            admin: {
+                description: 'Users who added photos to this request (bounty votes +10x). Structure: [{ fingerprintId, userId?, submissionId, contributedAt, bonusWeight: 10 }]',
+            },
+        },
+        {
+            name: 'totalContributors',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                description: 'Count of users who contributed photos (bounty voters)',
+            },
+        },
+        {
             name: 'notifyOnComplete',
             type: 'json',
             defaultValue: [],

@@ -19,6 +19,7 @@ const VOTE_WEIGHTS = {
     search: 1,
     scan: 5,
     member_scan: 20,
+    bounty_contribution: 10, // Bonus for adding photos to someone else's request
 }
 
 interface VoteRequest {
@@ -327,6 +328,17 @@ export const productVoteLeaderboardHandler = async (req: PayloadRequest): Promis
             },
             sort: '-totalWeightedVotes',
             limit: Math.min(limit, 50),
+            // Only select fields needed for leaderboard (avoids querying new columns not yet in DB)
+            select: {
+                barcode: true,
+                productName: true,
+                brand: true,
+                imageUrl: true,
+                totalWeightedVotes: true,
+                uniqueVoters: true,
+                fundingProgress: true,
+                status: true,
+            },
         })
 
         const leaderboard = topVoted.docs.map((doc, index) => {
@@ -362,6 +374,237 @@ export const productVoteLeaderboardHandler = async (req: PayloadRequest): Promis
         console.error('[product-vote-leaderboard] Error:', error)
         return Response.json(
             { error: 'Failed to get leaderboard', details: String(error) },
+            { status: 500 }
+        )
+    }
+}
+
+/**
+ * POST /api/product-vote/contribute
+ * Bounty vote - add photos to someone else's request for +10x bonus
+ */
+interface ContributeRequest {
+    barcode: string
+    fingerprintId: string
+    userId?: string
+    submissionId: number
+}
+
+interface PhotoContributor {
+    fingerprintId: string
+    userId?: string
+    submissionId: number
+    contributedAt: string
+    bonusWeight: number
+}
+
+export const productVoteContributeHandler = async (req: PayloadRequest): Promise<Response> => {
+    if (req.method !== 'POST') {
+        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    try {
+        const body = await req.json?.() as ContributeRequest
+
+        if (!body?.barcode || !body?.fingerprintId || !body?.submissionId) {
+            return Response.json(
+                { error: 'barcode, fingerprintId, and submissionId are required' },
+                { status: 400 }
+            )
+        }
+
+        const { barcode, fingerprintId, userId, submissionId } = body
+
+        // Find existing vote record
+        const existingVotes = await req.payload.find({
+            collection: 'product-votes',
+            where: { barcode: { equals: barcode } },
+            limit: 1,
+        })
+
+        if (existingVotes.docs.length === 0) {
+            return Response.json(
+                { error: 'No vote record found for this barcode. Vote first before contributing photos.' },
+                { status: 404 }
+            )
+        }
+
+        const voteRecord = existingVotes.docs[0] as {
+            id: number
+            barcode: string
+            totalWeightedVotes: number
+            fundingThreshold: number
+            fundingProgress: number
+            voterFingerprints: string[]
+            photoContributors: PhotoContributor[]
+            totalContributors: number
+            status: string
+        }
+
+        const existingFingerprints = voteRecord.voterFingerprints || []
+        const existingContributors = voteRecord.photoContributors || []
+
+        // Check if this user already contributed photos
+        const alreadyContributed = existingContributors.some(
+            (c) => c.fingerprintId === fingerprintId
+        )
+
+        if (alreadyContributed) {
+            return Response.json({
+                success: false,
+                bountyAwarded: false,
+                bonusWeight: 0,
+                newTotalVotes: voteRecord.totalWeightedVotes,
+                fundingProgress: voteRecord.fundingProgress,
+                message: 'You have already contributed photos to this product.',
+            })
+        }
+
+        // Check if this is the original voter (bounty only for different users)
+        const isOriginalVoter = existingFingerprints.includes(fingerprintId)
+        const bountyWeight = isOriginalVoter ? 0 : VOTE_WEIGHTS.bounty_contribution
+
+        // Create new contributor entry
+        const newContributor: PhotoContributor = {
+            fingerprintId,
+            userId,
+            submissionId,
+            contributedAt: new Date().toISOString(),
+            bonusWeight: bountyWeight,
+        }
+
+        // Calculate new totals
+        const newTotalVotes = voteRecord.totalWeightedVotes + bountyWeight
+        const newTotalContributors = (voteRecord.totalContributors || 0) + 1
+        const newContributors = [...existingContributors, newContributor]
+
+        // Check if threshold was just reached
+        const threshold = voteRecord.fundingThreshold
+        const wasUnderThreshold = voteRecord.totalWeightedVotes < threshold
+        const nowOverThreshold = newTotalVotes >= threshold
+
+        const updateData: Record<string, unknown> = {
+            totalWeightedVotes: newTotalVotes,
+            photoContributors: newContributors,
+            totalContributors: newTotalContributors,
+        }
+
+        // Update status if threshold just reached
+        if (wasUnderThreshold && nowOverThreshold) {
+            updateData.status = 'threshold_reached'
+            updateData.thresholdReachedAt = new Date().toISOString()
+        }
+
+        await req.payload.update({
+            collection: 'product-votes',
+            id: voteRecord.id,
+            data: updateData,
+        })
+
+        const newFundingProgress = Math.min(100, Math.round((newTotalVotes / threshold) * 100))
+
+        const message = bountyWeight > 0
+            ? `Bounty earned! Your photos added +${bountyWeight} votes to this request.`
+            : `Photos added! Since you're the original voter, no bounty bonus applies.`
+
+        return Response.json({
+            success: true,
+            bountyAwarded: bountyWeight > 0,
+            bonusWeight: bountyWeight,
+            newTotalVotes,
+            fundingProgress: newFundingProgress,
+            message,
+        })
+
+    } catch (error) {
+        console.error('[product-vote-contribute] Error:', error)
+        return Response.json(
+            { error: 'Failed to register photo contribution', details: String(error) },
+            { status: 500 }
+        )
+    }
+}
+
+/**
+ * GET /api/product-vote/queue
+ * Get the product testing queue with filters and pagination
+ */
+export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Response> => {
+    if (req.method !== 'GET') {
+        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    try {
+        const url = new URL(req.url || '', 'http://localhost')
+        const filter = url.searchParams.get('filter') || 'most_voted'
+        const page = parseInt(url.searchParams.get('page') || '1', 10)
+        const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 50)
+
+        // Build sort based on filter
+        let sort: string
+        switch (filter) {
+            case 'newest':
+                sort = '-createdAt'
+                break
+            case 'almost_funded':
+                sort = '-fundingProgress'
+                break
+            case 'most_voted':
+            default:
+                sort = '-totalWeightedVotes'
+        }
+
+        const results = await req.payload.find({
+            collection: 'product-votes',
+            where: {
+                status: { in: ['collecting_votes', 'threshold_reached'] },
+            },
+            sort,
+            page,
+            limit,
+        })
+
+        const products = results.docs.map((doc) => {
+            const vote = doc as {
+                barcode: string
+                productName?: string
+                brand?: string
+                imageUrl?: string
+                totalWeightedVotes: number
+                uniqueVoters: number
+                fundingProgress: number
+                fundingThreshold: number
+                totalContributors?: number
+                status: string
+                createdAt: string
+            }
+
+            return {
+                barcode: vote.barcode,
+                productName: vote.productName || 'Unknown Product',
+                brand: vote.brand,
+                imageUrl: vote.imageUrl,
+                totalVoters: vote.uniqueVoters,
+                totalContributors: vote.totalContributors || 0,
+                totalWeightedVotes: vote.totalWeightedVotes,
+                fundingProgress: vote.fundingProgress,
+                fundingThreshold: vote.fundingThreshold,
+                status: vote.status,
+                createdAt: vote.createdAt,
+            }
+        })
+
+        return Response.json({
+            products,
+            total: results.totalDocs,
+            page: results.page,
+            totalPages: results.totalPages,
+        })
+
+    } catch (error) {
+        console.error('[product-vote-queue] Error:', error)
+        return Response.json(
+            { error: 'Failed to get queue', details: String(error) },
             { status: 500 }
         )
     }

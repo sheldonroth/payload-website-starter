@@ -89,6 +89,7 @@ import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscri
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
 import { feedbackHandler } from './endpoints/feedback'
+import { behaviorUpdateHandler } from './endpoints/behavior-update'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -607,6 +608,12 @@ export default buildConfig({
       path: '/submit-feedback',
       method: 'post',
       handler: feedbackHandler,
+    },
+    // Cortex Analytics - Behavior Metrics Update
+    {
+      path: '/device-fingerprints/behavior',
+      method: 'post',
+      handler: behaviorUpdateHandler,
     },
   ],
   plugins: [
