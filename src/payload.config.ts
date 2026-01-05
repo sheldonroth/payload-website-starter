@@ -29,6 +29,7 @@ import { ProductUnlocks } from './collections/ProductUnlocks'
 import { TrendingNews } from './collections/TrendingNews'
 import { ProductVotes } from './collections/ProductVotes'
 import { PushTokens } from './collections/PushTokens'
+import { Feedback } from './collections/Feedback'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -82,10 +83,12 @@ import { errorRetryHandler } from './endpoints/error-retry'
 import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
 import { appVersionHandler } from './endpoints/app-version'
 import { userSubscriptionHandler } from './endpoints/user-subscription'
-import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler } from './endpoints/product-vote'
+import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler, productVoteContributeHandler, productVoteQueueHandler } from './endpoints/product-vote'
+import { productReportHandler } from './endpoints/product-report'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
+import { feedbackHandler } from './endpoints/feedback'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -163,7 +166,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -550,6 +553,23 @@ export default buildConfig({
       method: 'get',
       handler: productVoteLeaderboardHandler,
     },
+    // Product Vote Queue (Two-Tier Voting System)
+    {
+      path: '/product-vote/contribute',
+      method: 'post',
+      handler: productVoteContributeHandler,
+    },
+    {
+      path: '/product-vote/queue',
+      method: 'get',
+      handler: productVoteQueueHandler,
+    },
+    // Product Report (barcode lookup)
+    {
+      path: '/product-report/:barcode',
+      method: 'get',
+      handler: productReportHandler,
+    },
     // Push Token Registration & Subscriptions
     {
       path: '/push-tokens/register',
@@ -582,6 +602,11 @@ export default buildConfig({
       path: '/vote-submission',
       method: 'post',
       handler: voteSubmissionHandler,
+    },
+    {
+      path: '/submit-feedback',
+      method: 'post',
+      handler: feedbackHandler,
     },
   ],
   plugins: [
