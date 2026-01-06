@@ -22,7 +22,7 @@ export const GeneratedContent: CollectionConfig = {
     admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'contentType', 'status', 'legalReviewed', 'createdAt'],
-        group: 'Content Engine',
+        group: 'Catalog',
         description: 'AI-generated content awaiting your approval',
         listSearchableFields: ['title', 'contentType', 'status'],
     },

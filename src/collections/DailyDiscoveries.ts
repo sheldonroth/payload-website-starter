@@ -16,7 +16,7 @@ export const DailyDiscoveries: CollectionConfig = {
     admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'publishDate', 'discoveryType', 'status'],
-        group: 'Engagement',
+        group: 'Community',
         description: 'One product reveal per day for all users',
     },
     access: {

@@ -15,7 +15,7 @@ export const EmailSends: CollectionConfig = {
     admin: {
         useAsTitle: 'subject',
         defaultColumns: ['recipient', 'subject', 'status', 'abVariant', 'sentAt'],
-        group: 'Email Marketing',
+        group: 'Growth',
         description: 'Log of all sent emails with open/click tracking',
     },
     access: {

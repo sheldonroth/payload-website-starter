@@ -19,7 +19,7 @@ export const EmailTemplates: CollectionConfig = {
     admin: {
         useAsTitle: 'subject',
         defaultColumns: ['subject', 'sequence', 'dayInSequence', 'status', 'updatedAt'],
-        group: 'Email Marketing',
+        group: 'Growth',
         description: 'Email templates for automated sequences',
         listSearchableFields: ['subject', 'sequence'],
     },

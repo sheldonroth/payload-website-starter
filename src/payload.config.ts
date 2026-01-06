@@ -103,6 +103,7 @@ import contentGeneratorHandler from './endpoints/content-generator'
 import { emailCronHandler } from './endpoints/email-cron'
 import { resendWebhookHandler } from './endpoints/email-webhook'
 import { emailEventTriggerHandler } from './endpoints/email-event-trigger'
+import { smartScanHandler } from './endpoints/smart-scan'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -656,6 +657,8 @@ export default buildConfig({
     emailCronHandler,
     resendWebhookHandler,
     emailEventTriggerHandler,
+    // Smart Scan AI Vision
+    smartScanHandler,
   ],
   plugins: [
     ...plugins,
