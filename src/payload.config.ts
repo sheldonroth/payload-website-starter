@@ -32,6 +32,8 @@ import { PushTokens } from './collections/PushTokens'
 import { Feedback } from './collections/Feedback'
 import { Referrals } from './collections/Referrals'
 import { ReferralPayouts } from './collections/ReferralPayouts'
+import { GeneratedContent } from './collections/GeneratedContent'
+import { DailyDiscoveries } from './collections/DailyDiscoveries'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -94,6 +96,8 @@ import { feedbackHandler } from './endpoints/feedback'
 import { behaviorUpdateHandler } from './endpoints/behavior-update'
 import { revenuecatWebhookHandler } from './endpoints/revenuecat-webhook'
 import { referralEndpoints } from './endpoints/referral'
+import { businessAnalyticsEndpoint } from './endpoints/business-analytics'
+import contentGeneratorHandler from './endpoints/content-generator'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -126,6 +130,14 @@ export default buildConfig({
         'analytics': {
           Component: '@/components/AnalyticsDashboard',
           path: '/analytics',
+        },
+        'business-analytics': {
+          Component: '@/components/BusinessAnalyticsDashboard',
+          path: '/business-analytics',
+        },
+        'content-engine': {
+          Component: '@/components/ContentEngine',
+          path: '/content-engine',
         },
       },
       // Sidebar nav links
@@ -171,7 +183,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -623,6 +635,14 @@ export default buildConfig({
     revenuecatWebhookHandler,
     // Referral System Endpoints
     ...referralEndpoints,
+    // Business Analytics Dashboard
+    businessAnalyticsEndpoint,
+    // Content Generator
+    {
+      path: '/content/generate',
+      method: 'post',
+      handler: contentGeneratorHandler,
+    },
   ],
   plugins: [
     ...plugins,
