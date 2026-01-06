@@ -36,6 +36,9 @@ export const smartScanHandler: Endpoint = {
         const payload = req.payload;
 
         try {
+            if (!req.json) {
+                return Response.json({ error: 'Invalid request' }, { status: 400 });
+            }
             const body = await req.json();
             const { imageBase64, imageUrl } = body;
 
