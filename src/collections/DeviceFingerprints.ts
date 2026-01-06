@@ -178,6 +178,67 @@ export const DeviceFingerprints: CollectionConfig = {
             },
         },
 
+        // === REFERRAL SYSTEM ===
+        {
+            name: 'referralCode',
+            type: 'text',
+            unique: true,
+            index: true,
+            admin: {
+                description: 'Unique 6-character referral code for this device/user',
+            },
+        },
+        {
+            name: 'referredBy',
+            type: 'text',
+            admin: {
+                description: 'Referral code of the person who referred this user',
+            },
+        },
+        {
+            name: 'totalReferrals',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Total people referred by this user',
+            },
+        },
+        {
+            name: 'activeReferrals',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Currently subscribed referrals (earning commission)',
+            },
+        },
+        {
+            name: 'pendingReferrals',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Referrals not yet subscribed',
+            },
+        },
+        {
+            name: 'totalCommissionEarned',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                position: 'sidebar',
+                description: 'Total commission earned ($)',
+            },
+        },
+        {
+            name: 'payoutEmail',
+            type: 'email',
+            admin: {
+                description: 'PayPal/Venmo email for commission payouts',
+            },
+        },
+
         // === BEHAVIOR METRICS (Cortex Analytics) ===
         {
             name: 'behaviorMetrics',

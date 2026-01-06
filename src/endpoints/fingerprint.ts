@@ -1,6 +1,18 @@
 import { PayloadHandler } from 'payload'
 
 /**
+ * Generate a unique 6-character referral code
+ */
+function generateReferralCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let code = ''
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return code
+}
+
+/**
  * Fingerprint Registration Endpoint
  *
  * POST /api/fingerprint/register
@@ -101,6 +113,9 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
             })
         }
 
+        // Generate unique referral code
+        const referralCode = generateReferralCode()
+
         // Create new fingerprint (collection types regenerated on deployment)
         const newFingerprint = await (req.payload.create as Function)({
             collection: 'device-fingerprints',
@@ -115,6 +130,11 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
                 isBanned: false,
                 suspiciousActivity: false,
                 emailsUsed: [],
+                referralCode,
+                totalReferrals: 0,
+                activeReferrals: 0,
+                pendingReferrals: 0,
+                totalCommissionEarned: 0,
             },
         })
 

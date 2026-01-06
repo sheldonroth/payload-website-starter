@@ -50,6 +50,10 @@ interface RevenueCatWebhookPayload {
 
 const COMMISSION_AMOUNT = 25.00 // $25/year per referral
 
+// RevenueCat shared secret for webhook verification
+// Set this in RevenueCat Dashboard → Integrations → Webhooks → Authorization Header
+const REVENUECAT_WEBHOOK_SECRET = process.env.REVENUECAT_WEBHOOK_SECRET
+
 export const revenuecatWebhookHandler: Endpoint = {
     path: '/revenuecat-webhook',
     method: 'post',
@@ -57,6 +61,20 @@ export const revenuecatWebhookHandler: Endpoint = {
         const payload = req.payload
 
         try {
+            // Verify authorization header
+            const authHeader = req.headers.get('authorization')
+
+            if (REVENUECAT_WEBHOOK_SECRET) {
+                // If secret is configured, require it
+                if (!authHeader || authHeader !== `Bearer ${REVENUECAT_WEBHOOK_SECRET}`) {
+                    console.warn('[RevenueCat Webhook] Unauthorized request - invalid or missing auth header')
+                    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+                }
+            } else {
+                // Warn if no secret configured (allow in development)
+                console.warn('[RevenueCat Webhook] No REVENUECAT_WEBHOOK_SECRET configured - skipping auth')
+            }
+
             const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as RevenueCatWebhookPayload
 
             if (!body?.event) {
