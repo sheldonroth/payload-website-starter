@@ -109,14 +109,14 @@ export async function calculateReferralAttribution(payload: Payload): Promise<Re
     try {
         // Query all referrals
         const referrals = await payload.find({
-            collection: 'referrals',
+            collection: 'referrals' as any,
             limit: 10000,
             depth: 0,
         })
 
         // Query payouts for commission totals
         const payouts = await payload.find({
-            collection: 'referral-payouts',
+            collection: 'referral-payouts' as any,
             limit: 1000,
             depth: 0,
         })
