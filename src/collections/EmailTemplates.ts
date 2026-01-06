@@ -82,6 +82,13 @@ export const EmailTemplates: CollectionConfig = {
             },
         },
         {
+            name: 'subjectVariantB',
+            type: 'text',
+            admin: {
+                description: 'A/B test: alternate subject line (50% of recipients)',
+            },
+        },
+        {
             name: 'preheader',
             type: 'text',
             admin: {
