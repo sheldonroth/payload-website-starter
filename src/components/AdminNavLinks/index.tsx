@@ -58,9 +58,25 @@ const AdminNavLinks: React.FC = () => {
                             textDecoration: 'none',
                             color: '#d4d4d8',
                             fontSize: '14px',
+                            marginBottom: '4px',
                         }}
                     >
                         Analytics
+                    </Link>
+                    <Link
+                        href="/admin/business-analytics"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                        }}
+                    >
+                        Business Analytics
                     </Link>
                 </div>
             </div>
