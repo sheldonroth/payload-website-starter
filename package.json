@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@intercom/messenger-js-sdk": "^0.0.18",
     "@lucide/lab": "^0.1.2",
     "@payloadcms/admin-bar": "3.63.0",
     "@payloadcms/db-vercel-postgres": "3.63.0",
