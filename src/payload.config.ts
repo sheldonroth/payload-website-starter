@@ -104,6 +104,7 @@ import { emailCronHandler } from './endpoints/email-cron'
 import { resendWebhookHandler } from './endpoints/email-webhook'
 import { emailEventTriggerHandler } from './endpoints/email-event-trigger'
 import { smartScanHandler } from './endpoints/smart-scan'
+import { recalculateCategoryCountsEndpoint } from './endpoints/recalculate-category-counts'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -294,6 +295,7 @@ export default buildConfig({
       method: 'post',
       handler: recalculateFeaturedHandler,
     },
+    recalculateCategoryCountsEndpoint,
     // Product Request Queue
     {
       path: '/product-requests',

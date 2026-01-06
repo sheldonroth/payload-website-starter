@@ -574,6 +574,109 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+
+            // ============================================
+            // HOOK: UPDATE CATEGORY PRODUCT COUNTS
+            // Updates productCount on categories when products change
+            // ============================================
+            async ({ doc, previousDoc, req, operation }) => {
+                const currentCategoryId = typeof doc.category === 'number'
+                    ? doc.category
+                    : (doc.category as { id?: number })?.id
+
+                const previousCategoryId = previousDoc
+                    ? (typeof previousDoc.category === 'number'
+                        ? previousDoc.category
+                        : (previousDoc.category as { id?: number })?.id)
+                    : null
+
+                // Determine which categories need updating
+                const categoriesToUpdate = new Set<number>()
+
+                // Category changed - update both old and new
+                if (currentCategoryId !== previousCategoryId) {
+                    if (currentCategoryId) categoriesToUpdate.add(currentCategoryId)
+                    if (previousCategoryId) categoriesToUpdate.add(previousCategoryId)
+                }
+
+                // Product status changed to/from published - update current category
+                if (currentCategoryId && doc.status !== previousDoc?.status) {
+                    categoriesToUpdate.add(currentCategoryId)
+                }
+
+                // On create with category
+                if (operation === 'create' && currentCategoryId) {
+                    categoriesToUpdate.add(currentCategoryId)
+                }
+
+                // Update counts in background
+                if (categoriesToUpdate.size > 0) {
+                    setTimeout(async () => {
+                        try {
+                            for (const categoryId of Array.from(categoriesToUpdate)) {
+                                // Count published products in this category
+                                const { totalDocs } = await req.payload.count({
+                                    collection: 'products',
+                                    where: {
+                                        category: { equals: categoryId },
+                                        status: { equals: 'published' },
+                                    },
+                                })
+
+                                // Update the category's productCount
+                                await req.payload.update({
+                                    collection: 'categories',
+                                    id: categoryId,
+                                    data: { productCount: totalDocs },
+                                })
+
+                                console.log(`[Category Count] Updated category ${categoryId} productCount to ${totalDocs}`)
+                            }
+                        } catch (error) {
+                            console.error('[Category Count] Failed to update:', error)
+                        }
+                    }, 100)
+                }
+
+                return doc
+            },
+        ],
+
+        // ============================================
+        // AFTER DELETE: UPDATE CATEGORY PRODUCT COUNTS
+        // ============================================
+        afterDelete: [
+            async ({ doc, req }) => {
+                const categoryId = typeof doc.category === 'number'
+                    ? doc.category
+                    : (doc.category as { id?: number })?.id
+
+                if (categoryId && doc.status === 'published') {
+                    setTimeout(async () => {
+                        try {
+                            const { totalDocs } = await req.payload.count({
+                                collection: 'products',
+                                where: {
+                                    category: { equals: categoryId },
+                                    status: { equals: 'published' },
+                                },
+                            })
+
+                            await req.payload.update({
+                                collection: 'categories',
+                                id: categoryId,
+                                data: { productCount: totalDocs },
+                            })
+
+                            console.log(`[Category Count] After delete: Updated category ${categoryId} productCount to ${totalDocs}`)
+                        } catch (error) {
+                            console.error('[Category Count] Failed to update after delete:', error)
+                        }
+                    }, 100)
+                }
+
+                return doc
+            },
         ],
 
         // TEMPORARILY DISABLED - afterRead hook causing API timeouts
