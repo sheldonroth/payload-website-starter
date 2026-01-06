@@ -32,16 +32,16 @@ export const emailTemplateSeedHandler = async (req: any) => {
                         {
                             type: 'paragraph',
                             children: [{
-                                type: 'text', text: 'You just joined a community of people who refuse to be lied to about what's in their products.' }],
+                                type: 'text', text: 'You just joined a community of people who refuse to be lied to about what\'s in their products.' }],
             },
                             {
                                 type: 'paragraph',
-                                children: [{ type: 'text', text: 'Here's what makes us different: We don't read labels. We vaporize products in a mass spectrometer to find what brands hide.' }],
+                                children: [{ type: 'text', text: 'Here\'s what makes us different: We don\'t read labels. We vaporize products in a mass spectrometer to find what brands hide.' }],
                             },
                             {
                                 type: 'paragraph',
                                 children: [{
-                                    type: 'text', text: 'Ready to see what's really in your products?' }],
+                                    type: 'text', text: 'Ready to see what\'s really in your products?' }],
             },
                                 ],
                             },
@@ -54,7 +54,7 @@ export const emailTemplateSeedHandler = async (req: any) => {
             sequence: 'week1_value',
             dayInSequence: 1,
             subject: 'How we test: Behind the lab 🧪',
-            preheader: 'Ever wonder how we find what's hidden?',
+            preheader: 'Ever wonder how we find what\'s hidden?',
       headline: 'Behind the Lab',
             body: {
                 root: {
@@ -67,11 +67,11 @@ export const emailTemplateSeedHandler = async (req: any) => {
                         {
                             type: 'paragraph',
                             children: [{
-                                type: 'text', text: 'We use mass spectrometry — the same technology forensic labs use — to find ingredients that don't appear on labels.' }],
+                                type: 'text', text: 'We use mass spectrometry — the same technology forensic labs use — to find ingredients that don\'t appear on labels.' }],
             },
                             {
                                 type: 'paragraph',
-                                children: [{ type: 'text', text: 'That's how we've found hidden ingredients in products marketed as "clean" and "natural."' }],
+                                children: [{ type: 'text', text: 'That\'s how we\'ve found hidden ingredients in products marketed as "clean" and "natural."' }],
                             },
                             ],
                         },
@@ -116,8 +116,8 @@ export const emailTemplateSeedHandler = async (req: any) => {
         {
             sequence: 'week1_value',
             dayInSequence: 5,
-            subject: 'You've discovered {{ scan_count }} products so far 🎉',
-preheader: 'Here's what you've learned',
+            subject: 'You\'ve discovered {{ scan_count }} products so far 🎉',
+preheader: 'Here\'s what you\'ve learned',
     headline: 'Your Discovery Recap',
         body: {
     root: {
@@ -125,11 +125,11 @@ preheader: 'Here's what you've learned',
             children: [
                 {
                     type: 'paragraph',
-                    children: [{ type: 'text', text: 'In just 5 days, you've scanned {{ scan_count }} products.' }],
+                    children: [{ type: 'text', text: 'In just 5 days, you\'ve scanned {{ scan_count }} products.' }],
             },
     {
         type: 'paragraph',
-            children: [{ type: 'text', text: '{{if_avoided}}You've learned about {{ avoid_count }} products we don't recommend — that's knowledge that protects you.{ {/if_avoided } } ' }],
+            children: [{ type: 'text', text: '{{if_avoided}}You\'ve learned about {{ avoid_count }} products we don\'t recommend — that\'s knowledge that protects you.{ {/if_avoided } } ' }],
 },
 {
     type: 'paragraph',
@@ -155,7 +155,7 @@ ctaText: 'Keep Exploring',
                     {
                         type: 'paragraph',
                         children: [{
-                            type: 'text', text: 'You've been with us for a week now.Here's what you've discovered: ' }],
+                            type: 'text', text: 'You\'ve been with us for a week now.Here\'s what you\'ve discovered: ' }],
                         },
                         {
                             type: 'paragraph',
@@ -214,7 +214,7 @@ ctaText: 'Keep Exploring',
                         {
                             type: 'paragraph',
                             children: [{
-                                type: 'text', text: 'This week, our community avoided {{community_avoid_count}} products we don't recommend.' }],
+                                type: 'text', text: 'This week, our community avoided {{community_avoid_count}} products we don\'t recommend.' }],
             },
                             ],
                         },
@@ -231,8 +231,8 @@ ctaText: 'Keep Exploring',
             sequence: 'winback',
                 dayInSequence: 14,
                     subject: 'A lot has changed since you left',
-                        preheader: 'We've been busy in the lab',
-            headline: 'We've Tested { { new_test_count } } Products Since You Left',
+                        preheader: 'We\'ve been busy in the lab',
+            headline: 'We\'ve Tested { { new_test_count } } Products Since You Left',
             body: {
                 root: {
                     type: 'root',
@@ -243,7 +243,7 @@ ctaText: 'Keep Exploring',
                             },
                             {
                                 type: 'paragraph',
-                                children: [{ type: 'text', text: 'It's been a couple weeks since you opened the app.In that time, we've tested {{new_test_count}} new products.' }],
+                                children: [{ type: 'text', text: 'It\'s been a couple weeks since you opened the app.In that time, we\'ve tested {{new_test_count}} new products.' }],
                             },
                             {
                                 type: 'paragraph',
@@ -252,7 +252,7 @@ ctaText: 'Keep Exploring',
                         ],
         },
             },
-            ctaText: 'See What's New',
+            ctaText: 'See What\'s New',
             ctaUrl: 'theproductreport://discover',
                 status: 'active',
     },
@@ -344,7 +344,7 @@ ctaText: 'Keep Exploring',
                             {
                                 type: 'paragraph',
                                 children: [{
-                                    type: 'text', text: 'It's that time of year! Your personalized Year in Clean report is ready.' }],
+                                    type: 'text', text: 'It\'s that time of year! Your personalized Year in Clean report is ready.' }],
             },
                                 {
                                     type: 'paragraph',

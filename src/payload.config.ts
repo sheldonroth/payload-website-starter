@@ -144,6 +144,10 @@ export default buildConfig({
           Component: '@/components/ContentEngine',
           path: '/content-engine',
         },
+        'email-ab': {
+          Component: '@/components/EmailABDashboard',
+          path: '/email-ab',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],

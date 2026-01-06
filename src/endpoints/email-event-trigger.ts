@@ -23,7 +23,7 @@ export const emailEventTriggerHandler: Endpoint = {
         const payload = req.payload;
 
         try {
-            const body = await req.json() as EventTriggerRequest;
+            const body = await req.json?.() as EventTriggerRequest || {} as EventTriggerRequest;
             const { event, userId, userEmail, deviceFingerprint, data } = body;
 
             if (!event) {
@@ -52,7 +52,7 @@ export const emailEventTriggerHandler: Endpoint = {
                 if (fingerprint.docs.length > 0 && fingerprint.docs[0].user) {
                     const user = await payload.findByID({
                         collection: 'users',
-                        id: fingerprint.docs[0].user as string,
+                        id: String(fingerprint.docs[0].user),
                     });
                     email = user?.email;
                 }
@@ -150,7 +150,7 @@ export const emailEventTriggerHandler: Endpoint = {
 
             // Find template
             const templates = await payload.find({
-                collection: 'email-templates',
+                collection: 'email-templates' as any,
                 where: templateQuery,
                 limit: 1,
             });
@@ -168,7 +168,7 @@ export const emailEventTriggerHandler: Endpoint = {
 
             // Check if we've already sent this email recently (within 24 hours)
             const recentSends = await payload.find({
-                collection: 'email-sends',
+                collection: 'email-sends' as any,
                 where: {
                     and: [
                         { template: { equals: template.id } },
@@ -195,7 +195,7 @@ export const emailEventTriggerHandler: Endpoint = {
             // Send the email
             const result = await sendEmail(payload, {
                 to: email,
-                templateId: template.id,
+                templateId: String(template.id),
                 variables,
                 abTest: { enabled: true, variantId: Math.random() > 0.5 ? 'b' : 'a' },
             });

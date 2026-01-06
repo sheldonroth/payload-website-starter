@@ -21,7 +21,7 @@ export const emailCronHandler: Endpoint = {
         }
 
         const payload = req.payload;
-        const body = await req.json().catch(() => ({}));
+        const body = await req.json?.().catch(() => ({})) || {};
         const { job } = body;
 
         console.log(`[EmailCron] Running job: ${job}`);

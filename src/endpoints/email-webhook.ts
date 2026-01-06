@@ -34,7 +34,7 @@ export const resendWebhookHandler: Endpoint = {
         const payload = req.payload;
 
         try {
-            const rawBody = await req.text();
+            const rawBody = await req.text?.() || '';
             const signature = req.headers.get('resend-signature') || '';
             const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
 
@@ -53,7 +53,7 @@ export const resendWebhookHandler: Endpoint = {
 
             // Find the email send record by message ID
             const emailSends = await payload.find({
-                collection: 'email-sends',
+                collection: 'email-sends' as any,
                 where: {
                     messageId: { equals: data.email_id || data.message_id },
                 },
@@ -72,7 +72,7 @@ export const resendWebhookHandler: Endpoint = {
             switch (type) {
                 case 'email.delivered':
                     await payload.update({
-                        collection: 'email-sends',
+                        collection: 'email-sends' as any,
                         id: emailSend.id,
                         data: {
                             status: 'delivered',
@@ -82,9 +82,9 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.opened':
                     // Only update if not already opened (first open matters for stats)
-                    if (emailSend.status !== 'opened' && emailSend.status !== 'clicked') {
+                    if ((emailSend as any).status !== 'opened' && (emailSend as any).status !== 'clicked') {
                         await payload.update({
-                            collection: 'email-sends',
+                            collection: 'email-sends' as any,
                             id: emailSend.id,
                             data: {
                                 status: 'opened',
@@ -93,13 +93,13 @@ export const resendWebhookHandler: Endpoint = {
                         });
 
                         // Update template stats
-                        await updateTemplateStats(payload, emailSend.template as string, 'opened');
+                        await updateTemplateStats(payload, String((emailSend as any).template), 'opened');
                     }
                     break;
 
                 case 'email.clicked':
                     await payload.update({
-                        collection: 'email-sends',
+                        collection: 'email-sends' as any,
                         id: emailSend.id,
                         data: {
                             status: 'clicked',
