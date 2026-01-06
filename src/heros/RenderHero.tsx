@@ -1,10 +1,12 @@
 import React from 'react'
+import dynamic from 'next/dynamic'
 
 import type { Page } from '@/payload-types'
 
-import { HighImpactHero } from '@/heros/HighImpact'
-import { LowImpactHero } from '@/heros/LowImpact'
-import { MediumImpactHero } from '@/heros/MediumImpact'
+// Dynamic imports for code-splitting - heroes load on-demand
+const HighImpactHero = dynamic(() => import('@/heros/HighImpact').then(m => ({ default: m.HighImpactHero })))
+const LowImpactHero = dynamic(() => import('@/heros/LowImpact').then(m => ({ default: m.LowImpactHero })))
+const MediumImpactHero = dynamic(() => import('@/heros/MediumImpact').then(m => ({ default: m.MediumImpactHero })))
 
 const heroes = {
   highImpact: HighImpactHero,

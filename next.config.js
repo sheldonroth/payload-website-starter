@@ -13,6 +13,14 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    // Use modern image formats for better compression
+    formats: ['image/avif', 'image/webp'],
+    // Optimized device sizes for responsive images
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    // Image sizes for srcset generation
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Cache optimized images for 1 year (immutable content-addressed)
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       ...[NEXT_PUBLIC_SERVER_URL /* 'https://example.com' */].map((item) => {
         const url = new URL(item)

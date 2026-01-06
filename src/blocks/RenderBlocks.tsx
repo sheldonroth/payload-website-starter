@@ -1,13 +1,15 @@
-import React, { Fragment } from 'react'
+import React, { Fragment, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 
 import type { Page } from '@/payload-types'
 
-import { ArchiveBlock } from '@/blocks/ArchiveBlock/Component'
-import { CallToActionBlock } from '@/blocks/CallToAction/Component'
-import { ContentBlock } from '@/blocks/Content/Component'
-import { FormBlock } from '@/blocks/Form/Component'
-import { MediaBlock } from '@/blocks/MediaBlock/Component'
-import { StatsBlock } from '@/blocks/Stats/Component'
+// Dynamic imports for code-splitting - blocks load on-demand
+const ArchiveBlock = dynamic(() => import('@/blocks/ArchiveBlock/Component').then(m => ({ default: m.ArchiveBlock })))
+const CallToActionBlock = dynamic(() => import('@/blocks/CallToAction/Component').then(m => ({ default: m.CallToActionBlock })))
+const ContentBlock = dynamic(() => import('@/blocks/Content/Component').then(m => ({ default: m.ContentBlock })))
+const FormBlock = dynamic(() => import('@/blocks/Form/Component').then(m => ({ default: m.FormBlock })))
+const MediaBlock = dynamic(() => import('@/blocks/MediaBlock/Component').then(m => ({ default: m.MediaBlock })))
+const StatsBlock = dynamic(() => import('@/blocks/Stats/Component').then(m => ({ default: m.StatsBlock })))
 
 const blockComponents = {
   archive: ArchiveBlock,
