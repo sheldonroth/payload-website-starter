@@ -35,6 +35,7 @@ import { ReferralPayouts } from './collections/ReferralPayouts'
 import { GeneratedContent } from './collections/GeneratedContent'
 import { DailyDiscoveries } from './collections/DailyDiscoveries'
 import { EmailTemplates } from './collections/EmailTemplates'
+import { EmailSends } from './collections/EmailSends'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -99,6 +100,9 @@ import { revenuecatWebhookHandler } from './endpoints/revenuecat-webhook'
 import { referralEndpoints } from './endpoints/referral'
 import { businessAnalyticsEndpoint } from './endpoints/business-analytics'
 import contentGeneratorHandler from './endpoints/content-generator'
+import { emailCronHandler } from './endpoints/email-cron'
+import { resendWebhookHandler } from './endpoints/email-webhook'
+import { emailEventTriggerHandler } from './endpoints/email-event-trigger'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -184,7 +188,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -644,6 +648,10 @@ export default buildConfig({
       method: 'post',
       handler: contentGeneratorHandler,
     },
+    // Email System
+    emailCronHandler,
+    resendWebhookHandler,
+    emailEventTriggerHandler,
   ],
   plugins: [
     ...plugins,

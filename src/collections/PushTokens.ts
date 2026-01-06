@@ -3,9 +3,14 @@
  *
  * Stores Expo push tokens for sending notifications to mobile devices.
  * Tokens are associated with device fingerprints for anonymous user tracking.
+ *
+ * Security: Validates token format and limits tokens per fingerprint.
  */
 
 import type { CollectionConfig } from 'payload'
+
+// Maximum tokens per fingerprint (prevents spam)
+const MAX_TOKENS_PER_FINGERPRINT = 5
 
 export const PushTokens: CollectionConfig = {
   slug: 'push-tokens',
@@ -25,6 +30,41 @@ export const PushTokens: CollectionConfig = {
     create: () => true,
     update: () => true,
     delete: ({ req }) => !!req.user,
+  },
+  hooks: {
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        // Validate token format
+        if (data?.token && !data.token.startsWith('ExponentPushToken[')) {
+          throw new Error('Invalid push token format. Must be an Expo push token.')
+        }
+
+        // On create, validate fingerprint and check limits
+        if (operation === 'create') {
+          if (!data?.fingerprintHash) {
+            throw new Error('fingerprintHash is required for push token registration')
+          }
+
+          // Check token count per fingerprint to prevent spam
+          const existingTokens = await req.payload.find({
+            collection: 'push-tokens',
+            where: { fingerprintHash: { equals: data.fingerprintHash } },
+            limit: MAX_TOKENS_PER_FINGERPRINT + 1,
+          })
+
+          if (existingTokens.docs.length >= MAX_TOKENS_PER_FINGERPRINT) {
+            // Delete oldest token to make room for new one
+            const oldestToken = existingTokens.docs[existingTokens.docs.length - 1]
+            await req.payload.delete({
+              collection: 'push-tokens',
+              id: oldestToken.id,
+            })
+          }
+        }
+
+        return data
+      },
+    ],
   },
   fields: [
     {

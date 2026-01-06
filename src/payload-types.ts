@@ -89,6 +89,8 @@ export interface Config {
     'product-votes': ProductVote;
     'push-tokens': PushToken;
     feedback: Feedback;
+    referrals: Referral;
+    'referral-payouts': ReferralPayout;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -128,6 +130,8 @@ export interface Config {
     'product-votes': ProductVotesSelect<false> | ProductVotesSelect<true>;
     'push-tokens': PushTokensSelect<false> | PushTokensSelect<true>;
     feedback: FeedbackSelect<false> | FeedbackSelect<true>;
+    referrals: ReferralsSelect<false> | ReferralsSelect<true>;
+    'referral-payouts': ReferralPayoutsSelect<false> | ReferralPayoutsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -975,6 +979,34 @@ export interface DeviceFingerprint {
    * Total unlocks across all time (for abuse detection)
    */
   totalUnlocks?: number | null;
+  /**
+   * Unique 6-character referral code for this device/user
+   */
+  referralCode?: string | null;
+  /**
+   * Referral code of the person who referred this user
+   */
+  referredBy?: string | null;
+  /**
+   * Total people referred by this user
+   */
+  totalReferrals?: number | null;
+  /**
+   * Currently subscribed referrals (earning commission)
+   */
+  activeReferrals?: number | null;
+  /**
+   * Referrals not yet subscribed
+   */
+  pendingReferrals?: number | null;
+  /**
+   * Total commission earned ($)
+   */
+  totalCommissionEarned?: number | null;
+  /**
+   * PayPal/Venmo email for commission payouts
+   */
+  payoutEmail?: string | null;
   /**
    * Behavioral data for adaptive paywalling
    */
@@ -2421,6 +2453,143 @@ export interface Feedback {
   createdAt: string;
 }
 /**
+ * Track referral relationships and commission eligibility
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referrals".
+ */
+export interface Referral {
+  id: number;
+  /**
+   * Device fingerprint or user ID of the referrer
+   */
+  referrerId: string;
+  /**
+   * The 6-character referral code used
+   */
+  referralCode: string;
+  /**
+   * Email for payout notifications (collected when balance reaches $25)
+   */
+  referrerEmail?: string | null;
+  /**
+   * Device fingerprint of the referred user
+   */
+  referredDeviceId: string;
+  /**
+   * User ID if the referred user has an account
+   */
+  referredUserId?: string | null;
+  /**
+   * Email of the referred subscriber
+   */
+  referredEmail?: string | null;
+  /**
+   * Current status of this referral
+   */
+  status: 'pending' | 'active' | 'churned' | 'fraud';
+  /**
+   * When the referred user first subscribed
+   */
+  firstSubscriptionDate?: string | null;
+  /**
+   * Most recent subscription renewal date
+   */
+  lastRenewalDate?: string | null;
+  /**
+   * Next date commission should be accrued (subscription anniversary)
+   */
+  nextCommissionDate?: string | null;
+  /**
+   * Total commission paid to referrer for this referral ($)
+   */
+  totalCommissionPaid?: number | null;
+  /**
+   * Number of years this referral has remained active
+   */
+  yearsActive?: number | null;
+  /**
+   * RevenueCat subscriber ID for webhook matching
+   */
+  revenuecatSubscriberId?: string | null;
+  source?: ('mobile' | 'web' | 'link') | null;
+  /**
+   * Internal notes about this referral
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track referral commission payouts
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-payouts".
+ */
+export interface ReferralPayout {
+  id: number;
+  /**
+   * Device fingerprint or user ID of the referrer
+   */
+  referrerId: string;
+  /**
+   * Email address for payout notification
+   */
+  referrerEmail: string;
+  /**
+   * Payout amount in USD
+   */
+  amount: number;
+  /**
+   * Number of active referrals this payout covers
+   */
+  referralCount: number;
+  /**
+   * Period this payout covers (e.g., "2026-01" or "2026")
+   */
+  period: string;
+  status: 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled';
+  paymentMethod: 'paypal' | 'venmo' | 'credit' | 'check';
+  /**
+   * PayPal email, Venmo handle, or other payment details
+   */
+  paymentDetails?: string | null;
+  /**
+   * When the payout was processed
+   */
+  processedAt?: string | null;
+  /**
+   * External transaction ID (PayPal, Venmo, etc.)
+   */
+  transactionId?: string | null;
+  /**
+   * W-9 collected from this referrer (required for $600+/year)
+   */
+  w9Collected?: boolean | null;
+  /**
+   * Year-to-date total paid to this referrer (for 1099 tracking)
+   */
+  ytdTotal?: number | null;
+  /**
+   * Breakdown of referrals included in this payout
+   */
+  referralBreakdown?:
+    | {
+        referralId: string;
+        referredEmail?: string | null;
+        amount: number;
+        anniversaryDate?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Internal notes about this payout
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -2697,6 +2866,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'feedback';
         value: number | Feedback;
+      } | null)
+    | ({
+        relationTo: 'referrals';
+        value: number | Referral;
+      } | null)
+    | ({
+        relationTo: 'referral-payouts';
+        value: number | ReferralPayout;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -3553,6 +3730,13 @@ export interface DeviceFingerprintsSelect<T extends boolean = true> {
   suspiciousScore?: T;
   emailsUsed?: T;
   totalUnlocks?: T;
+  referralCode?: T;
+  referredBy?: T;
+  totalReferrals?: T;
+  activeReferrals?: T;
+  pendingReferrals?: T;
+  totalCommissionEarned?: T;
+  payoutEmail?: T;
   behaviorMetrics?:
     | T
     | {
@@ -3667,6 +3851,59 @@ export interface FeedbackSelect<T extends boolean = true> {
   status?: T;
   adminNotes?: T;
   metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referrals_select".
+ */
+export interface ReferralsSelect<T extends boolean = true> {
+  referrerId?: T;
+  referralCode?: T;
+  referrerEmail?: T;
+  referredDeviceId?: T;
+  referredUserId?: T;
+  referredEmail?: T;
+  status?: T;
+  firstSubscriptionDate?: T;
+  lastRenewalDate?: T;
+  nextCommissionDate?: T;
+  totalCommissionPaid?: T;
+  yearsActive?: T;
+  revenuecatSubscriberId?: T;
+  source?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-payouts_select".
+ */
+export interface ReferralPayoutsSelect<T extends boolean = true> {
+  referrerId?: T;
+  referrerEmail?: T;
+  amount?: T;
+  referralCount?: T;
+  period?: T;
+  status?: T;
+  paymentMethod?: T;
+  paymentDetails?: T;
+  processedAt?: T;
+  transactionId?: T;
+  w9Collected?: T;
+  ytdTotal?: T;
+  referralBreakdown?:
+    | T
+    | {
+        referralId?: T;
+        referredEmail?: T;
+        amount?: T;
+        anniversaryDate?: T;
+        id?: T;
+      };
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -539,6 +539,41 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+
+            // ============================================
+            // HOOK: IMPACT NOTIFICATIONS ("Your product was tested!")
+            // Notify all users who voted for this product when it's published
+            // ============================================
+            async ({ doc, previousDoc, req }) => {
+                // Only trigger when product transitions to 'published' and has a UPC
+                const justPublished = doc.status === 'published' && previousDoc?.status !== 'published'
+                const hasBarcode = !!doc.upc
+
+                if (justPublished && hasBarcode) {
+                    // Process in background to not block save
+                    setTimeout(async () => {
+                        try {
+                            // Dynamic import to avoid circular dependencies
+                            const { notifyProductTestingComplete } = await import('../lib/expo-push')
+
+                            const result = await notifyProductTestingComplete(
+                                req.payload,
+                                doc.upc,
+                                doc.name || 'Unknown Product',
+                                String(doc.id)
+                            )
+
+                            if (result.sent > 0) {
+                                console.log(`[Impact Notification] Sent ${result.sent} notifications for ${doc.name} (${doc.upc})`)
+                            }
+                        } catch (error) {
+                            console.error('[Impact Notification] Failed:', error)
+                        }
+                    }, 500) // Slight delay to ensure product is fully saved
+                }
+
+                return doc
+            },
         ],
 
         // TEMPORARILY DISABLED - afterRead hook causing API timeouts

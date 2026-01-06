@@ -1,14 +1,19 @@
 /**
  * Referrals Collection
- * 
+ *
  * Tracks referral relationships between users/devices.
  * Powers the $25/year recurring commission program.
- * 
+ *
  * Commission is paid annually on the subscription anniversary
  * for each referred subscriber who remains active.
+ *
+ * Security: Prevents self-referral, duplicate referrals, and rate limits creation.
  */
 
 import type { CollectionConfig } from 'payload'
+
+// Anti-fraud: Maximum referrals that can be created in a short time window
+const MAX_REFERRALS_PER_HOUR = 10
 
 export const Referrals: CollectionConfig = {
     slug: 'referrals',
@@ -23,6 +28,74 @@ export const Referrals: CollectionConfig = {
         create: () => true,
         update: ({ req: { user } }) => Boolean(user),
         delete: ({ req: { user } }) => Boolean(user),
+    },
+    hooks: {
+        beforeChange: [
+            async ({ data, operation, req }) => {
+                if (operation !== 'create') return data
+
+                // Validate required fields
+                if (!data?.referrerId || !data?.referredDeviceId || !data?.referralCode) {
+                    throw new Error('Missing required fields: referrerId, referredDeviceId, and referralCode are required')
+                }
+
+                // FRAUD PREVENTION: Block self-referral
+                if (data.referrerId === data.referredDeviceId) {
+                    console.warn(`[Referral] Self-referral attempt blocked: ${data.referrerId}`)
+                    throw new Error('Self-referral is not allowed')
+                }
+
+                // FRAUD PREVENTION: Check if device was already referred
+                const existingReferral = await req.payload.find({
+                    collection: 'referrals',
+                    where: { referredDeviceId: { equals: data.referredDeviceId } },
+                    limit: 1,
+                })
+
+                if (existingReferral.docs.length > 0) {
+                    throw new Error('This device has already been referred')
+                }
+
+                // FRAUD PREVENTION: Validate referral code exists
+                const referrer = await req.payload.find({
+                    collection: 'device-fingerprints',
+                    where: {
+                        or: [
+                            { referralCode: { equals: data.referralCode.toUpperCase() } },
+                            { fingerprintHash: { equals: data.referrerId } },
+                        ],
+                    },
+                    limit: 1,
+                })
+
+                if (referrer.docs.length === 0) {
+                    throw new Error('Invalid referral code')
+                }
+
+                // RATE LIMITING: Check recent referrals from this referrer
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+                const recentReferrals = await req.payload.find({
+                    collection: 'referrals',
+                    where: {
+                        and: [
+                            { referrerId: { equals: data.referrerId } },
+                            { createdAt: { greater_than: oneHourAgo } },
+                        ],
+                    },
+                    limit: MAX_REFERRALS_PER_HOUR + 1,
+                })
+
+                if (recentReferrals.docs.length >= MAX_REFERRALS_PER_HOUR) {
+                    console.warn(`[Referral] Rate limit exceeded for referrer: ${data.referrerId}`)
+                    throw new Error('Too many referrals in a short time. Please try again later.')
+                }
+
+                // Normalize referral code to uppercase
+                data.referralCode = data.referralCode.toUpperCase()
+
+                return data
+            },
+        ],
     },
     fields: [
         // Referrer Information

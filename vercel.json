@@ -29,6 +29,18 @@
     {
       "path": "/api/year-in-clean-cron",
       "schedule": "0 9 20 12 *"
+    },
+    {
+      "path": "/api/email-cron?job=weekly_digest",
+      "schedule": "0 16 * * 2"
+    },
+    {
+      "path": "/api/email-cron?job=week1_sequence",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/email-cron?job=winback_sequence",
+      "schedule": "0 18 * * *"
     }
   ]
 }
