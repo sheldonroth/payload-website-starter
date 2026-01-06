@@ -140,7 +140,7 @@ export async function sendEmail(
     try {
         // Fetch template
         const templateDoc = await payload.findByID({
-            collection: 'email-templates',
+            collection: 'email-templates' as any,
             id: options.templateId,
         });
 
@@ -187,7 +187,7 @@ export async function sendEmail(
 
         // Log send for stats
         await payload.create({
-            collection: 'email-sends',
+            collection: 'email-sends' as any,
             data: {
                 template: options.templateId,
                 recipient: options.to,
@@ -196,13 +196,13 @@ export async function sendEmail(
                 messageId: data?.id,
                 sentAt: new Date().toISOString(),
                 status: 'sent',
-            },
+            } as any,
         });
 
         // Update template stats
         const currentStats = (templateDoc as any).stats || { sent: 0 };
         await payload.update({
-            collection: 'email-templates',
+            collection: 'email-templates' as any,
             id: options.templateId,
             data: {
                 stats: {

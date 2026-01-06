@@ -24,7 +24,7 @@ export const shelfScan: Endpoint = {
     method: 'post',
     handler: async (req) => {
         try {
-            const body = await req.json();
+            const body = await req.json?.() || {};
             const { image } = body;
 
             if (!image) {

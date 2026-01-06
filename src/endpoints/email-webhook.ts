@@ -109,12 +109,12 @@ export const resendWebhookHandler: Endpoint = {
                     });
 
                     // Update template stats
-                    await updateTemplateStats(payload, emailSend.template as string, 'clicked');
+                    await updateTemplateStats(payload, String((emailSend as any).template), 'clicked');
                     break;
 
                 case 'email.bounced':
                     await payload.update({
-                        collection: 'email-sends',
+                        collection: 'email-sends' as any,
                         id: emailSend.id,
                         data: {
                             status: 'bounced',
@@ -124,7 +124,7 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.complained':
                     await payload.update({
-                        collection: 'email-sends',
+                        collection: 'email-sends' as any,
                         id: emailSend.id,
                         data: {
                             status: 'complained',
@@ -152,7 +152,7 @@ async function updateTemplateStats(
 ) {
     try {
         const template = await payload.findByID({
-            collection: 'email-templates',
+            collection: 'email-templates' as any,
             id: templateId,
         });
 
@@ -177,7 +177,7 @@ async function updateTemplateStats(
         }
 
         await payload.update({
-            collection: 'email-templates',
+            collection: 'email-templates' as any,
             id: templateId,
             data: {
                 stats: updates,
@@ -202,7 +202,7 @@ export async function getABTestResults(
 }> {
     // Get all sends for this template
     const allSends = await payload.find({
-        collection: 'email-sends',
+        collection: 'email-sends' as any,
         where: {
             template: { equals: templateId },
         },
