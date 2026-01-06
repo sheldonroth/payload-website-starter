@@ -28,7 +28,7 @@ export const EmailSends: CollectionConfig = {
         {
             name: 'template',
             type: 'relationship',
-            relationTo: 'email-templates',
+            relationTo: 'email-templates' as any,
             required: true,
         },
         {
