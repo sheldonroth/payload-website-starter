@@ -34,6 +34,7 @@ import { Referrals } from './collections/Referrals'
 import { ReferralPayouts } from './collections/ReferralPayouts'
 import { GeneratedContent } from './collections/GeneratedContent'
 import { DailyDiscoveries } from './collections/DailyDiscoveries'
+import { EmailTemplates } from './collections/EmailTemplates'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -183,7 +184,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
