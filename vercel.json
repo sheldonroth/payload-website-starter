@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/calculate-archetypes",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/year-in-clean-cron",
+      "schedule": "0 9 20 12 *"
     }
   ]
 }
