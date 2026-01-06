@@ -5,6 +5,10 @@ declare global {
       DATABASE_URI: string
       NEXT_PUBLIC_SERVER_URL: string
       VERCEL_PROJECT_PRODUCTION_URL: string
+      // Sentry Integration
+      SENTRY_API_TOKEN?: string
+      SENTRY_WEBHOOK_SECRET?: string
+      SENTRY_ORG_SLUG?: string
     }
   }
 }
