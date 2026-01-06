@@ -134,6 +134,12 @@ export const RateLimits = {
         maxRequests: 10,
         windowMs: 60 * 1000, // 10 batch operations per minute
     },
+
+    // AI Business Assistant (expensive Gemini 3 Pro calls)
+    AI_BUSINESS_ASSISTANT: {
+        maxRequests: 5,
+        windowMs: 60 * 1000, // 5 per minute
+    },
 }
 
 /**

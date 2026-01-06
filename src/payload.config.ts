@@ -28,6 +28,7 @@ import { DeviceFingerprints } from './collections/DeviceFingerprints'
 import { ProductUnlocks } from './collections/ProductUnlocks'
 import { TrendingNews } from './collections/TrendingNews'
 import { ProductVotes } from './collections/ProductVotes'
+import { BountyCategories } from './collections/BountyCategories'
 import { PushTokens } from './collections/PushTokens'
 import { Feedback } from './collections/Feedback'
 import { Referrals } from './collections/Referrals'
@@ -89,7 +90,7 @@ import { errorRetryHandler } from './endpoints/error-retry'
 import { productPreviewHandler, productConfirmHandler } from './endpoints/product-preview'
 import { appVersionHandler } from './endpoints/app-version'
 import { userSubscriptionHandler } from './endpoints/user-subscription'
-import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler, productVoteContributeHandler, productVoteQueueHandler } from './endpoints/product-vote'
+import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler, productVoteContributeHandler, productVoteQueueHandler, myInvestigationsHandler } from './endpoints/product-vote'
 import { productReportHandler } from './endpoints/product-report'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
@@ -105,6 +106,9 @@ import { resendWebhookHandler } from './endpoints/email-webhook'
 import { emailEventTriggerHandler } from './endpoints/email-event-trigger'
 import { smartScanHandler } from './endpoints/smart-scan'
 import { recalculateCategoryCountsEndpoint } from './endpoints/recalculate-category-counts'
+import { aiAssistantEndpoint, aiAssistantClearCacheEndpoint } from './endpoints/ai-assistant'
+import { sendResultsNotificationHandler, sendTestingNotificationHandler } from './endpoints/send-results-notification'
+import { activeBountiesHandler, checkBountyHandler } from './endpoints/bounty-categories'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -141,6 +145,10 @@ export default buildConfig({
         'business-analytics': {
           Component: '@/components/BusinessAnalyticsDashboard',
           path: '/business-analytics',
+        },
+        'ai-assistant': {
+          Component: '@/components/AIBusinessAssistant',
+          path: '/ai-assistant',
         },
         'content-engine': {
           Component: '@/components/ContentEngine',
@@ -194,7 +202,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -296,6 +304,8 @@ export default buildConfig({
       handler: recalculateFeaturedHandler,
     },
     recalculateCategoryCountsEndpoint,
+    aiAssistantEndpoint,
+    aiAssistantClearCacheEndpoint,
     // Product Request Queue
     {
       path: '/product-requests',
@@ -593,6 +603,12 @@ export default buildConfig({
       method: 'get',
       handler: productVoteQueueHandler,
     },
+    // My Investigations (Scout Program)
+    {
+      path: '/product-vote/my-investigations',
+      method: 'get',
+      handler: myInvestigationsHandler,
+    },
     // Product Report (barcode lookup)
     {
       path: '/product-report/:barcode',
@@ -614,6 +630,28 @@ export default buildConfig({
       path: '/push-tokens/unsubscribe',
       method: 'post',
       handler: pushTokenUnsubscribeHandler,
+    },
+    // Scout Program Notifications (Admin-triggered)
+    {
+      path: '/send-results-notification',
+      method: 'post',
+      handler: sendResultsNotificationHandler,
+    },
+    {
+      path: '/send-testing-notification',
+      method: 'post',
+      handler: sendTestingNotificationHandler,
+    },
+    // Bounty Categories (Scout Program)
+    {
+      path: '/bounty-categories/active',
+      method: 'get',
+      handler: activeBountiesHandler,
+    },
+    {
+      path: '/bounty-categories/check',
+      method: 'post',
+      handler: checkBountyHandler,
     },
     // Scanner (Mobile App Barcode Scanning)
     {

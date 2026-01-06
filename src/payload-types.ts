@@ -87,10 +87,15 @@ export interface Config {
     'product-unlocks': ProductUnlock;
     'trending-news': TrendingNew;
     'product-votes': ProductVote;
+    'bounty-categories': BountyCategory;
     'push-tokens': PushToken;
     feedback: Feedback;
     referrals: Referral;
     'referral-payouts': ReferralPayout;
+    'generated-content': GeneratedContent;
+    'daily-discoveries': DailyDiscovery;
+    'email-templates': EmailTemplate;
+    'email-sends': EmailSend;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -128,10 +133,15 @@ export interface Config {
     'product-unlocks': ProductUnlocksSelect<false> | ProductUnlocksSelect<true>;
     'trending-news': TrendingNewsSelect<false> | TrendingNewsSelect<true>;
     'product-votes': ProductVotesSelect<false> | ProductVotesSelect<true>;
+    'bounty-categories': BountyCategoriesSelect<false> | BountyCategoriesSelect<true>;
     'push-tokens': PushTokensSelect<false> | PushTokensSelect<true>;
     feedback: FeedbackSelect<false> | FeedbackSelect<true>;
     referrals: ReferralsSelect<false> | ReferralsSelect<true>;
     'referral-payouts': ReferralPayoutsSelect<false> | ReferralPayoutsSelect<true>;
+    'generated-content': GeneratedContentSelect<false> | GeneratedContentSelect<true>;
+    'daily-discoveries': DailyDiscoveriesSelect<false> | DailyDiscoveriesSelect<true>;
+    'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
+    'email-sends': EmailSendsSelect<false> | EmailSendsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -2366,6 +2376,91 @@ export interface ProductVote {
    * Current rank in the voting queue (1 = most wanted)
    */
   rank?: number | null;
+  scanTimestamps?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Scans in the last 24 hours
+   */
+  scansLast24h?: number | null;
+  /**
+   * Scans in the last 7 days
+   */
+  scansLast7d?: number | null;
+  /**
+   * Auto-calculated priority score: (24h × 5) + 7d + weighted votes
+   */
+  velocityScore?: number | null;
+  /**
+   * Auto-set based on velocity: Trending (20+ 24h / 100+ 7d), Urgent (100+ 24h / 500+ 7d)
+   */
+  urgencyFlag?: ('normal' | 'trending' | 'urgent') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Category boosts - products in these categories get priority in the testing queue
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bounty-categories".
+ */
+export interface BountyCategory {
+  id: number;
+  /**
+   * Category name (e.g., "Shampoo", "Protein Powder", "Baby Food")
+   */
+  category: string;
+  /**
+   * Headline for the bounty board (e.g., "We're testing shampoos this month")
+   */
+  headline?: string | null;
+  /**
+   * Optional longer description for the bounty
+   */
+  description?: string | null;
+  /**
+   * Keywords that trigger this bounty (matched against product name/category)
+   */
+  keywords?:
+    | {
+        keyword: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Priority multiplier (1-10x). Products matching this category get votes multiplied by this amount.
+   */
+  multiplier: number;
+  /**
+   * Emoji icon for the category (e.g., 🧴, 💊, 🍼)
+   */
+  icon?: string | null;
+  /**
+   * Whether this bounty is currently active
+   */
+  isActive?: boolean | null;
+  /**
+   * When this bounty starts (optional, defaults to immediately)
+   */
+  startsAt?: string | null;
+  /**
+   * When this bounty ends (optional, runs indefinitely if not set)
+   */
+  endsAt?: string | null;
+  /**
+   * Number of scans in this category this week
+   */
+  totalScansThisWeek?: number | null;
+  /**
+   * Number of unique scouts who contributed to this category
+   */
+  totalContributors?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2586,6 +2681,323 @@ export interface ReferralPayout {
    * Internal notes about this payout
    */
   notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * AI-generated content awaiting your approval
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "generated-content".
+ */
+export interface GeneratedContent {
+  id: number;
+  /**
+   * Content title/headline
+   */
+  title: string;
+  contentType: 'listicle' | 'tiktok_script' | 'comparison' | 'controversy' | 'quiz' | 'product_review';
+  status: 'draft' | 'pending_review' | 'approved' | 'scheduled' | 'published' | 'rejected';
+  /**
+   * The generated content (editable before approval)
+   */
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  script?: {
+    /**
+     * First 0-3 seconds - the attention grabber
+     */
+    hook?: string | null;
+    /**
+     * Build tension/context
+     */
+    build?: string | null;
+    /**
+     * The payoff/reveal
+     */
+    reveal?: string | null;
+    /**
+     * Call to action
+     */
+    cta?: string | null;
+    estimatedDuration?: ('15' | '30' | '45' | '60') | null;
+    platform?: ('tiktok' | 'reels' | 'shorts')[] | null;
+  };
+  listicleItems?:
+    | {
+        rank?: number | null;
+        product?: (number | null) | Product;
+        heading?: string | null;
+        description?: string | null;
+        verdict?: ('recommended' | 'avoid') | null;
+        id?: string | null;
+      }[]
+    | null;
+  comparison?: {
+    productA?: (number | null) | Product;
+    productB?: (number | null) | Product;
+    verdict?: ('a_recommended' | 'b_recommended' | 'both_recommended' | 'neither_recommended') | null;
+    keyDifferences?:
+      | {
+          factor?: string | null;
+          productAValue?: string | null;
+          productBValue?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Products featured in this content
+   */
+  relatedProducts?: (number | Product)[] | null;
+  /**
+   * Category this content belongs to
+   */
+  category?: (number | null) | Category;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    targetKeywords?:
+      | {
+          keyword?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Check this after reviewing for legal compliance
+   */
+  legalReviewed?: boolean | null;
+  /**
+   * Notes about legal considerations
+   */
+  legalNotes?: string | null;
+  /**
+   * Flag any legal concerns
+   */
+  legalFlags?: ('health_claims' | 'brand_controversy' | 'comparative_claims' | 'needs_citation' | 'cleared')[] | null;
+  /**
+   * Has the brand been notified (for controversy content)?
+   */
+  brandNotified?: boolean | null;
+  /**
+   * Deadline for brand response
+   */
+  brandResponseDeadline?: string | null;
+  /**
+   * When to publish (leave blank for manual)
+   */
+  scheduledPublishDate?: string | null;
+  /**
+   * URL after publishing
+   */
+  publishedUrl?: string | null;
+  /**
+   * How this content was generated
+   */
+  generationMetadata?: {
+    generatedAt?: string | null;
+    generatedBy?: string | null;
+    trigger?: string | null;
+    originalPrompt?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * One product reveal per day for all users
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "daily-discoveries".
+ */
+export interface DailyDiscovery {
+  id: number;
+  /**
+   * Catchy title for the discovery
+   */
+  title: string;
+  discoveryType: 'brand_exposed' | 'hidden_champion' | 'ingredient_spotlight' | 'label_detective' | 'swap';
+  /**
+   * The featured product
+   */
+  product: number | Product;
+  /**
+   * The shocking headline
+   */
+  headline: string;
+  /**
+   * The key insight or revelation (2-3 sentences)
+   */
+  insight: string;
+  /**
+   * A cleaner alternative (for swaps)
+   */
+  alternativeProduct?: (number | null) | Product;
+  /**
+   * When this discovery goes live (9 AM on this date)
+   */
+  publishDate: string;
+  /**
+   * Auto-calculated: 24 hours after publish
+   */
+  expiresAt?: string | null;
+  status?: ('draft' | 'scheduled' | 'live' | 'expired') | null;
+  /**
+   * Shareable card customization
+   */
+  shareCard?: {
+    /**
+     * Hex color for share card
+     */
+    backgroundColor?: string | null;
+    emoji?: string | null;
+  };
+  /**
+   * Engagement metrics (auto-updated)
+   */
+  stats?: {
+    views?: number | null;
+    shares?: number | null;
+    productDetailClicks?: number | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Email templates for automated sequences
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-templates".
+ */
+export interface EmailTemplate {
+  id: number;
+  sequence:
+    | 'week1_value'
+    | 'weekly_digest'
+    | 'winback'
+    | 'fomo_trigger'
+    | 'year_in_clean'
+    | 'badge_unlock'
+    | 'product_update';
+  /**
+   * For sequences: which day (0, 1, 3, 5, 7, etc.)
+   */
+  dayInSequence?: number | null;
+  /**
+   * What event triggers this email
+   */
+  triggerEvent?:
+    | ('product_retested' | 'brand_news' | 'new_category_tests' | 'badge_unlocked' | 'year_in_clean_ready')
+    | null;
+  /**
+   * Email subject line (supports {{variables}})
+   */
+  subject: string;
+  /**
+   * A/B test: alternate subject line (50% of recipients)
+   */
+  subjectVariantB?: string | null;
+  /**
+   * Preview text shown in inbox (optional)
+   */
+  preheader?: string | null;
+  /**
+   * Main headline in email body
+   */
+  headline?: string | null;
+  /**
+   * Email body content
+   */
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * Call-to-action button text
+   */
+  ctaText?: string | null;
+  /**
+   * CTA button destination URL
+   */
+  ctaUrl?: string | null;
+  /**
+   * Available personalization variables
+   */
+  personalization?: {
+    /**
+     * Variables you can use: {{variable_name}}
+     */
+    availableVariables?:
+      | {
+          variable?: string | null;
+          description?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  status?: ('draft' | 'active' | 'paused') | null;
+  /**
+   * Performance metrics
+   */
+  stats?: {
+    sent?: number | null;
+    opened?: number | null;
+    clicked?: number | null;
+    openRate?: string | null;
+    clickRate?: string | null;
+  };
+  /**
+   * Notes for yourself about this email
+   */
+  internalNotes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Log of all sent emails with open/click tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-sends".
+ */
+export interface EmailSend {
+  id: number;
+  template: number | EmailTemplate;
+  recipient: string;
+  subject: string;
+  abVariant?: ('A' | 'B') | null;
+  /**
+   * Resend message ID for tracking
+   */
+  messageId?: string | null;
+  sentAt: string;
+  status?: ('sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained') | null;
+  openedAt?: string | null;
+  clickedAt?: string | null;
+  clickedUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2860,6 +3272,10 @@ export interface PayloadLockedDocument {
         value: number | ProductVote;
       } | null)
     | ({
+        relationTo: 'bounty-categories';
+        value: number | BountyCategory;
+      } | null)
+    | ({
         relationTo: 'push-tokens';
         value: number | PushToken;
       } | null)
@@ -2874,6 +3290,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'referral-payouts';
         value: number | ReferralPayout;
+      } | null)
+    | ({
+        relationTo: 'generated-content';
+        value: number | GeneratedContent;
+      } | null)
+    | ({
+        relationTo: 'daily-discoveries';
+        value: number | DailyDiscovery;
+      } | null)
+    | ({
+        relationTo: 'email-templates';
+        value: number | EmailTemplate;
+      } | null)
+    | ({
+        relationTo: 'email-sends';
+        value: number | EmailSend;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -3813,6 +4245,35 @@ export interface ProductVotesSelect<T extends boolean = true> {
   notifyOnComplete?: T;
   openFoodFactsData?: T;
   rank?: T;
+  scanTimestamps?: T;
+  scansLast24h?: T;
+  scansLast7d?: T;
+  velocityScore?: T;
+  urgencyFlag?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bounty-categories_select".
+ */
+export interface BountyCategoriesSelect<T extends boolean = true> {
+  category?: T;
+  headline?: T;
+  description?: T;
+  keywords?:
+    | T
+    | {
+        keyword?: T;
+        id?: T;
+      };
+  multiplier?: T;
+  icon?: T;
+  isActive?: T;
+  startsAt?: T;
+  endsAt?: T;
+  totalScansThisWeek?: T;
+  totalContributors?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3904,6 +4365,170 @@ export interface ReferralPayoutsSelect<T extends boolean = true> {
         id?: T;
       };
   notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "generated-content_select".
+ */
+export interface GeneratedContentSelect<T extends boolean = true> {
+  title?: T;
+  contentType?: T;
+  status?: T;
+  content?: T;
+  script?:
+    | T
+    | {
+        hook?: T;
+        build?: T;
+        reveal?: T;
+        cta?: T;
+        estimatedDuration?: T;
+        platform?: T;
+      };
+  listicleItems?:
+    | T
+    | {
+        rank?: T;
+        product?: T;
+        heading?: T;
+        description?: T;
+        verdict?: T;
+        id?: T;
+      };
+  comparison?:
+    | T
+    | {
+        productA?: T;
+        productB?: T;
+        verdict?: T;
+        keyDifferences?:
+          | T
+          | {
+              factor?: T;
+              productAValue?: T;
+              productBValue?: T;
+              id?: T;
+            };
+      };
+  relatedProducts?: T;
+  category?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        targetKeywords?:
+          | T
+          | {
+              keyword?: T;
+              id?: T;
+            };
+      };
+  legalReviewed?: T;
+  legalNotes?: T;
+  legalFlags?: T;
+  brandNotified?: T;
+  brandResponseDeadline?: T;
+  scheduledPublishDate?: T;
+  publishedUrl?: T;
+  generationMetadata?:
+    | T
+    | {
+        generatedAt?: T;
+        generatedBy?: T;
+        trigger?: T;
+        originalPrompt?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "daily-discoveries_select".
+ */
+export interface DailyDiscoveriesSelect<T extends boolean = true> {
+  title?: T;
+  discoveryType?: T;
+  product?: T;
+  headline?: T;
+  insight?: T;
+  alternativeProduct?: T;
+  publishDate?: T;
+  expiresAt?: T;
+  status?: T;
+  shareCard?:
+    | T
+    | {
+        backgroundColor?: T;
+        emoji?: T;
+      };
+  stats?:
+    | T
+    | {
+        views?: T;
+        shares?: T;
+        productDetailClicks?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-templates_select".
+ */
+export interface EmailTemplatesSelect<T extends boolean = true> {
+  sequence?: T;
+  dayInSequence?: T;
+  triggerEvent?: T;
+  subject?: T;
+  subjectVariantB?: T;
+  preheader?: T;
+  headline?: T;
+  body?: T;
+  ctaText?: T;
+  ctaUrl?: T;
+  personalization?:
+    | T
+    | {
+        availableVariables?:
+          | T
+          | {
+              variable?: T;
+              description?: T;
+              id?: T;
+            };
+      };
+  status?: T;
+  stats?:
+    | T
+    | {
+        sent?: T;
+        opened?: T;
+        clicked?: T;
+        openRate?: T;
+        clickRate?: T;
+      };
+  internalNotes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-sends_select".
+ */
+export interface EmailSendsSelect<T extends boolean = true> {
+  template?: T;
+  recipient?: T;
+  subject?: T;
+  abVariant?: T;
+  messageId?: T;
+  sentAt?: T;
+  status?: T;
+  openedAt?: T;
+  clickedAt?: T;
+  clickedUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

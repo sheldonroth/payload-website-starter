@@ -43,6 +43,14 @@ import * as migration_20260103_020000_zero_input_refactor from './20260103_02000
 import * as migration_20260104_000000_fix_archetype_column_names from './20260104_000000_fix_archetype_column_names';
 import * as migration_20260104_010000_create_product_votes from './20260104_010000_create_product_votes';
 import * as migration_20260104_020000_create_push_tokens from './20260104_020000_create_push_tokens';
+import * as migration_20260105_000000_remove_ingredients from './20260105_000000_remove_ingredients';
+import * as migration_20260105_010000_add_missing_category_tables from './20260105_010000_add_missing_category_tables';
+import * as migration_20260105_020000_add_missing_categories_columns from './20260105_020000_add_missing_categories_columns';
+import * as migration_20260105_030000_add_feedback_collection from './20260105_030000_add_feedback_collection';
+import * as migration_20260106_000000_add_referrals_collections from './20260106_000000_add_referrals_collections';
+import * as migration_20260106_100000_fix_locked_docs_double_underscore from './20260106_100000_fix_locked_docs_double_underscore';
+import * as migration_20260106_200000_scout_program_velocity_and_bounties from './20260106_200000_scout_program_velocity_and_bounties';
+import * as migration_20260107_000000_add_email_collections from './20260107_000000_add_email_collections';
 
 export const migrations = [
   {
@@ -269,5 +277,45 @@ export const migrations = [
     up: migration_20260104_020000_create_push_tokens.up,
     down: migration_20260104_020000_create_push_tokens.down,
     name: '20260104_020000_create_push_tokens'
+  },
+  {
+    up: migration_20260105_000000_remove_ingredients.up,
+    down: migration_20260105_000000_remove_ingredients.down,
+    name: '20260105_000000_remove_ingredients'
+  },
+  {
+    up: migration_20260105_010000_add_missing_category_tables.up,
+    down: migration_20260105_010000_add_missing_category_tables.down,
+    name: '20260105_010000_add_missing_category_tables'
+  },
+  {
+    up: migration_20260105_020000_add_missing_categories_columns.up,
+    down: migration_20260105_020000_add_missing_categories_columns.down,
+    name: '20260105_020000_add_missing_categories_columns'
+  },
+  {
+    up: migration_20260105_030000_add_feedback_collection.up,
+    down: migration_20260105_030000_add_feedback_collection.down,
+    name: '20260105_030000_add_feedback_collection'
+  },
+  {
+    up: migration_20260106_000000_add_referrals_collections.up,
+    down: migration_20260106_000000_add_referrals_collections.down,
+    name: '20260106_000000_add_referrals_collections'
+  },
+  {
+    up: migration_20260106_100000_fix_locked_docs_double_underscore.up,
+    down: migration_20260106_100000_fix_locked_docs_double_underscore.down,
+    name: '20260106_100000_fix_locked_docs_double_underscore'
+  },
+  {
+    up: migration_20260106_200000_scout_program_velocity_and_bounties.up,
+    down: migration_20260106_200000_scout_program_velocity_and_bounties.down,
+    name: '20260106_200000_scout_program_velocity_and_bounties'
+  },
+  {
+    up: migration_20260107_000000_add_email_collections.up,
+    down: migration_20260107_000000_add_email_collections.down,
+    name: '20260107_000000_add_email_collections'
   },
 ];

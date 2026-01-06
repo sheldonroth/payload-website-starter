@@ -25,7 +25,7 @@ export const ProductVotes: CollectionConfig = {
     },
     admin: {
         useAsTitle: 'barcode',
-        defaultColumns: ['barcode', 'productName', 'totalWeightedVotes', 'fundingProgress', 'status', 'updatedAt'],
+        defaultColumns: ['barcode', 'productName', 'urgencyFlag', 'scansLast24h', 'fundingProgress', 'status', 'updatedAt'],
         group: 'Community',
         description: 'Product testing votes from barcode scans (Proof of Possession)',
     },
@@ -226,6 +226,62 @@ export const ProductVotes: CollectionConfig = {
                 description: 'Current rank in the voting queue (1 = most wanted)',
                 position: 'sidebar',
                 readOnly: true,
+            },
+        },
+
+        // === VELOCITY TRACKING (Scout Program) ===
+        // Tracks scan momentum for prioritization - trending products get tested faster
+        {
+            name: 'scanTimestamps',
+            type: 'json',
+            defaultValue: [],
+            admin: {
+                // Hidden from admin - internal use only
+                condition: () => false,
+            },
+        },
+        {
+            name: 'scansLast24h',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                description: 'Scans in the last 24 hours',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'scansLast7d',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                description: 'Scans in the last 7 days',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'velocityScore',
+            type: 'number',
+            defaultValue: 0,
+            index: true,
+            admin: {
+                description: 'Auto-calculated priority score: (24h × 5) + 7d + weighted votes',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'urgencyFlag',
+            type: 'select',
+            defaultValue: 'normal',
+            index: true,
+            options: [
+                { label: '🟢 Normal', value: 'normal' },
+                { label: '🔥 Trending', value: 'trending' },
+                { label: '🚨 Urgent', value: 'urgent' },
+            ],
+            admin: {
+                description: 'Auto-set based on velocity: Trending (20+ 24h / 100+ 7d), Urgent (100+ 24h / 500+ 7d)',
+                readOnly: true,
+                position: 'sidebar',
             },
         },
     ],

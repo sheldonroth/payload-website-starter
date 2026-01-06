@@ -22,6 +22,58 @@ const VOTE_WEIGHTS = {
     bounty_contribution: 10, // Bonus for adding photos to someone else's request
 }
 
+// Time constants for velocity tracking
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+const SEVEN_DAYS_MS = 7 * ONE_DAY_MS
+const MAX_TIMESTAMPS = 500 // Prevent unbounded growth
+
+/**
+ * Calculate scan velocity metrics for prioritization
+ * Trending products get tested faster
+ */
+function calculateVelocity(
+    existingTimestamps: number[],
+    totalWeightedVotes: number
+): {
+    scanTimestamps: number[]
+    scansLast24h: number
+    scansLast7d: number
+    velocityScore: number
+    urgencyFlag: 'normal' | 'trending' | 'urgent'
+} {
+    const now = Date.now()
+
+    // Filter to last 7 days + add current timestamp
+    const timestamps = (existingTimestamps || [])
+        .filter((ts) => now - ts < SEVEN_DAYS_MS)
+        .concat([now])
+        .slice(-MAX_TIMESTAMPS) // Keep max 500 timestamps
+
+    // Calculate counts
+    const scansLast24h = timestamps.filter((ts) => now - ts < ONE_DAY_MS).length
+    const scansLast7d = timestamps.length
+
+    // Velocity score = weighted combination
+    // 24h scans are 5x more valuable (recency matters)
+    const velocityScore = scansLast24h * 5 + scansLast7d + totalWeightedVotes
+
+    // Auto-flag urgency based on thresholds
+    let urgencyFlag: 'normal' | 'trending' | 'urgent' = 'normal'
+    if (scansLast24h >= 100 || scansLast7d >= 500) {
+        urgencyFlag = 'urgent'
+    } else if (scansLast24h >= 20 || scansLast7d >= 100) {
+        urgencyFlag = 'trending'
+    }
+
+    return {
+        scanTimestamps: timestamps,
+        scansLast24h,
+        scansLast7d,
+        velocityScore,
+        urgencyFlag,
+    }
+}
+
 interface VoteRequest {
     barcode: string
     voteType: 'search' | 'scan' | 'member_scan'
@@ -95,6 +147,12 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
             status: string
             voterFingerprints: string[]
             notifyOnComplete: string[]
+            // Velocity tracking (Scout Program)
+            scanTimestamps?: number[]
+            scansLast24h?: number
+            scansLast7d?: number
+            velocityScore?: number
+            urgencyFlag?: 'normal' | 'trending' | 'urgent'
         }
         let isNewVoter = true
         let yourVoteRank = 1
@@ -133,6 +191,13 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
             const updatedBrand = existing.brand || productInfo?.brand
             const updatedImageUrl = existing.imageUrl || productInfo?.imageUrl
 
+            // Calculate velocity metrics (Scout Program)
+            // Only track scans for velocity (not searches) - proof of possession matters
+            const trackVelocity = voteType === 'scan' || voteType === 'member_scan'
+            const velocity = trackVelocity
+                ? calculateVelocity(existing.scanTimestamps || [], newTotalVotes)
+                : null
+
             // Check if threshold was just reached
             const threshold = existing.fundingThreshold
             const wasUnderThreshold = existing.totalWeightedVotes < threshold
@@ -149,6 +214,14 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
                 productName: updatedProductName,
                 brand: updatedBrand,
                 imageUrl: updatedImageUrl,
+                // Add velocity data if tracking scans
+                ...(velocity && {
+                    scanTimestamps: velocity.scanTimestamps,
+                    scansLast24h: velocity.scansLast24h,
+                    scansLast7d: velocity.scansLast7d,
+                    velocityScore: velocity.velocityScore,
+                    urgencyFlag: velocity.urgencyFlag,
+                }),
             }
 
             // Update status if threshold just reached
@@ -174,6 +247,12 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
                 notifyList.push(notifyId)
             }
 
+            // Initialize velocity for scans (Scout Program)
+            const trackVelocity = voteType === 'scan' || voteType === 'member_scan'
+            const initialVelocity = trackVelocity
+                ? calculateVelocity([], voteWeight)
+                : null
+
             const created = await req.payload.create({
                 collection: 'product-votes',
                 data: {
@@ -189,6 +268,14 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
                     voterFingerprints: fingerprint ? [fingerprint] : [],
                     notifyOnComplete: notifyList,
                     status: 'collecting_votes',
+                    // Initialize velocity data if tracking scans
+                    ...(initialVelocity && {
+                        scanTimestamps: initialVelocity.scanTimestamps,
+                        scansLast24h: initialVelocity.scansLast24h,
+                        scansLast7d: initialVelocity.scansLast7d,
+                        velocityScore: initialVelocity.velocityScore,
+                        urgencyFlag: initialVelocity.urgencyFlag,
+                    }),
                 },
             })
 
@@ -605,6 +692,160 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
         console.error('[product-vote-queue] Error:', error)
         return Response.json(
             { error: 'Failed to get queue', details: String(error) },
+            { status: 500 }
+        )
+    }
+}
+
+/**
+ * GET /api/product-vote/my-investigations
+ * Get products the user has voted on (Scout Program)
+ *
+ * Uses fingerprint to identify user's investigations
+ */
+export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Response> => {
+    if (req.method !== 'GET') {
+        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    try {
+        // Get fingerprint from header (set by mobile app)
+        const fingerprint = req.headers.get('x-fingerprint')
+
+        if (!fingerprint) {
+            return Response.json(
+                { error: 'Fingerprint header required' },
+                { status: 400 }
+            )
+        }
+
+        // Find all products this user has voted on
+        const userVotes = await req.payload.find({
+            collection: 'product-votes',
+            where: {
+                voterFingerprints: { contains: fingerprint },
+            },
+            sort: '-updatedAt',
+            limit: 100, // Max 100 investigations
+        })
+
+        if (userVotes.docs.length === 0) {
+            return Response.json({
+                investigations: [],
+                totalInvestigations: 0,
+                resultsReady: 0,
+            })
+        }
+
+        // Get global queue for ranking (only active products)
+        const globalQueue = await req.payload.find({
+            collection: 'product-votes',
+            where: {
+                status: { in: ['collecting_votes', 'threshold_reached', 'queued', 'testing'] },
+            },
+            sort: '-velocityScore', // Use velocity for ranking
+            limit: 500,
+            select: {
+                barcode: true,
+                velocityScore: true,
+            },
+        })
+
+        // Build barcode -> queue position map
+        const queuePositionMap = new Map<string, number>()
+        globalQueue.docs.forEach((doc, index) => {
+            const vote = doc as { barcode: string }
+            queuePositionMap.set(vote.barcode, index + 1)
+        })
+
+        // Transform into investigation objects
+        const investigations = userVotes.docs.map((doc) => {
+            const vote = doc as {
+                barcode: string
+                productName?: string
+                brand?: string
+                imageUrl?: string
+                totalWeightedVotes: number
+                uniqueVoters: number
+                fundingProgress: number
+                status: string
+                voterFingerprints: string[]
+                photoContributors?: { fingerprintId: string }[]
+                scansLast24h?: number
+                urgencyFlag?: string
+                linkedProduct?: { id: string } | string
+                createdAt: string
+                updatedAt: string
+            }
+
+            // Calculate user's scout number (their position in voter list)
+            const voterIndex = (vote.voterFingerprints || []).indexOf(fingerprint)
+            const yourScoutNumber = voterIndex >= 0 ? voterIndex + 1 : 1
+            const isFirstScout = yourScoutNumber === 1
+
+            // Check if user contributed photos
+            const didContributePhotos = (vote.photoContributors || []).some(
+                (c) => c.fingerprintId === fingerprint
+            )
+
+            // Map status to user-friendly format
+            let status: 'waiting' | 'testing' | 'complete'
+            switch (vote.status) {
+                case 'complete':
+                    status = 'complete'
+                    break
+                case 'testing':
+                case 'queued':
+                    status = 'testing'
+                    break
+                default:
+                    status = 'waiting'
+            }
+
+            // Get queue position (only for waiting/testing)
+            const queuePosition = status !== 'complete'
+                ? queuePositionMap.get(vote.barcode) || null
+                : null
+
+            // Check if trending (high 24h velocity)
+            const isTrending = vote.urgencyFlag === 'trending' || vote.urgencyFlag === 'urgent'
+            const velocityChange24h = vote.scansLast24h || 0
+
+            return {
+                barcode: vote.barcode,
+                productName: vote.productName || 'Unknown Product',
+                brand: vote.brand,
+                imageUrl: vote.imageUrl,
+                status,
+                queuePosition,
+                fundingProgress: vote.fundingProgress,
+                yourScoutNumber,
+                totalScouts: vote.uniqueVoters,
+                isFirstScout,
+                didContributePhotos,
+                isTrending,
+                velocityChange24h,
+                linkedProductId: typeof vote.linkedProduct === 'object'
+                    ? vote.linkedProduct?.id
+                    : vote.linkedProduct,
+                createdAt: vote.createdAt,
+                updatedAt: vote.updatedAt,
+            }
+        })
+
+        // Count results ready
+        const resultsReady = investigations.filter((i) => i.status === 'complete').length
+
+        return Response.json({
+            investigations,
+            totalInvestigations: investigations.length,
+            resultsReady,
+        })
+
+    } catch (error) {
+        console.error('[my-investigations] Error:', error)
+        return Response.json(
+            { error: 'Failed to get investigations', details: String(error) },
             { status: 500 }
         )
     }

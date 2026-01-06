@@ -74,9 +74,27 @@ const AdminNavLinks: React.FC = () => {
                             textDecoration: 'none',
                             color: '#d4d4d8',
                             fontSize: '14px',
+                            marginBottom: '4px',
                         }}
                     >
                         Business Analytics
+                    </Link>
+                    <Link
+                        href="/admin/ai-assistant"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15))',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                        }}
+                    >
+                        🤖 AI Assistant
                     </Link>
                 </div>
             </div>
