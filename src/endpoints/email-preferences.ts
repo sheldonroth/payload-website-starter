@@ -128,7 +128,7 @@ export const emailPreferencesHandler: PayloadHandler = async (req) => {
               ...targetUser.privacyConsent,
               marketingOptIn: false,
             },
-          },
+          } as any, // Type will match after payload-types regeneration
         })
 
         return Response.json({
@@ -161,7 +161,7 @@ export const emailPreferencesHandler: PayloadHandler = async (req) => {
             ...targetUser.privacyConsent,
             marketingOptIn: Object.values(newPreferences).some(v => v),
           },
-        },
+        } as any, // Type will match after payload-types regeneration
       })
 
       return Response.json({
