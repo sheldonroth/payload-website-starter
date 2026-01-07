@@ -39,7 +39,10 @@ const DEFAULT_PREFERENCES: EmailPreferences = {
  * Generate a unique unsubscribe token for a user
  */
 export function generateUnsubscribeToken(userId: string | number, email: string): string {
-  const secret = process.env.PAYLOAD_SECRET || 'fallback-secret'
+  const secret = process.env.PAYLOAD_SECRET
+  if (!secret) {
+    throw new Error('PAYLOAD_SECRET environment variable is required for generating unsubscribe tokens')
+  }
   const data = `${userId}-${email}-unsubscribe`
   return crypto.createHmac('sha256', secret).update(data).digest('hex').substring(0, 32)
 }

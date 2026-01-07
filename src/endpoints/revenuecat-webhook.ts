@@ -65,15 +65,21 @@ export const revenuecatWebhookHandler: Endpoint = {
             // Verify authorization header
             const authHeader = req.headers.get('authorization')
 
+            const isProduction = process.env.NODE_ENV === 'production'
+
             if (REVENUECAT_WEBHOOK_SECRET) {
                 // If secret is configured, require it
                 if (!authHeader || authHeader !== `Bearer ${REVENUECAT_WEBHOOK_SECRET}`) {
                     console.warn('[RevenueCat Webhook] Unauthorized request - invalid or missing auth header')
                     return Response.json({ error: 'Unauthorized' }, { status: 401 })
                 }
+            } else if (isProduction) {
+                // In production, secret is mandatory
+                console.error('[RevenueCat Webhook] REVENUECAT_WEBHOOK_SECRET is required in production')
+                return Response.json({ error: 'Webhook authentication not configured' }, { status: 500 })
             } else {
-                // Warn if no secret configured (allow in development)
-                console.warn('[RevenueCat Webhook] No REVENUECAT_WEBHOOK_SECRET configured - skipping auth')
+                // Warn if no secret configured (allow in development only)
+                console.warn('[RevenueCat Webhook] No REVENUECAT_WEBHOOK_SECRET configured - skipping auth (development only)')
             }
 
             const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as RevenueCatWebhookPayload

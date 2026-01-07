@@ -11,9 +11,19 @@
  * Updates EmailSends collection and calculates A/B test results.
  */
 
-import { Endpoint } from 'payload'
+import { Endpoint, Payload } from 'payload'
 import crypto from 'crypto'
 import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
+import type { EmailSend, EmailTemplate } from '../payload-types'
+
+// Interface for email template stats (allows null to match Payload types)
+interface TemplateStats {
+  sent?: number | null
+  opened?: number | null
+  clicked?: number | null
+  openRate?: string | null
+  clickRate?: string | null
+}
 
 // Verify Resend webhook signature
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -38,9 +48,24 @@ export const resendWebhookHandler: Endpoint = {
             const rawBody = await req.text?.() || '';
             const signature = req.headers.get('resend-signature') || '';
             const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+            const isProduction = process.env.NODE_ENV === 'production';
 
-            // Verify signature if secret is configured
-            if (webhookSecret && signature) {
+            // In production, require both secret and signature
+            if (isProduction) {
+                if (!webhookSecret) {
+                    console.error('[ResendWebhook] RESEND_WEBHOOK_SECRET is required in production');
+                    return Response.json({ error: 'Webhook authentication not configured' }, { status: 500 });
+                }
+                if (!signature) {
+                    console.error('[ResendWebhook] Missing resend-signature header');
+                    return Response.json({ error: 'Missing signature' }, { status: 401 });
+                }
+                if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+                    console.error('[ResendWebhook] Invalid signature');
+                    return Response.json({ error: 'Invalid signature' }, { status: 401 });
+                }
+            } else if (webhookSecret && signature) {
+                // In development, verify if both are provided
                 if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
                     console.error('[ResendWebhook] Invalid signature');
                     return Response.json({ error: 'Invalid signature' }, { status: 401 });
@@ -54,7 +79,7 @@ export const resendWebhookHandler: Endpoint = {
 
             // Find the email send record by message ID
             const emailSends = await payload.find({
-                collection: 'email-sends' as any,
+                collection: 'email-sends',
                 where: {
                     messageId: { equals: data.email_id || data.message_id },
                 },
@@ -66,19 +91,24 @@ export const resendWebhookHandler: Endpoint = {
                 return Response.json({ received: true, matched: false });
             }
 
-            const emailSend = emailSends.docs[0];
+            const emailSend = emailSends.docs[0] as EmailSend;
             const now = new Date().toISOString();
 
             // Get recipient info for tracking
-            const recipientEmail = (emailSend as any).recipient || data.to?.[0]
-            const templateName = (emailSend as any).templateName || 'unknown'
-            const campaign = (emailSend as any).campaign || templateName
+            const recipientEmail = emailSend.recipient || data.to?.[0]
+            const templateName = emailSend.subject || 'unknown'
+            const campaign = templateName
+
+            // Get template ID for stats updates
+            const templateId = typeof emailSend.template === 'object'
+                ? emailSend.template.id
+                : emailSend.template
 
             // Update based on event type
             switch (type) {
                 case 'email.delivered':
                     await payload.update({
-                        collection: 'email-sends' as any,
+                        collection: 'email-sends',
                         id: emailSend.id,
                         data: {
                             status: 'delivered',
@@ -99,9 +129,9 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.opened':
                     // Only update if not already opened (first open matters for stats)
-                    if ((emailSend as any).status !== 'opened' && (emailSend as any).status !== 'clicked') {
+                    if (emailSend.status !== 'opened' && emailSend.status !== 'clicked') {
                         await payload.update({
-                            collection: 'email-sends' as any,
+                            collection: 'email-sends',
                             id: emailSend.id,
                             data: {
                                 status: 'opened',
@@ -110,7 +140,7 @@ export const resendWebhookHandler: Endpoint = {
                         })
 
                         // Update template stats
-                        await updateTemplateStats(payload, String((emailSend as any).template), 'opened')
+                        await updateTemplateStats(payload, String(templateId), 'opened')
 
                         // Track in RudderStack
                         trackServer(
@@ -128,7 +158,7 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.clicked':
                     await payload.update({
-                        collection: 'email-sends' as any,
+                        collection: 'email-sends',
                         id: emailSend.id,
                         data: {
                             status: 'clicked',
@@ -138,7 +168,7 @@ export const resendWebhookHandler: Endpoint = {
                     })
 
                     // Update template stats
-                    await updateTemplateStats(payload, String((emailSend as any).template), 'clicked')
+                    await updateTemplateStats(payload, String(templateId), 'clicked')
 
                     // Track in RudderStack
                     trackServer(
@@ -156,7 +186,7 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.bounced':
                     await payload.update({
-                        collection: 'email-sends' as any,
+                        collection: 'email-sends',
                         id: emailSend.id,
                         data: {
                             status: 'bounced',
@@ -178,7 +208,7 @@ export const resendWebhookHandler: Endpoint = {
 
                 case 'email.complained':
                     await payload.update({
-                        collection: 'email-sends' as any,
+                        collection: 'email-sends',
                         id: emailSend.id,
                         data: {
                             status: 'complained',
@@ -205,7 +235,7 @@ export const resendWebhookHandler: Endpoint = {
 
         } catch (error) {
             console.error('[ResendWebhook] Error:', error);
-            return Response.json({ error: String(error) }, { status: 500 });
+            return Response.json({ error: 'Internal server error' }, { status: 500 });
         }
     },
 };
@@ -214,21 +244,21 @@ export const resendWebhookHandler: Endpoint = {
  * Update template stats with open/click data
  */
 async function updateTemplateStats(
-    payload: any,
+    payload: Payload,
     templateId: string,
     eventType: 'opened' | 'clicked'
-) {
+): Promise<void> {
     try {
         const template = await payload.findByID({
-            collection: 'email-templates' as any,
+            collection: 'email-templates',
             id: templateId,
-        });
+        }) as EmailTemplate | null;
 
         if (!template) return;
 
-        const currentStats = template.stats || { sent: 0, opened: 0, clicked: 0 };
+        const currentStats: TemplateStats = template.stats || { sent: 0, opened: 0, clicked: 0 };
 
-        const updates: any = {
+        const updates: TemplateStats = {
             ...currentStats,
         };
 
@@ -239,13 +269,13 @@ async function updateTemplateStats(
         }
 
         // Calculate rates
-        if (updates.sent > 0) {
-            updates.openRate = `${((updates.opened / updates.sent) * 100).toFixed(1)}%`;
-            updates.clickRate = `${((updates.clicked / updates.sent) * 100).toFixed(1)}%`;
+        if (updates.sent && updates.sent > 0) {
+            updates.openRate = `${(((updates.opened || 0) / updates.sent) * 100).toFixed(1)}%`;
+            updates.clickRate = `${(((updates.clicked || 0) / updates.sent) * 100).toFixed(1)}%`;
         }
 
         await payload.update({
-            collection: 'email-templates' as any,
+            collection: 'email-templates',
             id: templateId,
             data: {
                 stats: updates,
@@ -257,20 +287,23 @@ async function updateTemplateStats(
     }
 }
 
+// Result type for A/B test results
+interface ABTestResults {
+    variantA: { sent: number; opened: number; clicked: number; openRate: string };
+    variantB: { sent: number; opened: number; clicked: number; openRate: string };
+    winner: 'A' | 'B' | 'tie';
+}
+
 /**
  * Get A/B test results for a template
  */
 export async function getABTestResults(
-    payload: any,
+    payload: Payload,
     templateId: string
-): Promise<{
-    variantA: { sent: number; opened: number; clicked: number; openRate: string };
-    variantB: { sent: number; opened: number; clicked: number; openRate: string };
-    winner: 'A' | 'B' | 'tie';
-}> {
+): Promise<ABTestResults> {
     // Get all sends for this template
     const allSends = await payload.find({
-        collection: 'email-sends' as any,
+        collection: 'email-sends',
         where: {
             template: { equals: templateId },
         },
@@ -281,12 +314,13 @@ export async function getABTestResults(
     const variantB = { sent: 0, opened: 0, clicked: 0 };
 
     for (const send of allSends.docs) {
-        const variant = send.abVariant === 'B' ? variantB : variantA;
+        const emailSend = send as EmailSend;
+        const variant = emailSend.abVariant === 'B' ? variantB : variantA;
         variant.sent++;
-        if (send.status === 'opened' || send.status === 'clicked') {
+        if (emailSend.status === 'opened' || emailSend.status === 'clicked') {
             variant.opened++;
         }
-        if (send.status === 'clicked') {
+        if (emailSend.status === 'clicked') {
             variant.clicked++;
         }
     }

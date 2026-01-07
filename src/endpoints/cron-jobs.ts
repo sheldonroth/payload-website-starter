@@ -17,12 +17,16 @@ export const cronJobsHandler: PayloadHandler = async (req) => {
     const authHeader = req.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
+    // Check for admin role if user is authenticated
+    const userRole = (req.user as { role?: string })?.role
+    const isAdminUser = req.user && userRole === 'admin'
+
     const isAuthorized =
-        req.user ||
+        isAdminUser ||
         (cronSecret && authHeader === `Bearer ${cronSecret}`)
 
     if (!isAuthorized) {
-        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+        return Response.json({ error: 'Unauthorized - admin role required' }, { status: 401 })
     }
 
     try {

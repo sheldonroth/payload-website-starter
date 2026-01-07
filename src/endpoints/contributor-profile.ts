@@ -295,6 +295,13 @@
  */
 
 import type { PayloadRequest } from 'payload'
+import {
+    validationError,
+    notFoundError,
+    forbiddenError,
+    internalError,
+    methodNotAllowedError,
+} from '../utilities/api-response'
 
 // ============================================================================
 // Cache Configuration
@@ -488,7 +495,7 @@ interface ContributorProfileMinimal {
  */
 export const getContributorProfileHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -498,7 +505,7 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         const slug = pathParts[pathParts.length - 1]
 
         if (!slug || slug === 'contributor-profile') {
-            return Response.json({ error: 'Contributor slug is required' }, { status: 400 })
+            return validationError('Contributor slug is required')
         }
 
         // Check cache first
@@ -525,14 +532,14 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         })
 
         if (profiles.docs.length === 0) {
-            return Response.json({ error: 'Contributor not found' }, { status: 404 })
+            return notFoundError('Contributor')
         }
 
         const profile = profiles.docs[0] as ContributorProfileRecord
 
         // Check if profile is public
         if (!profile.isPublic) {
-            return Response.json({ error: 'This contributor profile is private' }, { status: 403 })
+            return forbiddenError('This contributor profile is private')
         }
 
         // Get some of their documented products (top 5)
@@ -610,10 +617,7 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         })
     } catch (error) {
         console.error('[contributor-profile] Error:', error)
-        return Response.json(
-            { error: 'Failed to get contributor profile' },
-            { status: 500 }
-        )
+        return internalError('Failed to get contributor profile')
     }
 }
 
@@ -623,14 +627,14 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
  */
 export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
         const fingerprintHash = req.headers.get('x-fingerprint')
 
         if (!fingerprintHash) {
-            return Response.json({ error: 'Fingerprint required' }, { status: 400 })
+            return validationError('Fingerprint required')
         }
 
         // Check cache first
@@ -774,10 +778,7 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
         })
     } catch (error) {
         console.error('[my-contributor-stats] Error:', error)
-        return Response.json(
-            { error: 'Failed to get contributor stats' },
-            { status: 500 }
-        )
+        return internalError('Failed to get contributor stats')
     }
 }
 
@@ -787,14 +788,14 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
  */
 export const updateContributorProfileHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'POST') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
         const fingerprintHash = req.headers.get('x-fingerprint')
 
         if (!fingerprintHash) {
-            return Response.json({ error: 'Fingerprint required' }, { status: 400 })
+            return validationError('Fingerprint required')
         }
 
         const body = await req.json?.() as {
@@ -814,7 +815,7 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
         })
 
         if (profiles.docs.length === 0) {
-            return Response.json({ error: 'Contributor profile not found' }, { status: 404 })
+            return notFoundError('Contributor profile')
         }
 
         const profile = profiles.docs[0] as ContributorProfileRecord
@@ -848,10 +849,7 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
         })
     } catch (error) {
         console.error('[contributor-profile/update] Error:', error)
-        return Response.json(
-            { error: 'Failed to update contributor profile' },
-            { status: 500 }
-        )
+        return internalError('Failed to update contributor profile')
     }
 }
 
@@ -863,7 +861,7 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
  */
 export const registerContributorContributionHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'POST') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -874,10 +872,7 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
         }
 
         if (!body.fingerprintHash || !body.barcode || !body.productVoteId) {
-            return Response.json(
-                { error: 'fingerprintHash, barcode, and productVoteId are required' },
-                { status: 400 }
-            )
+            return validationError('fingerprintHash, barcode, and productVoteId are required')
         }
 
         // Find or create contributor profile
@@ -987,10 +982,7 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
         })
     } catch (error) {
         console.error('[contributor-profile/register-contribution] Error:', error)
-        return Response.json(
-            { error: 'Failed to register contribution' },
-            { status: 500 }
-        )
+        return internalError('Failed to register contribution')
     }
 }
 

@@ -1,5 +1,6 @@
 import { PayloadHandler } from 'payload'
 import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { validationError, internalError } from '../utilities/api-response'
 
 /**
  * @openapi
@@ -153,10 +154,7 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
         }
 
         if (!fingerprintHash) {
-            return Response.json(
-                { error: 'fingerprintHash is required' },
-                { status: 400 }
-            )
+            return validationError('fingerprintHash is required')
         }
 
         // Check if fingerprint already exists
@@ -266,10 +264,7 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
         })
     } catch (error) {
         console.error('[Fingerprint Register] Error:', error)
-        return Response.json(
-            { error: 'Failed to register fingerprint' },
-            { status: 500 }
-        )
+        return internalError('Failed to register fingerprint')
     }
 }
 
@@ -284,10 +279,7 @@ export const fingerprintCheckHandler: PayloadHandler = async (req) => {
         const fingerprintHash = url.searchParams.get('hash')
 
         if (!fingerprintHash) {
-            return Response.json(
-                { error: 'hash query parameter is required' },
-                { status: 400 }
-            )
+            return validationError('hash query parameter is required')
         }
 
         const result = await req.payload.find({
@@ -337,9 +329,6 @@ export const fingerprintCheckHandler: PayloadHandler = async (req) => {
         })
     } catch (error) {
         console.error('[Fingerprint Check] Error:', error)
-        return Response.json(
-            { error: 'Failed to check fingerprint' },
-            { status: 500 }
-        )
+        return internalError('Failed to check fingerprint')
     }
 }

@@ -1,6 +1,35 @@
 import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { unauthorizedError } from '../utilities/api-response'
+import type { Brand, TrendingNew, Product } from '../payload-types'
+
+// Interface for brand alias structure
+interface BrandAlias {
+    alias: string
+    id?: string | null
+}
+
+// Interface for brand trending data update
+interface BrandTrendingData {
+    isTrending: boolean
+    trendingScore: number
+    trendingSentiment?: 'positive' | 'negative' | 'neutral' | 'mixed' | null
+    trendingReason?: string | null
+    recentNewsCount: number
+    lastTrendingCheck: string
+}
+
+// Interface for product trending data update
+interface ProductTrendingData {
+    isTrending: boolean
+    trendingScore: number
+    trendingSentiment?: 'positive' | 'negative' | 'neutral' | 'mixed' | null
+    trendingReason?: string | null
+}
+
+// Type for sentiment values
+type SentimentValue = 'positive' | 'negative' | 'neutral'
 
 /**
  * Trending Engine Endpoint
@@ -322,7 +351,7 @@ async function propagateTrendingToProducts(
         const brand = await payload.findByID({
             collection: 'brands',
             id: brandId,
-        })
+        }) as Brand | null
 
         if (!brand) return 0
 
@@ -335,18 +364,20 @@ async function propagateTrendingToProducts(
         })
 
         let updated = 0
+        const trendingData: ProductTrendingData = {
+            isTrending: trending.isTrending,
+            trendingScore: trending.score,
+            trendingSentiment: trending.analysis.overallSentiment,
+            trendingReason: trending.analysis.summary,
+        }
+
         for (const product of products.docs) {
             await payload.update({
                 collection: 'products',
                 id: product.id,
                 data: {
-                    trending: {
-                        isTrending: trending.isTrending,
-                        trendingScore: trending.score,
-                        trendingSentiment: trending.analysis.overallSentiment,
-                        trendingReason: trending.analysis.summary,
-                    },
-                } as any, // Type will be correct after payload-types.ts regeneration
+                    trending: trendingData,
+                },
             })
             updated++
         }
@@ -368,7 +399,7 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
         (cronSecret && authHeader === `Bearer ${cronSecret}`)
 
     if (!isAuthenticated) {
-        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+        return unauthorizedError()
     }
 
     const result: TrendingResult = {
@@ -389,12 +420,12 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
         } = body || {}
 
         // Step 1: Get brands to scan
-        let brands: any[]
+        let brands: Brand[]
         if (brandId) {
             const brand = await req.payload.findByID({
                 collection: 'brands',
                 id: brandId,
-            })
+            }) as Brand | null
             brands = brand ? [brand] : []
         } else {
             const brandsResult = await req.payload.find({
@@ -402,7 +433,7 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
                 where: fullScan ? {} : { productCount: { greater_than: 0 } },
                 limit: 200,
             })
-            brands = brandsResult.docs
+            brands = brandsResult.docs as Brand[]
         }
 
         result.brandsScanned = brands.length
@@ -414,7 +445,8 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
                 // Build search terms (brand name + aliases)
                 const searchTerms: string[] = [brand.name]
                 if (brand.aliases) {
-                    searchTerms.push(...brand.aliases.map((a: any) => a.alias))
+                    const aliases = brand.aliases as BrandAlias[]
+                    searchTerms.push(...aliases.map((a) => a.alias))
                 }
 
                 // Fetch from both sources
@@ -437,19 +469,20 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
 
                 if (uniqueArticles.length === 0) {
                     // No news = not trending
+                    const noTrendingData: BrandTrendingData = {
+                        isTrending: false,
+                        trendingScore: 0,
+                        trendingSentiment: null,
+                        trendingReason: null,
+                        recentNewsCount: 0,
+                        lastTrendingCheck: new Date().toISOString(),
+                    }
                     await req.payload.update({
                         collection: 'brands',
                         id: brand.id,
                         data: {
-                            trending: {
-                                isTrending: false,
-                                trendingScore: 0,
-                                trendingSentiment: null,
-                                trendingReason: null,
-                                recentNewsCount: 0,
-                                lastTrendingCheck: new Date().toISOString(),
-                            },
-                        } as any,
+                            trending: noTrendingData,
+                        },
                     })
                     continue
                 }
@@ -462,31 +495,32 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
                 const isTrending = score >= 30
 
                 // Step 5: Update brand
+                const brandTrendingData: BrandTrendingData = {
+                    isTrending,
+                    trendingScore: score,
+                    trendingSentiment: analysis.overallSentiment,
+                    trendingReason: analysis.summary,
+                    recentNewsCount: uniqueArticles.length,
+                    lastTrendingCheck: new Date().toISOString(),
+                }
                 await req.payload.update({
                     collection: 'brands',
                     id: brand.id,
                     data: {
-                        trending: {
-                            isTrending,
-                            trendingScore: score,
-                            trendingSentiment: analysis.overallSentiment,
-                            trendingReason: analysis.summary,
-                            recentNewsCount: uniqueArticles.length,
-                            lastTrendingCheck: new Date().toISOString(),
-                        },
-                    } as any,
+                        trending: brandTrendingData,
+                    },
                 })
 
                 // Step 6: Store top news snippets (limit to 5 per brand)
                 // First, delete old news for this brand
                 const existingNews = await req.payload.find({
-                    collection: 'trending-news' as any,
+                    collection: 'trending-news',
                     where: { brand: { equals: brand.id } },
                     limit: 100,
                 })
                 for (const news of existingNews.docs) {
                     await req.payload.delete({
-                        collection: 'trending-news' as any,
+                        collection: 'trending-news',
                         id: news.id,
                     })
                 }
@@ -494,19 +528,20 @@ export const trendingEngineHandler: PayloadHandler = async (req: PayloadRequest)
                 // Add new snippets
                 for (const article of uniqueArticles.slice(0, 5)) {
                     const publishedAt = safeISOString(article.publishedAt)
+                    const sentiment: SentimentValue = article.sentiment !== undefined
+                        ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
+                        : 'neutral'
                     await req.payload.create({
-                        collection: 'trending-news' as any,
+                        collection: 'trending-news',
                         data: {
                             brand: brand.id,
                             title: article.title,
                             source: article.source,
                             url: article.url,
                             publishedAt: publishedAt || new Date().toISOString(),
-                            sentiment: article.sentiment !== undefined
-                                ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
-                                : 'neutral',
+                            sentiment,
                             matchedTerms: brand.name,
-                        } as any,
+                        },
                     })
                 }
 
@@ -583,11 +618,12 @@ export async function runTrendingEngine(
 
         result.brandsScanned = brandsResult.docs.length
 
-        for (const brand of brandsResult.docs) {
+        for (const brand of brandsResult.docs as Brand[]) {
             try {
                 const searchTerms: string[] = [brand.name]
                 if (brand.aliases) {
-                    searchTerms.push(...brand.aliases.map((a: any) => a.alias))
+                    const aliases = brand.aliases as BrandAlias[]
+                    searchTerms.push(...aliases.map((a) => a.alias))
                 }
 
                 const articles: NewsArticle[] = []
@@ -604,17 +640,20 @@ export async function runTrendingEngine(
                 result.newsArticlesFound += unique.length
 
                 if (unique.length === 0) {
+                    const noTrendingData: BrandTrendingData = {
+                        isTrending: false,
+                        trendingScore: 0,
+                        trendingSentiment: null,
+                        trendingReason: null,
+                        recentNewsCount: 0,
+                        lastTrendingCheck: new Date().toISOString(),
+                    }
                     await payload.update({
                         collection: 'brands',
                         id: brand.id,
                         data: {
-                            trending: {
-                                isTrending: false,
-                                trendingScore: 0,
-                                recentNewsCount: 0,
-                                lastTrendingCheck: new Date().toISOString(),
-                            },
-                        } as any,
+                            trending: noTrendingData,
+                        },
                     })
                     continue
                 }
@@ -623,31 +662,32 @@ export async function runTrendingEngine(
                 const score = calculateTrendingScore(unique.length, analysis)
                 const isTrending = score >= 30
 
+                const brandTrendingData: BrandTrendingData = {
+                    isTrending,
+                    trendingScore: score,
+                    trendingSentiment: analysis.overallSentiment,
+                    trendingReason: analysis.summary,
+                    recentNewsCount: unique.length,
+                    lastTrendingCheck: new Date().toISOString(),
+                }
                 await payload.update({
                     collection: 'brands',
                     id: brand.id,
                     data: {
-                        trending: {
-                            isTrending,
-                            trendingScore: score,
-                            trendingSentiment: analysis.overallSentiment,
-                            trendingReason: analysis.summary,
-                            recentNewsCount: unique.length,
-                            lastTrendingCheck: new Date().toISOString(),
-                        },
-                    } as any,
+                        trending: brandTrendingData,
+                    },
                 })
 
                 // Store top news snippets (limit to 5 per brand)
                 // First, delete old news for this brand
                 const existingNews = await payload.find({
-                    collection: 'trending-news' as any,
+                    collection: 'trending-news',
                     where: { brand: { equals: brand.id } },
                     limit: 100,
                 })
                 for (const news of existingNews.docs) {
                     await payload.delete({
-                        collection: 'trending-news' as any,
+                        collection: 'trending-news',
                         id: news.id,
                     })
                 }
@@ -655,19 +695,20 @@ export async function runTrendingEngine(
                 // Add new snippets
                 for (const article of unique.slice(0, 5)) {
                     const publishedAt = safeISOString(article.publishedAt)
+                    const sentiment: SentimentValue = article.sentiment !== undefined
+                        ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
+                        : 'neutral'
                     await payload.create({
-                        collection: 'trending-news' as any,
+                        collection: 'trending-news',
                         data: {
                             brand: brand.id,
                             title: article.title,
                             source: article.source,
                             url: article.url,
                             publishedAt: publishedAt || new Date().toISOString(),
-                            sentiment: article.sentiment !== undefined
-                                ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
-                                : 'neutral',
+                            sentiment,
                             matchedTerms: brand.name,
-                        } as any,
+                        },
                     })
                 }
 

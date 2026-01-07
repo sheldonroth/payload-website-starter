@@ -1,5 +1,6 @@
 import type { PayloadHandler } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { unauthorizedError, forbiddenError, validationError, internalError } from '../utilities/api-response'
 
 /**
  * Process items in parallel batches to improve performance
@@ -31,14 +32,14 @@ async function batchProcess<T>(
  */
 export const bulkOperationsHandler: PayloadHandler = async (req) => {
     if (!req.user) {
-        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+        return unauthorizedError()
     }
 
     // SECURITY: Verify admin or editor role - bulk operations require elevated privileges
     const userRole = (req.user as { role?: string }).role
     const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
     if (userRole !== 'admin' && userRole !== 'product_editor' && !isAdminFlag) {
-        return Response.json({ error: 'Forbidden: Admin or Editor access required' }, { status: 403 })
+        return forbiddenError('Admin or Editor access required')
     }
 
     // Rate limiting
@@ -53,7 +54,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
         const { operation, productIds, options = {} } = body
 
         if (!operation) {
-            return Response.json({ error: 'Operation required' }, { status: 400 })
+            return validationError('Operation required')
         }
 
         const payload = req.payload
@@ -86,7 +87,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
             })
             products = query.docs
         } else {
-            return Response.json({ error: 'Either productIds or filter required' }, { status: 400 })
+            return validationError('Either productIds or filter required')
         }
 
         results.processed = products.length
@@ -163,7 +164,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
             case 'assign_category': {
                 const { categoryId } = options
                 if (!categoryId) {
-                    return Response.json({ error: 'categoryId required for assign_category' }, { status: 400 })
+                    return validationError('categoryId required for assign_category')
                 }
                 await batchProcess(products, 10, async (product) => {
                     try {
@@ -184,7 +185,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
             case 'set_verdict': {
                 const { verdict, reason } = options
                 if (!verdict) {
-                    return Response.json({ error: 'verdict required for set_verdict' }, { status: 400 })
+                    return validationError('verdict required for set_verdict')
                 }
                 await batchProcess(products, 10, async (product) => {
                     try {
@@ -206,7 +207,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
             }
 
             default:
-                return Response.json({ error: `Unknown operation: ${operation}` }, { status: 400 })
+                return validationError(`Unknown operation: ${operation}`)
         }
 
         return Response.json({
@@ -214,10 +215,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
             ...results,
         })
     } catch (error) {
-        console.error('Bulk operation error:', error)
-        return Response.json(
-            { error: error instanceof Error ? error.message : 'Operation failed' },
-            { status: 500 }
-        )
+        console.error('[BulkOperations] Error:', error)
+        return internalError('Operation failed')
     }
 }

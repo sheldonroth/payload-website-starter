@@ -65,6 +65,7 @@ import {
     internalError,
     successResponse,
 } from '../utilities/api-response'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RateLimits } from '../utilities/rate-limiter'
 
 // Verification token expiration (24 hours)
 const VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000
@@ -117,6 +118,13 @@ export const brandLoginHandler: Endpoint = {
     path: '/brand-auth/login',
     method: 'post',
     handler: async (req) => {
+        // Apply rate limiting
+        const rateLimitKey = getRateLimitKey(req as unknown as Request)
+        const rateLimit = checkRateLimit(rateLimitKey, RateLimits.LOGIN)
+        if (!rateLimit.allowed) {
+            return rateLimitResponse(rateLimit.resetAt)
+        }
+
         try {
             const body = await req.json?.() || {}
             const { email, password } = body
@@ -201,6 +209,13 @@ export const brandSignupHandler: Endpoint = {
     path: '/brand-auth/signup',
     method: 'post',
     handler: async (req) => {
+        // Apply rate limiting (more restrictive for signup to prevent abuse)
+        const rateLimitKey = getRateLimitKey(req as unknown as Request)
+        const rateLimit = checkRateLimit(rateLimitKey, RateLimits.LOGIN)
+        if (!rateLimit.allowed) {
+            return rateLimitResponse(rateLimit.resetAt)
+        }
+
         try {
             const body = await req.json?.() || {}
             const {

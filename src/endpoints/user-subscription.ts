@@ -79,7 +79,7 @@ export const userSubscriptionHandler: PayloadHandler = async (req: PayloadReques
     } catch (error) {
         console.error('[UserSubscription] Error:', error)
         return Response.json(
-            { error: 'Internal Server Error', message: String(error) },
+            { error: 'Internal server error' },
             { status: 500 }
         )
     }

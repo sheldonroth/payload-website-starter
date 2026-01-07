@@ -29,6 +29,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     return new Response('This endpoint can only be used for relative previews', { status: 500 })
   }
 
+  // Prevent path traversal attacks
+  if (path.includes('//') || path.includes('..')) {
+    return new Response('Invalid path - path traversal detected', { status: 400 })
+  }
+
   let user
 
   try {

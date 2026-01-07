@@ -208,7 +208,7 @@ export const emailEventTriggerHandler: Endpoint = {
 
         } catch (error) {
             console.error('[EmailTrigger] Error:', error);
-            return Response.json({ error: String(error) }, { status: 500 });
+            return Response.json({ error: 'Internal server error' }, { status: 500 });
         }
     },
 };
