@@ -89,12 +89,13 @@ export async function GET(request: Request) {
 
                 if (existingProduct) {
                     // Product already tested - mark as matched
+                    const productId = (existingProduct as { id: number }).id
                     await payload.update({
                         collection: 'market-intelligence',
                         id: intel.id,
                         data: {
                             status: 'matched',
-                            linkedProduct: (existingProduct as { id: string | number }).id,
+                            linkedProduct: productId,
                             processedAt: now.toISOString(),
                         },
                     })
@@ -117,12 +118,13 @@ export async function GET(request: Request) {
 
                 if (existingVote) {
                     // Already in queue - link and boost priority
+                    const voteId = (existingVote as { id: number }).id
                     await payload.update({
                         collection: 'market-intelligence',
                         id: intel.id,
                         data: {
                             status: 'matched',
-                            linkedProductVote: (existingVote as { id: string | number }).id,
+                            linkedProductVote: voteId,
                             processedAt: now.toISOString(),
                         },
                     })
@@ -149,14 +151,12 @@ export async function GET(request: Request) {
                             barcode: intel.upc,
                             productName: intel.productName,
                             brand: intel.brand,
-                            category: intel.category,
-                            source: 'market_intelligence',
                             searchCount: 0,
                             scanCount: 0,
                             totalWeightedVotes: Math.floor(intel.trendScore * 2), // Give initial weight from trend score
                             velocityScore: intel.trendScore,
                             urgencyFlag: intel.trendScore >= 80 ? 'urgent' : 'trending',
-                        },
+                        } as any,
                     })
 
                     await payload.update({

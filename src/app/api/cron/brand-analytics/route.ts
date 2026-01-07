@@ -145,10 +145,12 @@ export async function GET(request: Request) {
                 const averageProductScore = scoredProducts > 0 ? Math.round(totalScore / scoredProducts) : 0
 
                 // Create daily snapshot
+                const brandId = brand.id as number
+                const grade = (brand.trustGrade || 'C') as 'A' | 'B' | 'C' | 'D' | 'F'
                 await payload.create({
                     collection: 'brand-analytics',
                     data: {
-                        brand: brand.id,
+                        brand: brandId,
                         brandName: brand.name,
                         date: today,
                         scanCount: 0, // Would need AuditLog aggregation - placeholder
@@ -157,7 +159,7 @@ export async function GET(request: Request) {
                         uniqueUsers: 0,
                         verdictBreakdown,
                         trustScore: brand.trustScore || 0,
-                        trustGrade: brand.trustGrade || 'C',
+                        trustGrade: grade,
                         categoryRank: 0, // Would need category-specific calculation
                         overallRank: 0,
                         changes,

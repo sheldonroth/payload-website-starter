@@ -12,7 +12,7 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 
 interface FeedbackPayload {
     message: string
-    userId?: number
+    userId?: number | string  // Accept both string and number from clients
     email?: string
     platform?: 'ios' | 'android' | 'web'
     source?: string
@@ -51,13 +51,22 @@ export const feedbackHandler: PayloadHandler = async (req: PayloadRequest) => {
             return Response.json({ error: 'Invalid platform' }, { status: 400 })
         }
 
+        // Parse userId to number (mobile app may send as string)
+        let parsedUserId: number | undefined
+        if (userId !== undefined && userId !== null) {
+            parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId
+            if (isNaN(parsedUserId)) {
+                parsedUserId = undefined
+            }
+        }
+
         // Create feedback entry
         const feedback = await req.payload.create({
             collection: 'feedback',
             data: {
                 message: trimmedMessage,
                 email: email || undefined,
-                user: userId || undefined,
+                user: parsedUserId || undefined,
                 platform: platform || 'ios',
                 source: source || 'mobile-app',
                 status: 'new',
@@ -65,7 +74,7 @@ export const feedbackHandler: PayloadHandler = async (req: PayloadRequest) => {
             },
         })
 
-        console.log(`[Feedback] New submission from ${platform || 'ios'}: ${(feedback as { id: number }).id}`)
+        console.log(`[Feedback] New submission from ${platform || 'ios'}: ID=${(feedback as { id: number }).id}, user=${parsedUserId || 'anonymous'}`)
 
         return Response.json(
             { success: true, id: (feedback as { id: number }).id },

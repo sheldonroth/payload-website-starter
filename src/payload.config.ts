@@ -119,6 +119,7 @@ import { emailPreferencesEndpoint, emailPreferencesUpdateEndpoint, emailPreferen
 import { emailTemplatePreviewEndpoint } from './endpoints/email-template-preview'
 import { emailTemplateTestEndpoint } from './endpoints/email-template-test'
 import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
+import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -171,6 +172,10 @@ export default buildConfig({
         'email-analytics': {
           Component: '@/components/EmailAnalyticsDashboard',
           path: '/email-analytics',
+        },
+        'statsig-experiments': {
+          Component: '@/components/StatsigDashboard',
+          path: '/statsig-experiments',
         },
       },
       // Sidebar nav links
@@ -743,6 +748,12 @@ export default buildConfig({
     emailTemplatePreviewEndpoint,
     emailTemplateTestEndpoint,
     emailAnalyticsEndpoint,
+    // Statsig Experiments Dashboard
+    {
+      path: '/statsig-experiments',
+      method: 'get',
+      handler: statsigExperimentsHandler,
+    },
   ],
   plugins: [
     ...plugins,
