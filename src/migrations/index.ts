@@ -57,6 +57,7 @@ import * as migration_20260107_030000_add_referral_breakdown_table from './20260
 import * as migration_20260107_040000_fix_referral_and_fingerprint_columns from './20260107_040000_fix_referral_and_fingerprint_columns';
 import * as migration_20260107_050000_fix_generated_content_columns from './20260107_050000_fix_generated_content_columns';
 import * as migration_20260107_060000_fix_regulatory_changes_columns from './20260107_060000_fix_regulatory_changes_columns';
+import * as migration_20260107_070000_fix_users_email_preferences_columns from './20260107_070000_fix_users_email_preferences_columns';
 
 export const migrations = [
   {
@@ -353,5 +354,10 @@ export const migrations = [
     up: migration_20260107_060000_fix_regulatory_changes_columns.up,
     down: migration_20260107_060000_fix_regulatory_changes_columns.down,
     name: '20260107_060000_fix_regulatory_changes_columns'
+  },
+  {
+    up: migration_20260107_070000_fix_users_email_preferences_columns.up,
+    down: migration_20260107_070000_fix_users_email_preferences_columns.down,
+    name: '20260107_070000_fix_users_email_preferences_columns'
   },
 ];
