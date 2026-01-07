@@ -66,6 +66,33 @@ const nextConfig = {
         key: 'Permissions-Policy',
         value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
       },
+      {
+        // Content Security Policy - helps prevent XSS attacks
+        key: 'Content-Security-Policy',
+        value: [
+          "default-src 'self'",
+          // Scripts: self, inline for Next.js hydration, and eval for dev mode
+          process.env.NODE_ENV === 'production'
+            ? "script-src 'self' 'unsafe-inline' https://vercel.live https://va.vercel-scripts.com"
+            : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          // Styles: self, inline for styled components
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          // Images: self, data URIs, Vercel Blob Storage, common image CDNs
+          "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com",
+          // Fonts: self and Google Fonts
+          "font-src 'self' https://fonts.gstatic.com",
+          // API connections
+          "connect-src 'self' https://*.vercel-insights.com https://vitals.vercel-insights.com https://vercel.live wss://ws-us3.pusher.com",
+          // Media: self and blob storage
+          "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
+          // Frames: same origin only
+          "frame-ancestors 'self'",
+          // Form actions
+          "form-action 'self'",
+          // Base URI
+          "base-uri 'self'",
+        ].join('; '),
+      },
     ]
 
     // HSTS header (only in production)

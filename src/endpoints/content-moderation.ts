@@ -61,6 +61,17 @@ function getPriority(item: {
 }
 
 export const contentModerationHandler: PayloadHandler = async (req) => {
+  // SECURITY: Require admin authentication
+  if (!req.user) {
+    return Response.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
+  const userRole = (req.user as { role?: string }).role
+  const isAdminFlag = (req.user as { isAdmin?: boolean }).isAdmin
+  if (userRole !== 'admin' && !isAdminFlag) {
+    return Response.json({ error: 'Admin access required' }, { status: 403 })
+  }
+
   const url = new URL(req.url || '', 'http://localhost')
   const skipCache = url.searchParams.get('refresh') === 'true'
 

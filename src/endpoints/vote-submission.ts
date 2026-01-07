@@ -1,5 +1,8 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
+// Statuses that allow voting
+const VOTEABLE_STATUSES = ['pending', 'reviewing']
+
 export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest) => {
     const body = await req.json?.() || {}
     const { id } = body
@@ -10,6 +13,11 @@ export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest)
 
     if (!id) {
         return Response.json({ error: 'Missing submission ID' }, { status: 400 })
+    }
+
+    // Validate ID format to prevent injection
+    if (typeof id !== 'number' && typeof id !== 'string') {
+        return Response.json({ error: 'Invalid submission ID format' }, { status: 400 })
     }
 
     try {
@@ -23,7 +31,16 @@ export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest)
             return Response.json({ error: 'Submission not found' }, { status: 404 })
         }
 
-        // 2. Check if user already voted
+        // 2. SECURITY: Only allow voting on pending/reviewing submissions
+        const submissionStatus = (submission as { status?: string }).status
+        if (!submissionStatus || !VOTEABLE_STATUSES.includes(submissionStatus)) {
+            return Response.json({
+                error: 'Voting is only allowed on pending submissions',
+                code: 'NOT_VOTEABLE'
+            }, { status: 403 })
+        }
+
+        // 3. Check if user already voted
         const userId = typeof req.user === 'object' ? (req.user as { id: number }).id : req.user
         const voters = ((submission as { voters?: number[] }).voters || []) as number[]
 
@@ -32,7 +49,7 @@ export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest)
             return Response.json({ error: 'Already voted', code: 'ALREADY_VOTED' }, { status: 400 })
         }
 
-        // 3. Update the submission
+        // 4. Update the submission (removed overrideAccess for security)
         const updatedSubmission = await req.payload.update({
             collection: 'user-submissions' as 'users',
             id,
@@ -40,8 +57,8 @@ export const voteSubmissionHandler: PayloadHandler = async (req: PayloadRequest)
                 voteCount: ((submission as { voteCount?: number }).voteCount || 0) + 1,
                 voters: [...voters, userId],
             } as Record<string, unknown>,
-            // Bypass access control since we validated the specific action
-            overrideAccess: true,
+            // Use req context for proper access control instead of overrideAccess
+            req,
         })
 
         return Response.json({
