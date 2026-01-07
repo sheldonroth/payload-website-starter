@@ -68,6 +68,8 @@ export const AuditLog: CollectionConfig = {
                 { label: '📈 Sentry Spike Alert', value: 'sentry_spike_alert' },
                 { label: '🔁 Sentry Regression Alert', value: 'sentry_regression_alert' },
                 { label: '🔥 Sentry Critical Alert', value: 'sentry_critical_alert' },
+                // Cron job events
+                { label: '⏰ Cron Execution', value: 'cron_execution' },
             ],
             admin: {
                 position: 'sidebar',

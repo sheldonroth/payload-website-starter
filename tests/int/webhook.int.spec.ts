@@ -594,7 +594,7 @@ describe('Webhook Endpoints', () => {
                     email: referredEmail,
                     password: 'test-password',
                     role: 'user',
-                    referredBy: referrer.id,
+                    // Note: referredBy relationship tracked in referrals collection, not on user
                 },
             })
 

@@ -4,11 +4,294 @@
  * Public and private endpoints for contributor profiles and statistics.
  * The heart of the My Cases recognition system.
  *
- * Endpoints:
- * - GET /api/contributor-profile/:slug - Public profile data
- * - GET /api/my-contributor-stats - Personal stats (fingerprint-based)
- * - POST /api/contributor-profile/update - Update display name, avatar
- * - POST /api/contributor-profile/register-contribution - Called when a contributor documents a product
+ * @openapi
+ * /contributor-profile/{slug}:
+ *   get:
+ *     summary: Get public contributor profile
+ *     description: |
+ *       Returns public profile data for a contributor by their shareable slug.
+ *       Includes display name, avatar, bio, stats, badges, and recent contributions.
+ *       Profile must be marked as public to be accessible.
+ *     tags: [Contributors]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Contributor's shareable slug
+ *     responses:
+ *       200:
+ *         description: Contributor profile found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     avatar:
+ *                       type: string
+ *                     bio:
+ *                       type: string
+ *                     contributorNumber:
+ *                       type: integer
+ *                     level:
+ *                       type: string
+ *                       enum: [new, builder, veteran, champion]
+ *                     shareableSlug:
+ *                       type: string
+ *                     joinedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         documentsSubmitted:
+ *                           type: integer
+ *                         productsTestedFromSubmissions:
+ *                           type: integer
+ *                         peopleHelped:
+ *                           type: integer
+ *                         firstCases:
+ *                           type: integer
+ *                     badges:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                 recentContributions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       barcode:
+ *                         type: string
+ *                       productName:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                 testedProducts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       verdict:
+ *                         type: string
+ *                 cached:
+ *                   type: boolean
+ *       400:
+ *         description: Contributor slug is required
+ *       403:
+ *         description: This contributor profile is private
+ *       404:
+ *         description: Contributor not found
+ *       500:
+ *         description: Failed to get contributor profile
+ *
+ * @openapi
+ * /my-contributor-stats:
+ *   get:
+ *     summary: Get personal contributor statistics
+ *     description: |
+ *       Returns personalized stats for the requesting device based on fingerprint.
+ *       Includes profile info, badges, active cases, and completed products.
+ *     tags: [Contributors]
+ *     parameters:
+ *       - in: header
+ *         name: x-fingerprint
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device fingerprint hash
+ *     responses:
+ *       200:
+ *         description: Contributor stats retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 hasProfile:
+ *                   type: boolean
+ *                 profile:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     avatar:
+ *                       type: string
+ *                     contributorNumber:
+ *                       type: integer
+ *                     level:
+ *                       type: string
+ *                     shareableSlug:
+ *                       type: string
+ *                     shareableUrl:
+ *                       type: string
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     documentsSubmitted:
+ *                       type: integer
+ *                     productsTestedFromSubmissions:
+ *                       type: integer
+ *                     peopleHelped:
+ *                       type: integer
+ *                     firstCases:
+ *                       type: integer
+ *                     level:
+ *                       type: string
+ *                 badges:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 activeCases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 completedProducts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 nextMilestone:
+ *                   type: object
+ *                   properties:
+ *                     nextLevel:
+ *                       type: string
+ *                     remaining:
+ *                       type: integer
+ *                     message:
+ *                       type: string
+ *                 cached:
+ *                   type: boolean
+ *       400:
+ *         description: Fingerprint required
+ *       500:
+ *         description: Failed to get contributor stats
+ *
+ * @openapi
+ * /contributor-profile/update:
+ *   post:
+ *     summary: Update contributor profile
+ *     description: Update display name, avatar, bio, or privacy settings for your profile
+ *     tags: [Contributors]
+ *     parameters:
+ *       - in: header
+ *         name: x-fingerprint
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device fingerprint hash
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               displayName:
+ *                 type: string
+ *                 maxLength: 50
+ *               avatar:
+ *                 type: string
+ *                 maxLength: 10
+ *                 description: Emoji or short URL
+ *               bio:
+ *                 type: string
+ *                 maxLength: 280
+ *               isPublic:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     avatar:
+ *                       type: string
+ *                     bio:
+ *                       type: string
+ *                     isPublic:
+ *                       type: boolean
+ *       400:
+ *         description: Fingerprint required
+ *       404:
+ *         description: Contributor profile not found
+ *       500:
+ *         description: Failed to update contributor profile
+ *
+ * @openapi
+ * /contributor-profile/register-contribution:
+ *   post:
+ *     summary: Register a contribution
+ *     description: |
+ *       Internal endpoint called when a contributor documents a product.
+ *       Creates or updates contributor profile and records the contribution.
+ *     tags: [Contributors]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fingerprintHash, barcode, productVoteId]
+ *             properties:
+ *               fingerprintHash:
+ *                 type: string
+ *               barcode:
+ *                 type: string
+ *               productVoteId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Contribution registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 contributorNumber:
+ *                   type: integer
+ *                 casePosition:
+ *                   type: integer
+ *                 isFirstContributor:
+ *                   type: boolean
+ *                 totalContributors:
+ *                   type: integer
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     documentsSubmitted:
+ *                       type: integer
+ *                     level:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Failed to register contribution
  */
 
 import type { PayloadRequest } from 'payload'
@@ -135,6 +418,71 @@ interface CaseContributor {
 }
 
 /**
+ * Contributor profile record from database
+ */
+interface ContributorProfileRecord {
+    id: string | number
+    displayName: string
+    avatar: string
+    bio?: string
+    contributorNumber: number
+    documentsSubmitted: number
+    productsTestedFromSubmissions: number
+    peopleHelped: number
+    firstCases: number
+    contributorLevel: string
+    isPublic: boolean
+    shareableSlug: string
+    badges: string[]
+    featuredCases: string[]
+    createdAt: string
+    fingerprintHash?: string
+}
+
+/**
+ * Product vote record for contributor tracking
+ */
+interface ContributorProductVote {
+    id: string | number
+    barcode: string
+    productName?: string
+    status: string
+    fundingProgress?: number
+    firstScout?: string | number
+    scoutContributors?: CaseContributor[]
+    totalScouts?: number
+}
+
+/**
+ * Tested product record
+ */
+interface ContributorTestedProduct {
+    id: string | number
+    name: string
+    verdict: string
+}
+
+/**
+ * Updated profile response data
+ */
+interface UpdatedProfileResponse {
+    displayName: string
+    avatar: string
+    bio?: string
+    isPublic: boolean
+}
+
+/**
+ * Minimal contributor profile for registration
+ */
+interface ContributorProfileMinimal {
+    id: string | number
+    contributorNumber: number
+    documentsSubmitted: number
+    firstCases: number
+}
+
+/**
  * Get public contributor profile by slug
  * GET /api/contributor-profile/:slug
  */
@@ -180,23 +528,7 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
             return Response.json({ error: 'Contributor not found' }, { status: 404 })
         }
 
-        const profile = profiles.docs[0] as {
-            id: string | number
-            displayName: string
-            avatar: string
-            bio?: string
-            contributorNumber: number
-            documentsSubmitted: number
-            productsTestedFromSubmissions: number
-            peopleHelped: number
-            firstCases: number
-            contributorLevel: string
-            isPublic: boolean
-            shareableSlug: string
-            badges: string[]
-            featuredCases: string[]
-            createdAt: string
-        }
+        const profile = profiles.docs[0] as ContributorProfileRecord
 
         // Check if profile is public
         if (!profile.isPublic) {
@@ -204,11 +536,12 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         }
 
         // Get some of their documented products (top 5)
+        // Note: scoutContributors is a JSON field, so we use 'like' to search for fingerprintHash
         const contributions = await req.payload.find({
             collection: 'product-votes',
             where: {
                 'scoutContributors': {
-                    contains: profile.id.toString(),
+                    like: `%"fingerprintHash":"${profile.fingerprintHash}"%`,
                 },
             },
             limit: 5,
@@ -245,16 +578,22 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
                 },
                 badges: profile.badges || [],
             },
-            recentContributions: contributions.docs.map((c) => ({
-                barcode: (c as { barcode: string }).barcode,
-                productName: (c as { productName?: string }).productName,
-                status: (c as { status: string }).status,
-            })),
-            testedProducts: testedProducts.docs.map((p) => ({
-                id: (p as { id: string | number }).id,
-                name: (p as { name: string }).name,
-                verdict: (p as { verdict: string }).verdict,
-            })),
+            recentContributions: contributions.docs.map((doc) => {
+                const c = doc as ContributorProductVote
+                return {
+                    barcode: c.barcode,
+                    productName: c.productName,
+                    status: c.status,
+                }
+            }),
+            testedProducts: testedProducts.docs.map((doc) => {
+                const p = doc as ContributorTestedProduct
+                return {
+                    id: p.id,
+                    name: p.name,
+                    verdict: p.verdict,
+                }
+            }),
             generatedAt: new Date().toISOString(),
         }
 
@@ -317,20 +656,7 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
             limit: 1,
         })
 
-        let profile = profiles.docs[0] as {
-            id: string | number
-            displayName: string
-            avatar: string
-            contributorNumber: number
-            documentsSubmitted: number
-            productsTestedFromSubmissions: number
-            peopleHelped: number
-            firstCases: number
-            contributorLevel: string
-            shareableSlug: string
-            badges: string[]
-            createdAt: string
-        } | undefined
+        let profile = profiles.docs[0] as ContributorProfileRecord | undefined
 
         // If no profile exists, this contributor hasn't documented anything yet
         if (!profile) {
@@ -360,13 +686,14 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
         }
 
         // Get their active cases (pending products)
+        // Note: scoutContributors is a JSON field, so we use 'like' to search for fingerprintHash
         const activeCases = await req.payload.find({
             collection: 'product-votes',
             where: {
                 and: [
                     {
                         scoutContributors: {
-                            contains: profile.id.toString(),
+                            like: `%"fingerprintHash":"${fingerprintHash}"%`,
                         },
                     },
                     {
@@ -412,17 +739,24 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
                 level: profile.contributorLevel,
             },
             badges: profile.badges || [],
-            activeCases: activeCases.docs.map((inv) => ({
-                barcode: (inv as { barcode: string }).barcode,
-                productName: (inv as { productName?: string }).productName,
-                status: (inv as { status: string }).status,
-                fundingProgress: (inv as { fundingProgress: number }).fundingProgress,
-            })),
-            completedProducts: completedProducts.docs.map((p) => ({
-                id: (p as { id: string | number }).id,
-                name: (p as { name: string }).name,
-                verdict: (p as { verdict: string }).verdict,
-            })),
+            activeCases: activeCases.docs.map((doc, index) => {
+                const inv = doc as ContributorProductVote
+                return {
+                    barcode: inv.barcode,
+                    productName: inv.productName,
+                    status: inv.status,
+                    fundingProgress: inv.fundingProgress,
+                    queuePosition: index + 1,
+                }
+            }),
+            completedProducts: completedProducts.docs.map((doc) => {
+                const p = doc as ContributorTestedProduct
+                return {
+                    id: p.id,
+                    name: p.name,
+                    verdict: p.verdict,
+                }
+            }),
             nextMilestone: getNextMilestone(profile.documentsSubmitted),
             generatedAt: new Date().toISOString(),
         }
@@ -483,7 +817,7 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
             return Response.json({ error: 'Contributor profile not found' }, { status: 404 })
         }
 
-        const profile = profiles.docs[0] as { id: string | number; shareableSlug?: string }
+        const profile = profiles.docs[0] as ContributorProfileRecord
 
         // Update profile
         const updateData: Record<string, unknown> = {}
@@ -501,13 +835,15 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
         // Invalidate cache for this profile (both by slug and fingerprint)
         invalidateContributorCache(profile.shareableSlug, fingerprintHash)
 
+        const updatedProfile = updated as UpdatedProfileResponse
+
         return Response.json({
             success: true,
             profile: {
-                displayName: (updated as { displayName: string }).displayName,
-                avatar: (updated as { avatar: string }).avatar,
-                bio: (updated as { bio?: string }).bio,
-                isPublic: (updated as { isPublic: boolean }).isPublic,
+                displayName: updatedProfile.displayName,
+                avatar: updatedProfile.avatar,
+                bio: updatedProfile.bio,
+                isPublic: updatedProfile.isPublic,
             },
         })
     } catch (error) {
@@ -553,12 +889,7 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
             limit: 1,
         })
 
-        let contributorProfile: {
-            id: string | number
-            contributorNumber: number
-            documentsSubmitted: number
-            firstCases: number
-        }
+        let contributorProfile: ContributorProfileMinimal
 
         if (profiles.docs.length === 0) {
             // Create new contributor profile
@@ -571,10 +902,10 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
                     documentsSubmitted: 1,
                 },
             })
-            contributorProfile = newProfile as typeof contributorProfile
+            contributorProfile = newProfile as ContributorProfileMinimal
         } else {
             // Update existing profile
-            contributorProfile = profiles.docs[0] as typeof contributorProfile
+            contributorProfile = profiles.docs[0] as ContributorProfileMinimal
             await req.payload.update({
                 collection: 'contributor-profiles',
                 id: contributorProfile.id,
@@ -589,12 +920,7 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
         const productVote = await req.payload.findByID({
             collection: 'product-votes',
             id: body.productVoteId,
-        }) as {
-            id: string | number
-            firstScout?: string | number
-            scoutContributors?: CaseContributor[]
-            totalScouts?: number
-        }
+        }) as ContributorProductVote
 
         const existingContributors = productVote.scoutContributors || []
         const isFirstContributor = !productVote.firstScout
@@ -648,7 +974,7 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
             casePosition: alreadyContributed
                 ? existingContributors.findIndex(
                     (c: CaseContributor) => c.fingerprintHash === body.fingerprintHash
-                  ) + 1
+                ) + 1
                 : existingContributors.length + 1,
             isFirstContributor,
             totalContributors: alreadyContributed

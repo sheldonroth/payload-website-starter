@@ -2082,7 +2082,8 @@ export interface AuditLog {
     | 'sentry_issue_resolved'
     | 'sentry_spike_alert'
     | 'sentry_regression_alert'
-    | 'sentry_critical_alert';
+    | 'sentry_critical_alert'
+    | 'cron_execution';
   sourceType?:
     | ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule' | 'revenuecat' | 'sentry')
     | null;

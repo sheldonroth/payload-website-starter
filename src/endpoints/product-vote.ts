@@ -1,4 +1,11 @@
 import type { PayloadRequest } from 'payload'
+import {
+    validationError,
+    methodNotAllowedError,
+    notFoundError,
+    internalError,
+    successResponse,
+} from '../utilities/api-response'
 
 /**
  * Product Vote API Endpoint
@@ -195,21 +202,21 @@ interface VoteResponse {
 
 export const productVoteHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'POST') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
         const body = await req.json?.() as VoteRequest
 
         if (!body?.barcode) {
-            return Response.json({ error: 'Barcode is required' }, { status: 400 })
+            return validationError('Barcode is required')
         }
 
         const { barcode, voteType = 'scan', fingerprint, userId, productInfo, notifyOnComplete } = body
 
         // Validate vote type
         if (!['search', 'scan', 'member_scan'].includes(voteType)) {
-            return Response.json({ error: 'Invalid vote type' }, { status: 400 })
+            return validationError('Invalid vote type')
         }
 
         const voteWeight = VOTE_WEIGHTS[voteType]
@@ -411,10 +418,7 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
 
     } catch (error) {
         console.error('[product-vote] Error:', error)
-        return Response.json(
-            { error: 'Failed to register vote', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to register vote')
     }
 }
 
@@ -465,7 +469,7 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
  */
 export const productVoteStatusHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -474,7 +478,7 @@ export const productVoteStatusHandler = async (req: PayloadRequest): Promise<Res
         const barcode = url.searchParams.get('barcode')
 
         if (!barcode) {
-            return Response.json({ error: 'Barcode is required' }, { status: 400 })
+            return validationError('Barcode is required')
         }
 
         const votes = await req.payload.find({
@@ -519,10 +523,7 @@ export const productVoteStatusHandler = async (req: PayloadRequest): Promise<Res
 
     } catch (error) {
         console.error('[product-vote-status] Error:', error)
-        return Response.json(
-            { error: 'Failed to get vote status', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to get vote status')
     }
 }
 
@@ -575,7 +576,7 @@ export const productVoteStatusHandler = async (req: PayloadRequest): Promise<Res
  */
 export const productVoteLeaderboardHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -633,10 +634,7 @@ export const productVoteLeaderboardHandler = async (req: PayloadRequest): Promis
 
     } catch (error) {
         console.error('[product-vote-leaderboard] Error:', error)
-        return Response.json(
-            { error: 'Failed to get leaderboard', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to get leaderboard')
     }
 }
 
@@ -713,17 +711,14 @@ interface PhotoContributor {
 
 export const productVoteContributeHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'POST') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
         const body = await req.json?.() as ContributeRequest
 
         if (!body?.barcode || !body?.fingerprintId || !body?.submissionId) {
-            return Response.json(
-                { error: 'barcode, fingerprintId, and submissionId are required' },
-                { status: 400 }
-            )
+            return validationError('barcode, fingerprintId, and submissionId are required')
         }
 
         const { barcode, fingerprintId, userId, submissionId } = body
@@ -736,10 +731,7 @@ export const productVoteContributeHandler = async (req: PayloadRequest): Promise
         })
 
         if (existingVotes.docs.length === 0) {
-            return Response.json(
-                { error: 'No vote record found for this barcode. Vote first before contributing photos.' },
-                { status: 404 }
-            )
+            return notFoundError('No vote record found for this barcode. Vote first before contributing photos.')
         }
 
         const voteRecord = existingVotes.docs[0] as {
@@ -831,10 +823,7 @@ export const productVoteContributeHandler = async (req: PayloadRequest): Promise
 
     } catch (error) {
         console.error('[product-vote-contribute] Error:', error)
-        return Response.json(
-            { error: 'Failed to register photo contribution', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to register photo contribution')
     }
 }
 
@@ -911,7 +900,7 @@ export const productVoteContributeHandler = async (req: PayloadRequest): Promise
  */
 export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -983,10 +972,7 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
 
     } catch (error) {
         console.error('[product-vote-queue] Error:', error)
-        return Response.json(
-            { error: 'Failed to get queue', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to get queue')
     }
 }
 
@@ -1068,7 +1054,7 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
  */
 export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Response> => {
     if (req.method !== 'GET') {
-        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+        return methodNotAllowedError()
     }
 
     try {
@@ -1076,10 +1062,7 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
         const fingerprint = req.headers.get('x-fingerprint')
 
         if (!fingerprint) {
-            return Response.json(
-                { error: 'Fingerprint header required' },
-                { status: 400 }
-            )
+            return validationError('Fingerprint header required')
         }
 
         // Find all products this user has voted on
@@ -1207,9 +1190,6 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
 
     } catch (error) {
         console.error('[my-investigations] Error:', error)
-        return Response.json(
-            { error: 'Failed to get investigations', details: String(error) },
-            { status: 500 }
-        )
+        return internalError('Failed to get investigations')
     }
 }

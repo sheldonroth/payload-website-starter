@@ -3,6 +3,114 @@
  *
  * Provides metrics about product unlocks, scans, and engagement.
  * Data is calculated from the product-unlocks collection.
+ *
+ * @openapi
+ * /product-engagement-analytics:
+ *   get:
+ *     summary: Get product engagement analytics
+ *     description: |
+ *       Returns comprehensive metrics about product unlocks, scans, and engagement.
+ *       Data includes summary stats, daily breakdowns, top products, categories,
+ *       unlock type breakdowns, and conversion funnel metrics.
+ *       Results are cached for 5 minutes.
+ *     tags: [Analytics, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Analytics data retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalUnlocks:
+ *                       type: integer
+ *                     unlocksToday:
+ *                       type: integer
+ *                     unlocksThisWeek:
+ *                       type: integer
+ *                     unlocksThisMonth:
+ *                       type: integer
+ *                     uniqueProducts:
+ *                       type: integer
+ *                     uniqueUsers:
+ *                       type: integer
+ *                     conversionRate:
+ *                       type: number
+ *                 unlocksByDay:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       count:
+ *                         type: integer
+ *                 topProducts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       unlocks:
+ *                         type: integer
+ *                       category:
+ *                         type: string
+ *                 topCategories:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       unlocks:
+ *                         type: integer
+ *                 unlockTypeBreakdown:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                       percentage:
+ *                         type: number
+ *                 archetypeBreakdown:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       archetype:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                 conversionFunnel:
+ *                   type: object
+ *                   properties:
+ *                     freeUnlocks:
+ *                       type: integer
+ *                     subscriptionUnlocks:
+ *                       type: integer
+ *                     convertedUsers:
+ *                       type: integer
+ *                     conversionRate:
+ *                       type: number
+ *                 cached:
+ *                   type: boolean
+ *                 generatedAt:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: Failed to generate analytics
  */
 
 import type { PayloadHandler } from 'payload'

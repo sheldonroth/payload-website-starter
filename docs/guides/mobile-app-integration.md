@@ -95,12 +95,40 @@ backPhoto: <file>
 ingredientsPhoto: <file>
 ```
 
-**OCR Processing:**
-Back label photos are processed using **Gemini 1.5 Flash** for ingredient extraction. The AI analyzes the ingredients panel and extracts:
-- Full ingredient list
-- Nutritional information
-- Allergen warnings
-- Product claims and certifications
+**OCR Processing with Gemini 1.5 Flash:**
+
+Back label photos are processed using **Google Gemini 1.5 Flash** for intelligent ingredient extraction. The OCR pipeline works as follows:
+
+1. **Image Preprocessing** - Photos are validated for clarity and orientation
+2. **Text Extraction** - Gemini 1.5 Flash performs OCR on the ingredients panel
+3. **Structured Parsing** - The AI extracts and categorizes information into:
+   - Full ingredient list (parsed and normalized)
+   - Nutritional information (serving size, calories, macros)
+   - Allergen warnings (highlighted separately)
+   - Product claims and certifications (organic, non-GMO, etc.)
+4. **Confidence Scoring** - Each extraction includes a confidence score (0-1)
+
+**OCR Response Fields:**
+```json
+{
+  "ocrResult": {
+    "rawText": "Original extracted text...",
+    "ingredients": ["Ingredient 1", "Ingredient 2"],
+    "nutritionFacts": {
+      "servingSize": "1 cup (240ml)",
+      "calories": 120,
+      "totalFat": "2g",
+      "sodium": "140mg"
+    },
+    "allergens": ["milk", "soy"],
+    "certifications": ["USDA Organic", "Non-GMO Project Verified"],
+    "confidence": 0.94,
+    "model": "gemini-1.5-flash"
+  }
+}
+```
+
+**Note:** For best OCR results, ensure photos are well-lit, in focus, and the ingredients panel is clearly visible.
 
 ### Contributor Profile
 
@@ -220,13 +248,27 @@ GET /api/product-report/{barcode}
 
 ### Smart Scan (AI Analysis)
 
+Smart Scan uses **OpenAI GPT-4 Vision** to analyze product photos and provide instant ingredient insights without requiring a barcode.
+
 ```http
 POST /api/smart-scan
 Content-Type: multipart/form-data
 x-fingerprint: <fingerprint>
 
 photo: <file>
+analysisType: "full"
 ```
+
+**Request Fields:**
+- `photo` (required) - Image file of the product (front, back, or ingredients panel)
+- `analysisType` (optional) - "quick" for fast analysis, "full" for comprehensive (default: "full")
+
+**GPT-4 Vision Analysis Pipeline:**
+1. **Product Identification** - Identifies the product type, brand, and category from visual cues
+2. **Text Extraction** - Reads visible text including ingredients, claims, and warnings
+3. **Ingredient Analysis** - Cross-references extracted ingredients against our concern database
+4. **Health Assessment** - Generates concern flags and an overall health score
+5. **Recommendations** - Suggests cleaner alternatives when concerns are found
 
 **Response:**
 ```json
@@ -234,16 +276,40 @@ photo: <file>
   "success": true,
   "analysis": {
     "productName": "Detected Product",
+    "brand": "Brand Name",
+    "category": "Personal Care",
     "ingredients": ["Ingredient 1", "Ingredient 2"],
     "concerns": [
       {
         "ingredient": "Ingredient 2",
         "level": "moderate",
-        "reason": "May cause sensitivity"
+        "reason": "May cause sensitivity",
+        "ewgScore": 4
       }
     ],
-    "score": 75
-  }
+    "score": 75,
+    "model": "gpt-4-vision-preview",
+    "processingTime": 2.3
+  },
+  "creditsUsed": 1,
+  "creditsRemaining": 4
+}
+```
+
+**Smart Scan Credits:**
+Smart Scan uses a credit system due to API costs:
+- Free users: 5 scans per day
+- Registered users: 10 scans per day
+- Credits reset at midnight UTC
+
+**Error Response (No Credits):**
+```json
+{
+  "success": false,
+  "error": "CREDITS_EXHAUSTED",
+  "message": "Daily Smart Scan limit reached",
+  "creditsRemaining": 0,
+  "resetAt": "2024-01-16T00:00:00Z"
 }
 ```
 
@@ -364,6 +430,56 @@ The API respects the GPC signal. When `gpcEnabled: true` is sent during registra
 - Analytics data collection is minimized
 - Device data is not shared with third parties
 - Personalization features may be limited
+
+**GPC Header Detection:**
+The API automatically detects GPC from standard headers:
+```http
+Sec-GPC: 1
+```
+When this header is present, the API treats the request as if `gpcEnabled: true` was set, even if not explicitly passed in the request body.
+
+### Unlock Credits System
+
+The unlock credits system allows users to earn additional Smart Scan credits through contributions.
+
+**Earning Credits:**
+| Action | Credits Earned |
+|--------|---------------|
+| Submit new product photos | +2 credits |
+| Verify existing product data | +1 credit |
+| Report data corrections | +1 credit |
+| Complete weekly challenge | +5 credits |
+| Refer new user | +3 credits |
+
+**Check Credit Balance:**
+```http
+GET /api/fingerprint/check?hash=<fingerprint-hash>
+```
+
+The response includes credit information:
+```json
+{
+  "registered": true,
+  "credits": {
+    "smartScan": {
+      "available": 8,
+      "dailyLimit": 10,
+      "bonusCredits": 3,
+      "resetAt": "2024-01-16T00:00:00Z"
+    }
+  },
+  "stats": {
+    "totalScans": 150,
+    "totalSubmissions": 25
+  }
+}
+```
+
+**Credit Rules:**
+- Daily credits reset at midnight UTC
+- Bonus credits (earned through contributions) do not expire
+- Bonus credits are used after daily credits are exhausted
+- Maximum bonus credit balance: 100
 
 ## Push Notifications
 

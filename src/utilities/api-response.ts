@@ -11,13 +11,43 @@ export interface ApiError {
   details?: unknown
 }
 
-// Standard API success interface
+// Standard API success interface with optional meta
 export interface ApiSuccess<T> {
   success: true
   data: T
+  meta?: ResponseMeta
 }
 
-// Error codes enum for standardized error identification
+// Meta information for paginated or cached responses
+export interface ResponseMeta {
+  cached?: boolean
+  page?: number
+  totalPages?: number
+  totalDocs?: number
+  limit?: number
+  hasNextPage?: boolean
+  hasPrevPage?: boolean
+}
+
+// Error codes taxonomy - const object for better tree-shaking and type inference
+export const ErrorCodes = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  FORBIDDEN: 'FORBIDDEN',
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
+  BAD_REQUEST: 'BAD_REQUEST',
+  CONFLICT: 'CONFLICT',
+  GONE: 'GONE',
+  METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
+} as const
+
+// Type derived from ErrorCodes for type safety
+export type ErrorCodeType = typeof ErrorCodes[keyof typeof ErrorCodes]
+
+// Error codes enum for backwards compatibility
 export enum ErrorCode {
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
@@ -25,35 +55,39 @@ export enum ErrorCode {
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   RATE_LIMITED = 'RATE_LIMITED',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
+  EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
   BAD_REQUEST = 'BAD_REQUEST',
   CONFLICT = 'CONFLICT',
   GONE = 'GONE',
+  METHOD_NOT_ALLOWED = 'METHOD_NOT_ALLOWED',
 }
 
 // HTTP status code mapping for error codes
-const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
-  [ErrorCode.UNAUTHORIZED]: 401,
-  [ErrorCode.FORBIDDEN]: 403,
-  [ErrorCode.NOT_FOUND]: 404,
-  [ErrorCode.VALIDATION_ERROR]: 400,
-  [ErrorCode.RATE_LIMITED]: 429,
-  [ErrorCode.INTERNAL_ERROR]: 500,
-  [ErrorCode.BAD_REQUEST]: 400,
-  [ErrorCode.CONFLICT]: 409,
-  [ErrorCode.GONE]: 410,
+const ERROR_STATUS_MAP: Record<string, number> = {
+  [ErrorCodes.UNAUTHORIZED]: 401,
+  [ErrorCodes.FORBIDDEN]: 403,
+  [ErrorCodes.NOT_FOUND]: 404,
+  [ErrorCodes.VALIDATION_ERROR]: 400,
+  [ErrorCodes.RATE_LIMITED]: 429,
+  [ErrorCodes.INTERNAL_ERROR]: 500,
+  [ErrorCodes.EXTERNAL_SERVICE_ERROR]: 502,
+  [ErrorCodes.BAD_REQUEST]: 400,
+  [ErrorCodes.CONFLICT]: 409,
+  [ErrorCodes.GONE]: 410,
+  [ErrorCodes.METHOD_NOT_ALLOWED]: 405,
 }
 
 /**
  * Creates a standardized error response
  *
- * @param code - The error code from ErrorCode enum
+ * @param code - The error code from ErrorCodes const or ErrorCode enum
  * @param message - Human-readable error message
  * @param status - HTTP status code (defaults to mapped status for error code)
  * @param details - Optional additional details about the error
  * @returns Response object with JSON error payload
  */
 export function errorResponse(
-  code: ErrorCode,
+  code: ErrorCodeType | ErrorCode | string,
   message: string,
   status?: number,
   details?: unknown
@@ -73,13 +107,26 @@ export function errorResponse(
  * Creates a standardized success response
  *
  * @param data - The response data payload
- * @param status - HTTP status code (defaults to 200)
+ * @param statusOrMeta - HTTP status code (defaults to 200) or meta object
  * @returns Response object with JSON success payload
  */
-export function successResponse<T>(data: T, status: number = 200): Response {
+export function successResponse<T>(
+  data: T,
+  statusOrMeta?: number | ResponseMeta
+): Response {
+  let status = 200
+  let meta: ResponseMeta | undefined
+
+  if (typeof statusOrMeta === 'number') {
+    status = statusOrMeta
+  } else if (statusOrMeta) {
+    meta = statusOrMeta
+  }
+
   const body: ApiSuccess<T> = {
     success: true,
     data,
+    ...(meta && { meta }),
   }
 
   return Response.json(body, { status })
@@ -164,4 +211,56 @@ export function goneError(message: string): Response {
  */
 export function badRequestError(message: string, details?: unknown): Response {
   return errorResponse(ErrorCode.BAD_REQUEST, message, 400, details)
+}
+
+/**
+ * Creates a method not allowed error response
+ *
+ * @param message - Error message (defaults to 'Method not allowed')
+ * @returns Response object with 405 status
+ */
+export function methodNotAllowedError(message: string = 'Method not allowed'): Response {
+  return errorResponse(ErrorCodes.METHOD_NOT_ALLOWED, message)
+}
+
+/**
+ * Creates a forbidden error response
+ *
+ * @param message - Error message (defaults to 'Access forbidden')
+ * @returns Response object with 403 status
+ */
+export function forbiddenError(message: string = 'Access forbidden'): Response {
+  return errorResponse(ErrorCodes.FORBIDDEN, message)
+}
+
+/**
+ * Creates a rate limited error response
+ *
+ * @param message - Error message (defaults to 'Too many requests')
+ * @param retryAfter - Optional seconds until rate limit resets
+ * @returns Response object with 429 status
+ */
+export function rateLimitedError(message: string = 'Too many requests', retryAfter?: number): Response {
+  return errorResponse(
+    ErrorCodes.RATE_LIMITED,
+    message,
+    429,
+    retryAfter ? { retryAfter } : undefined
+  )
+}
+
+/**
+ * Creates an external service error response
+ *
+ * @param message - Error message describing the external service failure
+ * @param service - Optional name of the external service that failed
+ * @returns Response object with 502 status
+ */
+export function externalServiceError(message: string, service?: string): Response {
+  return errorResponse(
+    ErrorCodes.EXTERNAL_SERVICE_ERROR,
+    message,
+    502,
+    service ? { service } : undefined
+  )
 }

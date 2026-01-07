@@ -56,6 +56,15 @@
 
 import type { Endpoint } from 'payload'
 import crypto from 'crypto'
+import {
+    validationError,
+    unauthorizedError,
+    forbiddenError,
+    notFoundError,
+    conflictError,
+    internalError,
+    successResponse,
+} from '../utilities/api-response'
 
 // Verification token expiration (24 hours)
 const VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000
@@ -113,10 +122,7 @@ export const brandLoginHandler: Endpoint = {
             const { email, password } = body
 
             if (!email || !password) {
-                return Response.json(
-                    { error: 'Email and password are required' },
-                    { status: 400 }
-                )
+                return validationError('Email and password are required')
             }
 
             // Attempt login via Payload's auth
@@ -127,10 +133,7 @@ export const brandLoginHandler: Endpoint = {
             })
 
             if (!result.user) {
-                return Response.json(
-                    { error: 'Invalid credentials' },
-                    { status: 401 }
-                )
+                return unauthorizedError('Invalid credentials')
             }
 
             const user = result.user as {
@@ -146,14 +149,7 @@ export const brandLoginHandler: Endpoint = {
 
             // Check if user is verified
             if (!user.isVerified) {
-                return Response.json(
-                    {
-                        error: 'Account not verified',
-                        code: 'UNVERIFIED',
-                        message: 'Please check your email and verify your account',
-                    },
-                    { status: 403 }
-                )
+                return forbiddenError('Account not verified. Please check your email and verify your account.')
             }
 
             // Get brand details
@@ -192,10 +188,7 @@ export const brandLoginHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Login error:', error)
-            return Response.json(
-                { error: 'Authentication failed' },
-                { status: 401 }
-            )
+            return unauthorizedError('Authentication failed')
         }
     },
 }
@@ -222,10 +215,7 @@ export const brandSignupHandler: Endpoint = {
 
             // Validate required fields
             if (!email || !password || !name) {
-                return Response.json(
-                    { error: 'Email, password, and name are required' },
-                    { status: 400 }
-                )
+                return validationError('Email, password, and name are required')
             }
 
             // Check if email already exists
@@ -236,10 +226,7 @@ export const brandSignupHandler: Endpoint = {
             })
 
             if (existingUsers.docs.length > 0) {
-                return Response.json(
-                    { error: 'An account with this email already exists' },
-                    { status: 409 }
-                )
+                return conflictError('An account with this email already exists')
             }
 
             // Find or suggest brand based on email domain
@@ -328,10 +315,7 @@ export const brandSignupHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Signup error:', error)
-            return Response.json(
-                { error: 'Failed to create account' },
-                { status: 500 }
-            )
+            return internalError('Failed to create account')
         }
     },
 }
@@ -349,10 +333,7 @@ export const brandVerifyEmailHandler: Endpoint = {
             const { email, token } = body
 
             if (!email || !token) {
-                return Response.json(
-                    { error: 'Email and token are required' },
-                    { status: 400 }
-                )
+                return validationError('Email and token are required')
             }
 
             // Find user by email
@@ -363,10 +344,7 @@ export const brandVerifyEmailHandler: Endpoint = {
             })
 
             if (users.docs.length === 0) {
-                return Response.json(
-                    { error: 'User not found' },
-                    { status: 404 }
-                )
+                return notFoundError('User')
             }
 
             const user = users.docs[0] as {
@@ -388,10 +366,7 @@ export const brandVerifyEmailHandler: Endpoint = {
             const notes = user.verificationNotes || ''
 
             if (!notes.includes(hashedToken)) {
-                return Response.json(
-                    { error: 'Invalid or expired verification token' },
-                    { status: 400 }
-                )
+                return validationError('Invalid or expired verification token')
             }
 
             // Check token expiration (parse from notes)
@@ -399,10 +374,7 @@ export const brandVerifyEmailHandler: Endpoint = {
             if (expiresMatch) {
                 const expiresAt = new Date(expiresMatch[1])
                 if (expiresAt < new Date()) {
-                    return Response.json(
-                        { error: 'Verification token has expired. Please request a new one.' },
-                        { status: 400 }
-                    )
+                    return validationError('Verification token has expired. Please request a new one.')
                 }
             }
 
@@ -426,10 +398,7 @@ export const brandVerifyEmailHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Verify email error:', error)
-            return Response.json(
-                { error: 'Verification failed' },
-                { status: 500 }
-            )
+            return internalError('Verification failed')
         }
     },
 }
@@ -447,10 +416,7 @@ export const brandForgotPasswordHandler: Endpoint = {
             const { email } = body
 
             if (!email) {
-                return Response.json(
-                    { error: 'Email is required' },
-                    { status: 400 }
-                )
+                return validationError('Email is required')
             }
 
             // Find user by email
@@ -506,10 +472,7 @@ export const brandForgotPasswordHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Forgot password error:', error)
-            return Response.json(
-                { error: 'Failed to process request' },
-                { status: 500 }
-            )
+            return internalError('Failed to process request')
         }
     },
 }
@@ -527,18 +490,12 @@ export const brandResetPasswordHandler: Endpoint = {
             const { token, password } = body
 
             if (!token || !password) {
-                return Response.json(
-                    { error: 'Token and password are required' },
-                    { status: 400 }
-                )
+                return validationError('Token and password are required')
             }
 
             // Validate password strength
             if (password.length < 8) {
-                return Response.json(
-                    { error: 'Password must be at least 8 characters' },
-                    { status: 400 }
-                )
+                return validationError('Password must be at least 8 characters')
             }
 
             // Reset password using Payload's built-in method
@@ -549,10 +506,7 @@ export const brandResetPasswordHandler: Endpoint = {
             })
 
             if (!result.user) {
-                return Response.json(
-                    { error: 'Invalid or expired reset token' },
-                    { status: 400 }
-                )
+                return validationError('Invalid or expired reset token')
             }
 
             console.log(`[BrandAuth] Password reset completed for user: ${result.user.id}`)
@@ -564,10 +518,7 @@ export const brandResetPasswordHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Reset password error:', error)
-            return Response.json(
-                { error: 'Failed to reset password' },
-                { status: 500 }
-            )
+            return internalError('Failed to reset password')
         }
     },
 }
@@ -585,10 +536,7 @@ export const brandResendVerificationHandler: Endpoint = {
             const { email } = body
 
             if (!email) {
-                return Response.json(
-                    { error: 'Email is required' },
-                    { status: 400 }
-                )
+                return validationError('Email is required')
             }
 
             // Find user by email
@@ -600,8 +548,7 @@ export const brandResendVerificationHandler: Endpoint = {
 
             if (users.docs.length === 0) {
                 // Don't reveal if email exists
-                return Response.json({
-                    success: true,
+                return successResponse({
                     message: 'If an unverified account exists with this email, a verification link has been sent.',
                 })
             }
@@ -663,10 +610,7 @@ export const brandResendVerificationHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Resend verification error:', error)
-            return Response.json(
-                { error: 'Failed to resend verification' },
-                { status: 500 }
-            )
+            return internalError('Failed to resend verification')
         }
     },
 }
@@ -682,10 +626,7 @@ export const brandMeHandler: Endpoint = {
         try {
             // Check if user is authenticated as brand user
             if (!req.user || req.user.collection !== 'brand-users') {
-                return Response.json(
-                    { error: 'Not authenticated' },
-                    { status: 401 }
-                )
+                return unauthorizedError('Not authenticated')
             }
 
             const user = req.user as {
@@ -735,10 +676,7 @@ export const brandMeHandler: Endpoint = {
             })
         } catch (error) {
             console.error('[BrandAuth] Me error:', error)
-            return Response.json(
-                { error: 'Failed to get user data' },
-                { status: 500 }
-            )
+            return internalError('Failed to get user data')
         }
     },
 }

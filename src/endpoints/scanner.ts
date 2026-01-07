@@ -12,6 +12,12 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 import { lookupBarcode, saveProductFromLookup, BarcodeProduct } from '../utilities/barcode-lookup'
 import { createAuditLog } from '../collections/AuditLog'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import {
+    validationError,
+    internalError,
+    successResponse,
+    externalServiceError,
+} from '../utilities/api-response'
 
 /**
  * @openapi
@@ -79,19 +85,13 @@ export const scannerLookupHandler: PayloadHandler = async (req: PayloadRequest) 
         const { barcode, fingerprintHash, saveIfFound = false } = body || {}
 
         if (!barcode) {
-            return Response.json(
-                { error: 'barcode is required' },
-                { status: 400 }
-            )
+            return validationError('barcode is required')
         }
 
         // Validate barcode format (UPC-A: 12 digits, EAN-13: 13 digits)
         const cleanBarcode = barcode.toString().replace(/\D/g, '')
         if (cleanBarcode.length < 8 || cleanBarcode.length > 14) {
-            return Response.json(
-                { error: 'Invalid barcode format. Expected 8-14 digits.' },
-                { status: 400 }
-            )
+            return validationError('Invalid barcode format. Expected 8-14 digits.')
         }
 
         // Look up barcode
@@ -148,10 +148,7 @@ export const scannerLookupHandler: PayloadHandler = async (req: PayloadRequest) 
         })
     } catch (error) {
         console.error('[Scanner] Lookup error:', error)
-        return Response.json(
-            { error: 'Failed to look up barcode' },
-            { status: 500 }
-        )
+        return internalError('Failed to look up barcode')
     }
 }
 
@@ -176,7 +173,7 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
             // Handle file uploads
             const formData = await req.formData?.()
             if (!formData) {
-                return Response.json({ error: 'Invalid form data' }, { status: 400 })
+                return validationError('Invalid form data')
             }
 
             barcode = formData.get('barcode') as string
@@ -207,17 +204,11 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
         }
 
         if (!barcode) {
-            return Response.json(
-                { error: 'barcode is required' },
-                { status: 400 }
-            )
+            return validationError('barcode is required')
         }
 
         if (!frontImageId && !backImageId) {
-            return Response.json(
-                { error: 'At least one image is required (frontImageId or backImageId)' },
-                { status: 400 }
-            )
+            return validationError('At least one image is required (frontImageId or backImageId)')
         }
 
         // Build images array for UserSubmission
@@ -273,10 +264,7 @@ export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) 
         })
     } catch (error) {
         console.error('[Scanner] Submit error:', error)
-        return Response.json(
-            { error: 'Failed to submit product photos' },
-            { status: 500 }
-        )
+        return internalError('Failed to submit product photos')
     }
 }
 

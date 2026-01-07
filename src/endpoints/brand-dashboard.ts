@@ -8,34 +8,149 @@
  * - Demand Signals: Consumer interest signals (Pro+)
  */
 
-import type { Endpoint } from 'payload'
+import type { Endpoint, PayloadRequest } from 'payload'
+
+/**
+ * Brand user with feature access permissions
+ */
+interface BrandUser {
+    id: number
+    brand: number | { id: number; name?: string }
+    additionalBrands?: Array<number | { id: number }>
+    role: string
+    subscription: string
+    features: BrandUserFeatures
+    isVerified: boolean
+}
+
+/**
+ * Feature flags for brand user subscriptions
+ */
+interface BrandUserFeatures {
+    canViewCompetitors: boolean
+    canExportData: boolean
+    canAccessApi: boolean
+    canViewDemandSignals: boolean
+}
+
+/**
+ * Brand analytics record from database
+ */
+interface BrandAnalyticsRecord {
+    id: number
+    date: string
+    scanCount?: number
+    searchCount?: number
+    productViewCount?: number
+    uniqueUsers?: number
+    trustScore?: number
+    trustGrade?: string
+    categoryRank?: number
+    overallRank?: number
+    verdictBreakdown?: VerdictBreakdown
+    changes?: unknown
+}
+
+/**
+ * Verdict breakdown for brand products
+ */
+interface VerdictBreakdown {
+    recommendCount?: number
+    cautionCount?: number
+    avoidCount?: number
+}
+
+/**
+ * Brand record from database
+ */
+interface BrandRecord {
+    id: number
+    name: string
+    slug?: string
+    trustScore?: number
+    trustGrade?: string
+    productCount?: number
+    logo?: { url?: string }
+}
+
+/**
+ * Product record from database
+ */
+interface ProductRecord {
+    id: number
+    name: string
+    slug?: string
+    upc?: string
+    score?: number
+    verdict?: string
+    categories?: Array<number | { id: number; title?: string }>
+    image?: { url?: string }
+    status?: string
+    updatedAt?: string
+    brand?: string
+}
+
+/**
+ * Market intelligence record
+ */
+interface MarketIntelligenceRecord {
+    id: number
+    productName?: string
+    source?: string
+    trendScore?: number
+    status?: string
+    upc?: string
+    createdAt?: string
+}
+
+/**
+ * Product vote record
+ */
+interface ProductVoteRecord {
+    id: number
+    productName?: string
+    barcode?: string
+    totalWeightedVotes?: number
+    scanCount?: number
+    searchCount?: number
+    urgencyFlag?: string
+    brand?: string
+}
+
+/**
+ * Audit log record for search signals
+ */
+interface AuditLogRecord {
+    id: number
+    action?: string
+    metadata?: { query?: string }
+    targetName?: string
+    createdAt?: string
+}
+
+/**
+ * Result of brand access verification
+ */
+interface BrandAccessResult {
+    authorized: boolean
+    user?: BrandUser
+    error?: string
+}
 
 /**
  * Middleware to verify brand user authentication and access
  */
 async function verifyBrandAccess(
-    req: any,
+    req: PayloadRequest,
     brandId: string | number
-): Promise<{ authorized: boolean; user?: any; error?: string }> {
+): Promise<BrandAccessResult> {
     // Check authentication
-    if (!req.user || req.user.collection !== 'brand-users') {
+    const reqUser = req.user as { collection?: string } | undefined
+    if (!reqUser || reqUser.collection !== 'brand-users') {
         return { authorized: false, error: 'Authentication required' }
     }
 
-    const user = req.user as {
-        id: number
-        brand: any
-        additionalBrands?: any[]
-        role: string
-        subscription: string
-        features: {
-            canViewCompetitors: boolean
-            canExportData: boolean
-            canAccessApi: boolean
-            canViewDemandSignals: boolean
-        }
-        isVerified: boolean
-    }
+    const user = reqUser as unknown as BrandUser
 
     // Check verification status
     if (!user.isVerified) {
@@ -44,7 +159,7 @@ async function verifyBrandAccess(
 
     // Check brand access
     const userBrandId = typeof user.brand === 'object' ? user.brand.id : user.brand
-    const additionalBrandIds = (user.additionalBrands || []).map((b: any) =>
+    const additionalBrandIds = (user.additionalBrands || []).map((b) =>
         typeof b === 'object' ? b.id : b
     )
 
@@ -110,11 +225,12 @@ export const brandAnalyticsHandler: Endpoint = {
             }
 
             // Calculate summary metrics
-            const docs = analytics.docs as any[]
+            const docs = analytics.docs as BrandAnalyticsRecord[]
+            const brandData = brand as BrandRecord
             const summary = {
-                currentTrustScore: brand.trustScore || 0,
-                currentTrustGrade: brand.trustGrade || 'C',
-                totalProducts: brand.productCount || 0,
+                currentTrustScore: brandData.trustScore || 0,
+                currentTrustGrade: brandData.trustGrade || 'C',
+                totalProducts: brandData.productCount || 0,
                 avgScanCount: docs.length > 0
                     ? Math.round(docs.reduce((sum, d) => sum + (d.scanCount || 0), 0) / docs.length)
                     : 0,
@@ -127,14 +243,14 @@ export const brandAnalyticsHandler: Endpoint = {
 
             return Response.json({
                 brand: {
-                    id: brand.id,
-                    name: brand.name,
-                    slug: brand.slug,
-                    trustScore: brand.trustScore,
-                    trustGrade: brand.trustGrade,
+                    id: brandData.id,
+                    name: brandData.name,
+                    slug: brandData.slug,
+                    trustScore: brandData.trustScore,
+                    trustGrade: brandData.trustGrade,
                 },
                 summary,
-                analytics: docs.map((d: any) => ({
+                analytics: docs.map((d) => ({
                     date: d.date,
                     scanCount: d.scanCount,
                     searchCount: d.searchCount,
@@ -197,9 +313,11 @@ export const brandProductsHandler: Endpoint = {
                 return Response.json({ error: 'Brand not found' }, { status: 404 })
             }
 
+            const brandData = brand as BrandRecord
+
             // Build where clause
-            const where: any = {
-                brand: { equals: brand.name },
+            const where: Record<string, { equals: string }> = {
+                brand: { equals: brandData.name },
             }
 
             if (verdict) {
@@ -218,24 +336,27 @@ export const brandProductsHandler: Endpoint = {
 
             return Response.json({
                 brand: {
-                    id: brand.id,
-                    name: brand.name,
+                    id: brandData.id,
+                    name: brandData.name,
                 },
-                products: products.docs.map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    slug: p.slug,
-                    upc: p.upc,
-                    score: p.score,
-                    verdict: p.verdict,
-                    categories: p.categories?.map((c: any) => ({
-                        id: typeof c === 'object' ? c.id : c,
-                        title: typeof c === 'object' ? c.title : null,
-                    })),
-                    image: p.image?.url || null,
-                    status: p.status,
-                    updatedAt: p.updatedAt,
-                })),
+                products: products.docs.map((doc) => {
+                    const p = doc as ProductRecord
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        slug: p.slug,
+                        upc: p.upc,
+                        score: p.score,
+                        verdict: p.verdict,
+                        categories: p.categories?.map((c) => ({
+                            id: typeof c === 'object' ? c.id : c,
+                            title: typeof c === 'object' ? c.title : null,
+                        })),
+                        image: p.image?.url || null,
+                        status: p.status,
+                        updatedAt: p.updatedAt,
+                    }
+                }),
                 pagination: {
                     page: products.page,
                     limit: products.limit,
@@ -290,7 +411,7 @@ export const brandCompetitorsHandler: Endpoint = {
             const brand = await req.payload.findByID({
                 collection: 'brands',
                 id: Number(brandId),
-            }) as any
+            }) as BrandRecord | null
 
             if (!brand) {
                 return Response.json({ error: 'Brand not found' }, { status: 404 })
@@ -307,10 +428,10 @@ export const brandCompetitorsHandler: Endpoint = {
             // Count categories
             const categoryCounts: Record<string, { id: number; title: string; count: number }> = {}
             for (const product of brandProducts.docs) {
-                const p = product as any
+                const p = product as ProductRecord
                 for (const cat of p.categories || []) {
                     const catId = typeof cat === 'object' ? cat.id : cat
-                    const catTitle = typeof cat === 'object' ? cat.title : 'Unknown'
+                    const catTitle = typeof cat === 'object' ? cat.title || 'Unknown' : 'Unknown'
                     if (!categoryCounts[catId]) {
                         categoryCounts[catId] = { id: catId, title: catTitle, count: 0 }
                     }
@@ -351,7 +472,7 @@ export const brandCompetitorsHandler: Endpoint = {
             }> = {}
 
             for (const product of categoryProducts.docs) {
-                const p = product as any
+                const p = product as ProductRecord
                 const brandName = p.brand
                 if (!brandName) continue
 
@@ -459,7 +580,7 @@ export const brandDemandSignalsHandler: Endpoint = {
             const brand = await req.payload.findByID({
                 collection: 'brands',
                 id: Number(brandId),
-            }) as any
+            }) as BrandRecord | null
 
             if (!brand) {
                 return Response.json({ error: 'Brand not found' }, { status: 404 })
@@ -512,7 +633,8 @@ export const brandDemandSignalsHandler: Endpoint = {
             // Aggregate search patterns
             const searchPatterns: Record<string, number> = {}
             for (const log of searchSignals.docs) {
-                const query = (log as any).metadata?.query?.toLowerCase() || ''
+                const logRecord = log as AuditLogRecord
+                const query = logRecord.metadata?.query?.toLowerCase() || ''
                 if (query && query.length > 2) {
                     searchPatterns[query] = (searchPatterns[query] || 0) + 1
                 }
@@ -528,32 +650,38 @@ export const brandDemandSignalsHandler: Endpoint = {
                     id: brand.id,
                     name: brand.name,
                 },
-                marketIntelligence: marketIntel.docs.map((m: any) => ({
-                    id: m.id,
-                    productName: m.productName,
-                    source: m.source,
-                    trendScore: m.trendScore,
-                    status: m.status,
-                    upc: m.upc,
-                    detectedAt: m.createdAt,
-                })),
-                productRequests: productVotes.docs.map((v: any) => ({
-                    id: v.id,
-                    productName: v.productName,
-                    barcode: v.barcode,
-                    totalVotes: v.totalWeightedVotes,
-                    scanCount: v.scanCount,
-                    searchCount: v.searchCount,
-                    urgencyFlag: v.urgencyFlag,
-                })),
+                marketIntelligence: marketIntel.docs.map((doc) => {
+                    const m = doc as MarketIntelligenceRecord
+                    return {
+                        id: m.id,
+                        productName: m.productName,
+                        source: m.source,
+                        trendScore: m.trendScore,
+                        status: m.status,
+                        upc: m.upc,
+                        detectedAt: m.createdAt,
+                    }
+                }),
+                productRequests: productVotes.docs.map((doc) => {
+                    const v = doc as ProductVoteRecord
+                    return {
+                        id: v.id,
+                        productName: v.productName,
+                        barcode: v.barcode,
+                        totalVotes: v.totalWeightedVotes,
+                        scanCount: v.scanCount,
+                        searchCount: v.searchCount,
+                        urgencyFlag: v.urgencyFlag,
+                    }
+                }),
                 searchTrends: {
                     topSearches,
                     totalSearches: searchSignals.totalDocs,
                     period: '30 days',
                 },
                 summary: {
-                    trendingProducts: marketIntel.docs.filter((m: any) => m.trendScore >= 50).length,
-                    pendingRequests: productVotes.docs.filter((v: any) => v.urgencyFlag === 'urgent').length,
+                    trendingProducts: marketIntel.docs.filter((doc) => (doc as MarketIntelligenceRecord).trendScore !== undefined && (doc as MarketIntelligenceRecord).trendScore! >= 50).length,
+                    pendingRequests: productVotes.docs.filter((doc) => (doc as ProductVoteRecord).urgencyFlag === 'urgent').length,
                     totalDemandSignals: marketIntel.totalDocs + productVotes.totalDocs,
                 },
             })
@@ -589,7 +717,7 @@ export const brandOverviewHandler: Endpoint = {
             const brand = await req.payload.findByID({
                 collection: 'brands',
                 id: Number(brandId),
-            }) as any
+            }) as BrandRecord | null
 
             if (!brand) {
                 return Response.json({ error: 'Brand not found' }, { status: 404 })
@@ -603,8 +731,8 @@ export const brandOverviewHandler: Endpoint = {
                 limit: 2,
             })
 
-            const today = latestAnalytics.docs[0] as any
-            const yesterday = latestAnalytics.docs[1] as any
+            const today = latestAnalytics.docs[0] as BrandAnalyticsRecord | undefined
+            const yesterday = latestAnalytics.docs[1] as BrandAnalyticsRecord | undefined
 
             // Get product counts by verdict
             const products = await req.payload.find({
@@ -614,7 +742,7 @@ export const brandOverviewHandler: Endpoint = {
             })
 
             // Get verdict breakdown
-            const verdictBreakdown = today?.verdictBreakdown || {
+            const verdictBreakdown: VerdictBreakdown = today?.verdictBreakdown || {
                 recommendCount: 0,
                 cautionCount: 0,
                 avoidCount: 0,
