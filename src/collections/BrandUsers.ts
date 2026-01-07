@@ -18,7 +18,7 @@ export const BrandUsers: CollectionConfig = {
         tokenExpiration: 60 * 60 * 24 * 30, // 30 days
         cookies: {
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'Lax',
         },
     },
     access: {
@@ -321,14 +321,15 @@ export const BrandUsers: CollectionConfig = {
     ],
     hooks: {
         afterLogin: [
-            async ({ doc, req }) => {
+            async ({ user, req }) => {
                 // Update last login timestamp and count
+                const userData = user as { id: number; loginCount?: number }
                 await req.payload.update({
                     collection: 'brand-users',
-                    id: doc.id,
+                    id: userData.id,
                     data: {
                         lastLoginAt: new Date().toISOString(),
-                        loginCount: (doc.loginCount || 0) + 1,
+                        loginCount: (userData.loginCount || 0) + 1,
                     },
                 })
             },

@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
         for (const brandDoc of brands.docs) {
             const brand = brandDoc as {
-                id: string | number
+                id: number
                 name: string
                 trustScore?: number
                 trustGrade?: string

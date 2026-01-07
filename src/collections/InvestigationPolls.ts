@@ -5,9 +5,9 @@ export const InvestigationPolls: CollectionConfig = {
     slug: 'investigation-polls',
     access: {
         read: () => true,
-        create: ({ req }) => !!req.user?.isAdmin,
-        update: ({ req }) => !!req.user?.isAdmin,
-        delete: ({ req }) => !!req.user?.isAdmin,
+        create: ({ req }) => req.user?.collection === 'users' && !!(req.user as { isAdmin?: boolean })?.isAdmin,
+        update: ({ req }) => req.user?.collection === 'users' && !!(req.user as { isAdmin?: boolean })?.isAdmin,
+        delete: ({ req }) => req.user?.collection === 'users' && !!(req.user as { isAdmin?: boolean })?.isAdmin,
     },
     admin: {
         useAsTitle: 'title',

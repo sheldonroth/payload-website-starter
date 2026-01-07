@@ -28,7 +28,6 @@ export const BrandAnalytics: CollectionConfig = {
     },
     indexes: [
         {
-            name: 'brand_date_unique',
             fields: ['brand', 'date'],
             unique: true,
         },

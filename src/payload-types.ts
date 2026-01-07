@@ -64,6 +64,7 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'brand-users': BrandUserAuthOperations;
   };
   blocks: {};
   collections: {
@@ -96,6 +97,10 @@ export interface Config {
     'daily-discoveries': DailyDiscovery;
     'email-templates': EmailTemplate;
     'email-sends': EmailSend;
+    'scout-profiles': ScoutProfile;
+    'market-intelligence': MarketIntelligence;
+    'brand-analytics': BrandAnalytic;
+    'brand-users': BrandUser;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -142,6 +147,10 @@ export interface Config {
     'daily-discoveries': DailyDiscoveriesSelect<false> | DailyDiscoveriesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     'email-sends': EmailSendsSelect<false> | EmailSendsSelect<true>;
+    'scout-profiles': ScoutProfilesSelect<false> | ScoutProfilesSelect<true>;
+    'market-intelligence': MarketIntelligenceSelect<false> | MarketIntelligenceSelect<true>;
+    'brand-analytics': BrandAnalyticsSelect<false> | BrandAnalyticsSelect<true>;
+    'brand-users': BrandUsersSelect<false> | BrandUsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -169,9 +178,13 @@ export interface Config {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
   };
   locale: null;
-  user: User & {
-    collection: 'users';
-  };
+  user:
+    | (User & {
+        collection: 'users';
+      })
+    | (BrandUser & {
+        collection: 'brand-users';
+      });
   jobs: {
     tasks: {
       schedulePublish: TaskSchedulePublish;
@@ -184,6 +197,24 @@ export interface Config {
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface BrandUserAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -772,6 +803,43 @@ export interface Product {
     trendingSentiment?: ('positive' | 'negative' | 'neutral' | 'mixed') | null;
     trendingReason?: string | null;
   };
+  /**
+   * Scouts who helped get this product tested
+   */
+  scoutAttribution?: {
+    /**
+     * The first scout to document this product
+     */
+    firstScout?: (number | null) | ScoutProfile;
+    /**
+     * Scout number for display (e.g., "Scout #47")
+     */
+    firstScoutNumber?: number | null;
+    /**
+     * Total scouts who documented this product
+     */
+    totalScouts?: number | null;
+    /**
+     * All scouts who helped. Structure: [{ scoutId, scoutNumber, displayName }]
+     */
+    scoutContributors?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * The ProductVote that led to this product being tested
+     */
+    linkedProductVote?: (number | null) | ProductVote;
+    /**
+     * How many people scanned this after testing (for "helped X people" metric)
+     */
+    scansAfterTesting?: number | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1157,6 +1225,278 @@ export interface Video {
    * Products that were created from analyzing this video
    */
   extractedProducts?: (number | Product)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Scout profiles - the heroes who document products for testing
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scout-profiles".
+ */
+export interface ScoutProfile {
+  id: number;
+  /**
+   * Public display name (can be changed by user)
+   */
+  displayName: string;
+  /**
+   * Device fingerprint for anonymous scouts
+   */
+  fingerprintHash?: string | null;
+  /**
+   * Linked authenticated user account (optional)
+   */
+  user?: (number | null) | User;
+  /**
+   * Emoji avatar or image URL
+   */
+  avatar?: string | null;
+  /**
+   * Short bio (Twitter-length)
+   */
+  bio?: string | null;
+  /**
+   * Sequential scout number (e.g., Scout #47)
+   */
+  scoutNumber?: number | null;
+  /**
+   * Total products this scout has documented
+   */
+  documentsSubmitted?: number | null;
+  /**
+   * How many of their submissions became tested products
+   */
+  productsTestedFromSubmissions?: number | null;
+  /**
+   * Total scans of products they helped get tested
+   */
+  peopleHelped?: number | null;
+  /**
+   * Products where they were the FIRST scout
+   */
+  firstDiscoveries?: number | null;
+  /**
+   * Scout level based on documentsSubmitted
+   */
+  scoutLevel?: ('new' | 'explorer' | 'pathfinder' | 'pioneer') | null;
+  /**
+   * Allow profile to be viewed publicly
+   */
+  isPublic?: boolean | null;
+  /**
+   * URL-friendly slug (e.g., "scout-47" or custom)
+   */
+  shareableSlug?: string | null;
+  /**
+   * Array of badge IDs earned
+   */
+  badges?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of barcode strings for their top discoveries
+   */
+  featuredDiscoveries?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Notify when a product they documented gets tested
+   */
+  notifyOnResults?: boolean | null;
+  /**
+   * Notify on level-ups and achievements
+   */
+  notifyOnMilestones?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Product testing votes from barcode scans (Proof of Possession)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-votes".
+ */
+export interface ProductVote {
+  id: number;
+  /**
+   * UPC/EAN barcode of the product
+   */
+  barcode: string;
+  /**
+   * Product name (if known from Open Food Facts or user submission)
+   */
+  productName?: string | null;
+  /**
+   * Brand name (if known)
+   */
+  brand?: string | null;
+  /**
+   * Product image URL (if available from external source)
+   */
+  imageUrl?: string | null;
+  /**
+   * Total weighted vote score (Search=1x, Scan=5x, Member=20x)
+   */
+  totalWeightedVotes: number;
+  /**
+   * Number of text searches for this product
+   */
+  searchCount?: number | null;
+  /**
+   * Number of barcode scans (non-member)
+   */
+  scanCount?: number | null;
+  /**
+   * Number of barcode scans by members
+   */
+  memberScanCount?: number | null;
+  /**
+   * Count of unique devices/users who voted
+   */
+  uniqueVoters?: number | null;
+  /**
+   * Weighted vote threshold to trigger lab testing
+   */
+  fundingThreshold?: number | null;
+  /**
+   * Percentage progress toward testing threshold (0-100)
+   */
+  fundingProgress?: number | null;
+  status: 'collecting_votes' | 'threshold_reached' | 'queued' | 'testing' | 'complete';
+  /**
+   * When the voting threshold was reached
+   */
+  thresholdReachedAt?: string | null;
+  /**
+   * The tested product (set when testing is complete)
+   */
+  linkedProduct?: (number | null) | Product;
+  /**
+   * Array of device fingerprints who voted (for uniqueness)
+   */
+  voterFingerprints?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Users who added photos to this request (bounty votes +10x). Structure: [{ fingerprintId, userId?, submissionId, contributedAt, bonusWeight: 10 }]
+   */
+  photoContributors?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Count of users who contributed photos (bounty voters)
+   */
+  totalContributors?: number | null;
+  /**
+   * Array of user IDs/emails to notify when testing completes
+   */
+  notifyOnComplete?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * The first scout to document this product
+   */
+  firstScout?: (number | null) | ScoutProfile;
+  /**
+   * Scout number of the first documenter (for display)
+   */
+  firstScoutNumber?: number | null;
+  /**
+   * All scouts who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]
+   */
+  scoutContributors?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Total number of scouts who documented this product
+   */
+  totalScouts?: number | null;
+  /**
+   * Cached data from Open Food Facts API
+   */
+  openFoodFactsData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Current rank in the voting queue (1 = most wanted)
+   */
+  rank?: number | null;
+  scanTimestamps?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Scans in the last 24 hours
+   */
+  scansLast24h?: number | null;
+  /**
+   * Scans in the last 7 days
+   */
+  scansLast7d?: number | null;
+  /**
+   * Auto-calculated priority score: (24h × 5) + 7d + weighted votes
+   */
+  velocityScore?: number | null;
+  /**
+   * Auto-set based on velocity: Trending (20+ 24h / 100+ 7d), Urgent (100+ 24h / 500+ 7d)
+   */
+  urgencyFlag?: ('normal' | 'trending' | 'urgent') | null;
+  /**
+   * Last time trending notifications were sent for this product
+   */
+  lastTrendingNotification?: string | null;
+  /**
+   * Queue position at last notification (for calculating jump)
+   */
+  previousQueuePosition?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2304,159 +2644,6 @@ export interface TrendingNew {
   createdAt: string;
 }
 /**
- * Product testing votes from barcode scans (Proof of Possession)
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "product-votes".
- */
-export interface ProductVote {
-  id: number;
-  /**
-   * UPC/EAN barcode of the product
-   */
-  barcode: string;
-  /**
-   * Product name (if known from Open Food Facts or user submission)
-   */
-  productName?: string | null;
-  /**
-   * Brand name (if known)
-   */
-  brand?: string | null;
-  /**
-   * Product image URL (if available from external source)
-   */
-  imageUrl?: string | null;
-  /**
-   * Total weighted vote score (Search=1x, Scan=5x, Member=20x)
-   */
-  totalWeightedVotes: number;
-  /**
-   * Number of text searches for this product
-   */
-  searchCount?: number | null;
-  /**
-   * Number of barcode scans (non-member)
-   */
-  scanCount?: number | null;
-  /**
-   * Number of barcode scans by members
-   */
-  memberScanCount?: number | null;
-  /**
-   * Count of unique devices/users who voted
-   */
-  uniqueVoters?: number | null;
-  /**
-   * Weighted vote threshold to trigger lab testing
-   */
-  fundingThreshold?: number | null;
-  /**
-   * Percentage progress toward testing threshold (0-100)
-   */
-  fundingProgress?: number | null;
-  status: 'collecting_votes' | 'threshold_reached' | 'queued' | 'testing' | 'complete';
-  /**
-   * When the voting threshold was reached
-   */
-  thresholdReachedAt?: string | null;
-  /**
-   * The tested product (set when testing is complete)
-   */
-  linkedProduct?: (number | null) | Product;
-  /**
-   * Array of device fingerprints who voted (for uniqueness)
-   */
-  voterFingerprints?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Users who added photos to this request (bounty votes +10x). Structure: [{ fingerprintId, userId?, submissionId, contributedAt, bonusWeight: 10 }]
-   */
-  photoContributors?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Count of users who contributed photos (bounty voters)
-   */
-  totalContributors?: number | null;
-  /**
-   * Array of user IDs/emails to notify when testing completes
-   */
-  notifyOnComplete?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Cached data from Open Food Facts API
-   */
-  openFoodFactsData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Current rank in the voting queue (1 = most wanted)
-   */
-  rank?: number | null;
-  scanTimestamps?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Scans in the last 24 hours
-   */
-  scansLast24h?: number | null;
-  /**
-   * Scans in the last 7 days
-   */
-  scansLast7d?: number | null;
-  /**
-   * Auto-calculated priority score: (24h × 5) + 7d + weighted votes
-   */
-  velocityScore?: number | null;
-  /**
-   * Auto-set based on velocity: Trending (20+ 24h / 100+ 7d), Urgent (100+ 24h / 500+ 7d)
-   */
-  urgencyFlag?: ('normal' | 'trending' | 'urgent') | null;
-  /**
-   * Last time trending notifications were sent for this product
-   */
-  lastTrendingNotification?: string | null;
-  /**
-   * Queue position at last notification (for calculating jump)
-   */
-  previousQueuePosition?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * Category boosts - products in these categories get priority in the testing queue
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2929,13 +3116,14 @@ export interface DailyDiscovery {
   createdAt: string;
 }
 /**
- * Email templates for automated sequences
+ * Email templates with A/B testing, personalization, and performance tracking
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "email-templates".
  */
 export interface EmailTemplate {
   id: number;
+  status?: ('draft' | 'active' | 'paused' | 'ab_testing') | null;
   sequence:
     | 'week1_value'
     | 'weekly_digest'
@@ -2943,7 +3131,9 @@ export interface EmailTemplate {
     | 'fomo_trigger'
     | 'year_in_clean'
     | 'badge_unlock'
-    | 'product_update';
+    | 'product_update'
+    | 'welcome'
+    | 'transactional';
   /**
    * For sequences: which day (0, 1, 3, 5, 7, etc.)
    */
@@ -2952,10 +3142,17 @@ export interface EmailTemplate {
    * What event triggers this email
    */
   triggerEvent?:
-    | ('product_retested' | 'brand_news' | 'new_category_tests' | 'badge_unlocked' | 'year_in_clean_ready')
+    | (
+        | 'product_retested'
+        | 'brand_news'
+        | 'new_category_tests'
+        | 'badge_unlocked'
+        | 'year_in_clean_ready'
+        | 'saved_product_updated'
+      )
     | null;
   /**
-   * Email subject line (supports {{variables}})
+   * Email subject line (supports {{variables}} like {{userName}})
    */
   subject: string;
   /**
@@ -2963,7 +3160,7 @@ export interface EmailTemplate {
    */
   subjectVariantB?: string | null;
   /**
-   * Preview text shown in inbox (optional)
+   * Preview text shown in inbox (40-130 characters recommended)
    */
   preheader?: string | null;
   /**
@@ -2971,7 +3168,7 @@ export interface EmailTemplate {
    */
   headline?: string | null;
   /**
-   * Email body content
+   * Email body content - use React Email components for rendering
    */
   body: {
     root: {
@@ -2997,40 +3194,57 @@ export interface EmailTemplate {
    */
   ctaUrl?: string | null;
   /**
-   * Available personalization variables
+   * Variables you can use in templates: {{variable_name}}
    */
-  personalization?: {
+  availableVariables?:
+    | {
+        variable?: string | null;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  dynamicContent?: {
     /**
-     * Variables you can use: {{variable_name}}
+     * Auto-insert product cards based on user preferences
      */
-    availableVariables?:
-      | {
-          variable?: string | null;
-          description?: string | null;
-          id?: string | null;
-        }[]
-      | null;
+    includeProductCards?: boolean | null;
+    productCardCount?: number | null;
+    /**
+     * Show personalized stats (scans, saves, badges)
+     */
+    includeStats?: boolean | null;
   };
-  status?: ('draft' | 'active' | 'paused') | null;
-  /**
-   * Performance metrics
-   */
   stats?: {
     sent?: number | null;
     opened?: number | null;
     clicked?: number | null;
+    unsubscribed?: number | null;
+    /**
+     * Percentage of opens
+     */
     openRate?: string | null;
+    /**
+     * Percentage of clicks
+     */
     clickRate?: string | null;
+    /**
+     * Percentage of unsubscribes
+     */
+    unsubscribeRate?: string | null;
+    /**
+     * A/B test result (auto-calculated after 100+ sends)
+     */
+    abTestWinner?: ('pending' | 'A' | 'B' | 'tie') | null;
   };
   /**
-   * Notes for yourself about this email
+   * Internal notes about this template (not sent to users)
    */
   internalNotes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
 /**
- * Log of all sent emails with open/click tracking
+ * Complete log of all sent emails with open/click tracking and A/B test results
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "email-sends".
@@ -3039,19 +3253,432 @@ export interface EmailSend {
   id: number;
   template: number | EmailTemplate;
   recipient: string;
+  /**
+   * The actual subject line sent (after A/B variant selection)
+   */
   subject: string;
+  status?: ('sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained') | null;
+  /**
+   * Which subject line variant was sent
+   */
   abVariant?: ('A' | 'B') | null;
   /**
    * Resend message ID for tracking
    */
   messageId?: string | null;
   sentAt: string;
-  status?: ('sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained') | null;
   openedAt?: string | null;
   clickedAt?: string | null;
+  /**
+   * The URL that was clicked (if any)
+   */
   clickedUrl?: string | null;
+  /**
+   * Email client user agent
+   */
+  userAgent?: string | null;
+  /**
+   * Seconds from send to open
+   */
+  timeToOpen?: number | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * Trending products detected from external sources (Amazon, TikTok, etc.)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "market-intelligence".
+ */
+export interface MarketIntelligence {
+  id: number;
+  source:
+    | 'amazon_bestseller'
+    | 'amazon_new_release'
+    | 'amazon_mover'
+    | 'tiktok'
+    | 'instagram'
+    | 'google_trends'
+    | 'news'
+    | 'competitor'
+    | 'manual';
+  /**
+   * External identifier (ASIN, TikTok video ID, etc.)
+   */
+  externalId?: string | null;
+  /**
+   * Link to the source (Amazon page, TikTok video, etc.)
+   */
+  sourceUrl?: string | null;
+  /**
+   * Product name as found on the source
+   */
+  productName: string;
+  /**
+   * Brand name (if identifiable)
+   */
+  brand?: string | null;
+  /**
+   * Product category on the source platform
+   */
+  category?: string | null;
+  /**
+   * Product image URL
+   */
+  imageUrl?: string | null;
+  /**
+   * Product price (if available)
+   */
+  price?: number | null;
+  /**
+   * UPC/barcode if found
+   */
+  upc?: string | null;
+  /**
+   * Calculated trend score (0-100)
+   */
+  trendScore?: number | null;
+  /**
+   * Rate of change in popularity
+   */
+  velocity?: number | null;
+  /**
+   * Rank on the source platform (e.g., #3 bestseller)
+   */
+  rankOnSource?: number | null;
+  /**
+   * Number of reviews (Amazon)
+   */
+  reviewCount?: number | null;
+  /**
+   * Average rating (Amazon)
+   */
+  rating?: number | null;
+  /**
+   * Number of social media mentions
+   */
+  socialMentions?: number | null;
+  /**
+   * Google search volume (if from Google Trends)
+   */
+  searchVolume?: number | null;
+  status: 'new' | 'reviewed' | 'matched' | 'added_to_queue' | 'ignored' | 'out_of_scope';
+  /**
+   * Why this was ignored (if applicable)
+   */
+  ignoreReason?: string | null;
+  /**
+   * Barcode of matched existing product
+   */
+  matchedBarcode?: string | null;
+  /**
+   * The ProductVote this created or matched
+   */
+  linkedProductVote?: (number | null) | ProductVote;
+  /**
+   * The tested Product (if already exists)
+   */
+  linkedProduct?: (number | null) | Product;
+  /**
+   * When this trend was first detected
+   */
+  detectedAt: string;
+  /**
+   * When this was last seen on the source
+   */
+  lastSeenAt?: string | null;
+  /**
+   * When this was processed by the system
+   */
+  processedAt?: string | null;
+  /**
+   * Admin who processed this
+   */
+  processedBy?: (number | null) | User;
+  /**
+   * Raw data from the source API/scrape
+   */
+  rawData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Internal notes
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Daily brand performance snapshots for analytics
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-analytics".
+ */
+export interface BrandAnalytic {
+  id: number;
+  /**
+   * The brand this snapshot is for
+   */
+  brand: number | Brand;
+  /**
+   * Brand name (denormalized for fast queries)
+   */
+  brandName?: string | null;
+  /**
+   * The date of this snapshot (YYYY-MM-DD)
+   */
+  date: string;
+  /**
+   * Total barcode scans of this brand's products today
+   */
+  scanCount?: number | null;
+  /**
+   * Text searches mentioning this brand today
+   */
+  searchCount?: number | null;
+  /**
+   * Product page views today
+   */
+  productViewCount?: number | null;
+  /**
+   * Unique users who interacted with this brand today
+   */
+  uniqueUsers?: number | null;
+  /**
+   * Product verdict distribution
+   */
+  verdictBreakdown?: {
+    /**
+     * Products with RECOMMEND verdict
+     */
+    recommendCount?: number | null;
+    /**
+     * Products with CAUTION verdict
+     */
+    cautionCount?: number | null;
+    /**
+     * Products with AVOID verdict
+     */
+    avoidCount?: number | null;
+    /**
+     * Scans that resulted in AVOID verdict shown
+     */
+    avoidHitCount?: number | null;
+  };
+  /**
+   * Brand trust score (0-100) on this date
+   */
+  trustScore?: number | null;
+  /**
+   * Trust grade on this date
+   */
+  trustGrade?: ('A' | 'B' | 'C' | 'D' | 'F') | null;
+  /**
+   * Rank within primary category (1 = best)
+   */
+  categoryRank?: number | null;
+  /**
+   * Rank among all brands
+   */
+  overallRank?: number | null;
+  /**
+   * Changes vs previous period
+   */
+  changes?: {
+    /**
+     * Scan count change vs yesterday (%)
+     */
+    scanCountChange?: number | null;
+    /**
+     * Trust score change vs yesterday
+     */
+    trustScoreChange?: number | null;
+    /**
+     * Category rank change (positive = improved)
+     */
+    categoryRankChange?: number | null;
+    /**
+     * Scan count change vs 7 days ago (%)
+     */
+    weekOverWeekGrowth?: number | null;
+  };
+  /**
+   * Total products under this brand
+   */
+  productCount?: number | null;
+  /**
+   * Products that have been tested
+   */
+  testedProductCount?: number | null;
+  /**
+   * Products in the testing queue
+   */
+  pendingTestCount?: number | null;
+  /**
+   * Average score across all tested products
+   */
+  averageProductScore?: number | null;
+  /**
+   * Top 5 most scanned products today. Structure: [{ productId, name, scanCount }]
+   */
+  topScannedProducts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Brand portal users - companies accessing their analytics
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-users".
+ */
+export interface BrandUser {
+  id: number;
+  /**
+   * Full name of the brand representative
+   */
+  name: string;
+  /**
+   * Job title (e.g., Brand Manager, CMO)
+   */
+  jobTitle?: string | null;
+  /**
+   * Contact phone number
+   */
+  phone?: string | null;
+  /**
+   * The brand this user represents
+   */
+  brand: number | Brand;
+  /**
+   * Additional brands this user can access (for parent companies)
+   */
+  additionalBrands?: (number | Brand)[] | null;
+  /**
+   * Access level within the brand portal
+   */
+  role: 'owner' | 'admin' | 'analyst' | 'viewer';
+  /**
+   * Has this user been verified as a legitimate brand representative?
+   */
+  isVerified?: boolean | null;
+  /**
+   * When verification was completed
+   */
+  verifiedAt?: string | null;
+  /**
+   * Admin who verified this user
+   */
+  verifiedBy?: (number | null) | User;
+  /**
+   * How this user was verified
+   */
+  verificationMethod?: ('email_domain' | 'linkedin' | 'phone' | 'documentation' | 'manual') | null;
+  /**
+   * Notes about the verification process
+   */
+  verificationNotes?: string | null;
+  subscription: 'free' | 'starter' | 'pro' | 'enterprise';
+  /**
+   * When the paid subscription started
+   */
+  subscriptionStartDate?: string | null;
+  /**
+   * When the subscription expires (for non-auto-renew)
+   */
+  subscriptionEndDate?: string | null;
+  /**
+   * Stripe customer ID for billing
+   */
+  stripeCustomerId?: string | null;
+  /**
+   * Stripe subscription ID
+   */
+  stripeSubscriptionId?: string | null;
+  /**
+   * Feature flags (based on subscription)
+   */
+  features?: {
+    /**
+     * Can view competitor benchmarking (Pro+)
+     */
+    canViewCompetitors?: boolean | null;
+    /**
+     * Can export analytics data (Pro+)
+     */
+    canExportData?: boolean | null;
+    /**
+     * Can use API access (Enterprise)
+     */
+    canAccessApi?: boolean | null;
+    /**
+     * Can view consumer demand signals (Pro+)
+     */
+    canViewDemandSignals?: boolean | null;
+    /**
+     * Can invite/manage other brand users (Admin+)
+     */
+    canManageTeam?: boolean | null;
+  };
+  /**
+   * Last login timestamp
+   */
+  lastLoginAt?: string | null;
+  /**
+   * Total number of logins
+   */
+  loginCount?: number | null;
+  /**
+   * Email notification preferences
+   */
+  notifications?: {
+    /**
+     * Receive weekly performance digest
+     */
+    weeklyDigest?: boolean | null;
+    /**
+     * Alert when trust score changes significantly
+     */
+    trustScoreAlerts?: boolean | null;
+    /**
+     * Alert when new products are added to your brand
+     */
+    newProductAlerts?: boolean | null;
+    /**
+     * Alert on competitor ranking changes (Pro+)
+     */
+    competitorAlerts?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3360,6 +3987,22 @@ export interface PayloadLockedDocument {
         value: number | EmailSend;
       } | null)
     | ({
+        relationTo: 'scout-profiles';
+        value: number | ScoutProfile;
+      } | null)
+    | ({
+        relationTo: 'market-intelligence';
+        value: number | MarketIntelligence;
+      } | null)
+    | ({
+        relationTo: 'brand-analytics';
+        value: number | BrandAnalytic;
+      } | null)
+    | ({
+        relationTo: 'brand-users';
+        value: number | BrandUser;
+      } | null)
+    | ({
         relationTo: 'redirects';
         value: number | Redirect;
       } | null)
@@ -3380,10 +4023,15 @@ export interface PayloadLockedDocument {
         value: number | FolderInterface;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'brand-users';
+        value: number | BrandUser;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -3393,10 +4041,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'brand-users';
+        value: number | BrandUser;
+      };
   key?: string | null;
   value?:
     | {
@@ -3698,6 +4351,16 @@ export interface ProductsSelect<T extends boolean = true> {
         trendingScore?: T;
         trendingSentiment?: T;
         trendingReason?: T;
+      };
+  scoutAttribution?:
+    | T
+    | {
+        firstScout?: T;
+        firstScoutNumber?: T;
+        totalScouts?: T;
+        scoutContributors?: T;
+        linkedProductVote?: T;
+        scansAfterTesting?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -4306,6 +4969,10 @@ export interface ProductVotesSelect<T extends boolean = true> {
   photoContributors?: T;
   totalContributors?: T;
   notifyOnComplete?: T;
+  firstScout?: T;
+  firstScoutNumber?: T;
+  scoutContributors?: T;
+  totalScouts?: T;
   openFoodFactsData?: T;
   rank?: T;
   scanTimestamps?: T;
@@ -4544,6 +5211,7 @@ export interface DailyDiscoveriesSelect<T extends boolean = true> {
  * via the `definition` "email-templates_select".
  */
 export interface EmailTemplatesSelect<T extends boolean = true> {
+  status?: T;
   sequence?: T;
   dayInSequence?: T;
   triggerEvent?: T;
@@ -4554,26 +5222,31 @@ export interface EmailTemplatesSelect<T extends boolean = true> {
   body?: T;
   ctaText?: T;
   ctaUrl?: T;
-  personalization?:
+  availableVariables?:
     | T
     | {
-        availableVariables?:
-          | T
-          | {
-              variable?: T;
-              description?: T;
-              id?: T;
-            };
+        variable?: T;
+        description?: T;
+        id?: T;
       };
-  status?: T;
+  dynamicContent?:
+    | T
+    | {
+        includeProductCards?: T;
+        productCardCount?: T;
+        includeStats?: T;
+      };
   stats?:
     | T
     | {
         sent?: T;
         opened?: T;
         clicked?: T;
+        unsubscribed?: T;
         openRate?: T;
         clickRate?: T;
+        unsubscribeRate?: T;
+        abTestWinner?: T;
       };
   internalNotes?: T;
   updatedAt?: T;
@@ -4587,15 +5260,174 @@ export interface EmailSendsSelect<T extends boolean = true> {
   template?: T;
   recipient?: T;
   subject?: T;
+  status?: T;
   abVariant?: T;
   messageId?: T;
   sentAt?: T;
-  status?: T;
   openedAt?: T;
   clickedAt?: T;
   clickedUrl?: T;
+  userAgent?: T;
+  timeToOpen?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scout-profiles_select".
+ */
+export interface ScoutProfilesSelect<T extends boolean = true> {
+  displayName?: T;
+  fingerprintHash?: T;
+  user?: T;
+  avatar?: T;
+  bio?: T;
+  scoutNumber?: T;
+  documentsSubmitted?: T;
+  productsTestedFromSubmissions?: T;
+  peopleHelped?: T;
+  firstDiscoveries?: T;
+  scoutLevel?: T;
+  isPublic?: T;
+  shareableSlug?: T;
+  badges?: T;
+  featuredDiscoveries?: T;
+  notifyOnResults?: T;
+  notifyOnMilestones?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "market-intelligence_select".
+ */
+export interface MarketIntelligenceSelect<T extends boolean = true> {
+  source?: T;
+  externalId?: T;
+  sourceUrl?: T;
+  productName?: T;
+  brand?: T;
+  category?: T;
+  imageUrl?: T;
+  price?: T;
+  upc?: T;
+  trendScore?: T;
+  velocity?: T;
+  rankOnSource?: T;
+  reviewCount?: T;
+  rating?: T;
+  socialMentions?: T;
+  searchVolume?: T;
+  status?: T;
+  ignoreReason?: T;
+  matchedBarcode?: T;
+  linkedProductVote?: T;
+  linkedProduct?: T;
+  detectedAt?: T;
+  lastSeenAt?: T;
+  processedAt?: T;
+  processedBy?: T;
+  rawData?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-analytics_select".
+ */
+export interface BrandAnalyticsSelect<T extends boolean = true> {
+  brand?: T;
+  brandName?: T;
+  date?: T;
+  scanCount?: T;
+  searchCount?: T;
+  productViewCount?: T;
+  uniqueUsers?: T;
+  verdictBreakdown?:
+    | T
+    | {
+        recommendCount?: T;
+        cautionCount?: T;
+        avoidCount?: T;
+        avoidHitCount?: T;
+      };
+  trustScore?: T;
+  trustGrade?: T;
+  categoryRank?: T;
+  overallRank?: T;
+  changes?:
+    | T
+    | {
+        scanCountChange?: T;
+        trustScoreChange?: T;
+        categoryRankChange?: T;
+        weekOverWeekGrowth?: T;
+      };
+  productCount?: T;
+  testedProductCount?: T;
+  pendingTestCount?: T;
+  averageProductScore?: T;
+  topScannedProducts?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-users_select".
+ */
+export interface BrandUsersSelect<T extends boolean = true> {
+  name?: T;
+  jobTitle?: T;
+  phone?: T;
+  brand?: T;
+  additionalBrands?: T;
+  role?: T;
+  isVerified?: T;
+  verifiedAt?: T;
+  verifiedBy?: T;
+  verificationMethod?: T;
+  verificationNotes?: T;
+  subscription?: T;
+  subscriptionStartDate?: T;
+  subscriptionEndDate?: T;
+  stripeCustomerId?: T;
+  stripeSubscriptionId?: T;
+  features?:
+    | T
+    | {
+        canViewCompetitors?: T;
+        canExportData?: T;
+        canAccessApi?: T;
+        canViewDemandSignals?: T;
+        canManageTeam?: T;
+      };
+  lastLoginAt?: T;
+  loginCount?: T;
+  notifications?:
+    | T
+    | {
+        weeklyDigest?: T;
+        trustScoreAlerts?: T;
+        newProductAlerts?: T;
+        competitorAlerts?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
