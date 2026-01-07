@@ -388,8 +388,8 @@ export async function POST(request: Request) {
             collection: 'referrals',
             where: {
               and: [
-                { referrer: { equals: user.referredBy } },
-                { referredUser: { equals: user.id } },
+                { referrerId: { equals: user.referredBy } },
+                { referredUserId: { equals: String(user.id) } },
               ]
             },
             limit: 1,
@@ -397,17 +397,17 @@ export async function POST(request: Request) {
 
           if (referrals.docs.length > 0) {
             const referral = referrals.docs[0]
-            // Mark referral as converted with revenue
+            // Mark referral as active (subscribed and eligible for commission)
             await payload.update({
               collection: 'referrals',
               id: referral.id,
               data: {
-                status: 'converted',
-                convertedAt: new Date().toISOString(),
-                revenueGenerated: event.price_in_purchased_currency || event.price || 0,
+                status: 'active',
+                firstSubscriptionDate: new Date().toISOString(),
+                revenuecatSubscriberId: event.app_user_id,
               },
             })
-            console.log(`[RevenueCat Webhook] Referral ${referral.id} marked as converted`)
+            console.log(`[RevenueCat Webhook] Referral ${referral.id} marked as active`)
           }
         } catch (refError) {
           console.error('[RevenueCat Webhook] Error updating referral:', refError)
