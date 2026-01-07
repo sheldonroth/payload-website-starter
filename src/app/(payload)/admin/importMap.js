@@ -36,6 +36,10 @@ import { default as default_75dc2b615834d6768a54dcd141eaa5e8 } from '@/component
 import { default as default_13a816ebfa4a02aa29b5ff61c24f72d4 } from '@/components/AIProductSuggestions'
 import { default as default_51efc397df5a963397c9b90f50d26f14 } from '@/components/SuggestedCategories'
 import { default as default_4fb88c9a3a532122f1d42f73ebcc5f22 } from '@/components/AnalyticsDashboard'
+import { default as default_86712f171ecea78dd5c08b610c485a95 } from '@/components/BusinessAnalyticsDashboard'
+import { default as default_df74f8fbbec6091d5eebbd136a4e7900 } from '@/components/AIBusinessAssistant'
+import { default as default_5590276bd4a5d7520aeb8b6d0ce78934 } from '@/components/ContentEngine'
+import { default as default_bd65cc96ffe5e56189e9e5b043d16e0c } from '@/components/EmailABDashboard'
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -75,5 +79,9 @@ export const importMap = {
   "@/components/AITools#default": default_75dc2b615834d6768a54dcd141eaa5e8,
   "@/components/AIProductSuggestions#default": default_13a816ebfa4a02aa29b5ff61c24f72d4,
   "@/components/SuggestedCategories#default": default_51efc397df5a963397c9b90f50d26f14,
-  "@/components/AnalyticsDashboard#default": default_4fb88c9a3a532122f1d42f73ebcc5f22
+  "@/components/AnalyticsDashboard#default": default_4fb88c9a3a532122f1d42f73ebcc5f22,
+  "@/components/BusinessAnalyticsDashboard#default": default_86712f171ecea78dd5c08b610c485a95,
+  "@/components/AIBusinessAssistant#default": default_df74f8fbbec6091d5eebbd136a4e7900,
+  "@/components/ContentEngine#default": default_5590276bd4a5d7520aeb8b6d0ce78934,
+  "@/components/EmailABDashboard#default": default_bd65cc96ffe5e56189e9e5b043d16e0c
 }
