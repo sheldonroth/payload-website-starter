@@ -211,6 +211,10 @@ export default buildConfig({
           Component: '@/components/DataExportDashboard',
           path: '/data-export',
         },
+        'api-status': {
+          Component: '@/components/ApiStatusDashboard',
+          path: '/api-status',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
