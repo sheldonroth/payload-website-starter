@@ -122,6 +122,7 @@ import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
 import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
 import { userAnalyticsHandler } from './endpoints/user-analytics'
 import { productEngagementAnalyticsHandler } from './endpoints/product-engagement-analytics'
+import { contentModerationHandler } from './endpoints/content-moderation'
 import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
@@ -189,6 +190,10 @@ export default buildConfig({
         'product-engagement': {
           Component: '@/components/ProductEngagementDashboard',
           path: '/product-engagement',
+        },
+        'content-moderation': {
+          Component: '@/components/ContentModerationDashboard',
+          path: '/content-moderation',
         },
       },
       // Sidebar nav links
@@ -784,6 +789,12 @@ export default buildConfig({
       path: '/product-engagement-analytics',
       method: 'get',
       handler: productEngagementAnalyticsHandler,
+    },
+    // Content Moderation Queue
+    {
+      path: '/content-moderation',
+      method: 'get',
+      handler: contentModerationHandler,
     },
     // Brand Portal Auth
     ...brandAuthEndpoints,
