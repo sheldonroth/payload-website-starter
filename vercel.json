@@ -53,6 +53,10 @@
     {
       "path": "/api/email-cron?job=winback_sequence",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/generate-embeddings",
+      "schedule": "0 * * * *"
     }
   ]
 }
