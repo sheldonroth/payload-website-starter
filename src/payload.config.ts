@@ -133,6 +133,7 @@ import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
 import { apiDocsHandler } from './endpoints/api-docs'
 import { apiStatusEndpoint } from './endpoints/api-status'
+import { searchAutocompleteHandler } from './endpoints/search-autocomplete'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -906,6 +907,12 @@ export default buildConfig({
       path: '/docs',
       method: 'get',
       handler: apiDocsHandler,
+    },
+    // Search Autocomplete (Mobile App)
+    {
+      path: '/search/autocomplete',
+      method: 'get',
+      handler: searchAutocompleteHandler,
     },
     // API Status
     apiStatusEndpoint,
