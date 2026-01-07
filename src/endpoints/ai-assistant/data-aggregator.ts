@@ -6,6 +6,14 @@
 
 import type { Payload } from 'payload'
 import type { BusinessContext } from './types'
+import { fetchRevenueCatData, getSubscriptionCounts } from '../business-analytics/revenuecat-service'
+import { fetchMixpanelData } from '../business-analytics/mixpanel-service'
+import { fetchStatsigData } from '../business-analytics/statsig-service'
+import {
+    calculateChurnByCohort,
+    calculateReferralAttribution,
+    predictMRR,
+} from '../business-analytics/metrics-calculator'
 
 // Simple in-memory cache for aggregated data (5 min TTL)
 let cachedContext: { data: BusinessContext; timestamp: number } | null = null
@@ -26,19 +34,43 @@ export async function aggregateBusinessData(
 
     console.log('[AI Assistant] Aggregating fresh business data...')
 
-    // Fetch from existing business-analytics endpoint
-    let analyticsData: Record<string, unknown> | null = null
-    try {
-        const response = await fetch(`${serverUrl}/api/business-analytics`, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        if (response.ok) {
-            analyticsData = await response.json()
-        }
-    } catch (error) {
-        console.error('[AI Assistant] Failed to fetch business analytics:', error)
+    // Fetch all data sources directly (bypassing HTTP endpoint for auth)
+    const [
+        revenueResult,
+        subscriptionResult,
+        trialsResult,
+        experimentsResult,
+        churnResult,
+        referralsResult,
+        mrrResult,
+    ] = await Promise.allSettled([
+        fetchRevenueCatData(),
+        getSubscriptionCounts(),
+        fetchMixpanelData(),
+        fetchStatsigData(),
+        calculateChurnByCohort(payload),
+        calculateReferralAttribution(payload),
+        predictMRR(payload),
+    ])
+
+    // Extract raw results
+    const revenueRaw = revenueResult.status === 'fulfilled' ? revenueResult.value : null
+    const subscriptions = subscriptionResult.status === 'fulfilled' ? subscriptionResult.value : null
+    const trialsRaw = trialsResult.status === 'fulfilled' ? trialsResult.value : null
+    const experimentsRaw = experimentsResult.status === 'fulfilled' ? experimentsResult.value : []
+    const churnRaw = churnResult.status === 'fulfilled' ? churnResult.value : null
+    const referralsRaw = referralsResult.status === 'fulfilled' ? referralsResult.value : null
+    const predictedMRRRaw = mrrResult.status === 'fulfilled' ? mrrResult.value : null
+
+    // Log any errors
+    if (revenueResult.status === 'rejected') {
+        console.error('[AI Assistant] RevenueCat error:', revenueResult.reason)
+    }
+    if (trialsResult.status === 'rejected') {
+        console.error('[AI Assistant] Mixpanel error:', trialsResult.reason)
+    }
+    if (experimentsResult.status === 'rejected') {
+        console.error('[AI Assistant] Statsig error:', experimentsResult.reason)
     }
 
     // Fetch product catalog metrics
@@ -47,13 +79,78 @@ export async function aggregateBusinessData(
     // Fetch email metrics
     const emailMetrics = await fetchEmailMetrics(payload)
 
+    // Transform revenue data to match BusinessContext type
+    const revenue: BusinessContext['revenue'] = revenueRaw ? {
+        daily: revenueRaw.daily ?? null,
+        weekly: revenueRaw.weekly ?? null,
+        dailyChange: revenueRaw.dailyChange ?? null,
+        weeklyChange: revenueRaw.weeklyChange ?? null,
+        mrr: revenueRaw.daily ? revenueRaw.daily * 30 : null, // Estimate MRR from daily
+        activeSubscribers: revenueRaw.activeSubscribers ?? subscriptions?.active ?? null,
+    } : null
+
+    // Transform trials data
+    const trials: BusinessContext['trials'] = trialsRaw ? {
+        started: trialsRaw.started ?? 0,
+        active: trialsRaw.active ?? subscriptions?.trials ?? 0,
+        converted: trialsRaw.converted ?? 0,
+        conversionRate: trialsRaw.conversionRate ?? 0,
+    } : null
+
+    // Transform churn data
+    const churn: BusinessContext['churn'] = churnRaw ? {
+        overall: churnRaw.overall ?? 0,
+        byCohort: (churnRaw.byCohort || []).map((c: { cohort?: string; month?: string; totalUsers?: number; churned?: number; churnRate?: number }) => ({
+            month: c.cohort || c.month || 'Unknown',
+            totalUsers: c.totalUsers ?? 0,
+            churned: c.churned ?? 0,
+            churnRate: c.churnRate ?? 0,
+        })),
+    } : null
+
+    // Transform experiments data
+    const experiments: BusinessContext['experiments'] = (experimentsRaw || []).map((exp: { name?: string; status?: string; variants?: { name?: string; conversionRate?: number; isWinning?: boolean; sampleSize?: number }[] }) => ({
+        name: exp.name || 'Unknown',
+        status: exp.status || 'unknown',
+        variants: (exp.variants || []).map((v) => ({
+            name: v.name || 'Unknown',
+            conversionRate: v.conversionRate ?? 0,
+            isWinning: v.isWinning ?? false,
+            sampleSize: v.sampleSize ?? 0,
+        })),
+    }))
+
+    // Transform referrals data (using property names from ReferralMetrics type)
+    const referrals: BusinessContext['referrals'] = referralsRaw ? {
+        total: referralsRaw.totalReferrals ?? 0,
+        active: referralsRaw.activeReferrals ?? 0,
+        bySource: referralsRaw.bySource || [],
+        topReferrers: (referralsRaw.topReferrers || []).map((r: { code?: string; referralCode?: string; totalReferrals?: number; commission?: number }) => ({
+            code: r.code || r.referralCode || 'Unknown',
+            totalReferrals: r.totalReferrals ?? 0,
+            commission: r.commission ?? 0,
+        })),
+        commissionPending: referralsRaw.commissionPending ?? 0,
+        commissionPaid: referralsRaw.commissionPaid ?? 0,
+    } : null
+
+    // Transform predictions data (using property names from MRRPrediction type)
+    const predictions: BusinessContext['predictions'] = predictedMRRRaw ? {
+        currentMRR: predictedMRRRaw.current ?? 0,
+        predicted30Day: predictedMRRRaw.predicted30Day ?? 0,
+        predicted90Day: predictedMRRRaw.predicted90Day ?? 0,
+        confidence: predictedMRRRaw.confidence ?? 0.5,
+        trend: predictedMRRRaw.trend ?? 'stable',
+        growthRate: predictedMRRRaw.growthRate ?? 0,
+    } : null
+
     const context: BusinessContext = {
-        revenue: analyticsData?.revenue as BusinessContext['revenue'] || null,
-        trials: analyticsData?.trials as BusinessContext['trials'] || null,
-        churn: analyticsData?.churn as BusinessContext['churn'] || null,
-        experiments: (analyticsData?.experiments as BusinessContext['experiments']) || [],
-        referrals: analyticsData?.referrals as BusinessContext['referrals'] || null,
-        predictions: analyticsData?.predictedMRR as BusinessContext['predictions'] || null,
+        revenue,
+        trials,
+        churn,
+        experiments,
+        referrals,
+        predictions,
         productCatalog: productMetrics,
         emailMetrics: emailMetrics,
     }

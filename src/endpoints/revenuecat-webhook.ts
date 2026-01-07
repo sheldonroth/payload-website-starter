@@ -1,20 +1,21 @@
 /**
  * RevenueCat Webhook Handler
- * 
+ *
  * Handles subscription lifecycle events from RevenueCat.
  * Updates referral status when:
  * - New subscription → Mark referral as 'active', set commission dates
  * - Renewal → Accrue commission, extend next commission date
  * - Cancellation → Mark referral as 'churned'
- * 
+ *
  * Commission: $25/year per active referred subscriber
  * Timing: Annual payouts on subscription anniversary
- * 
+ *
  * Webhook URL: https://cms.theproductreport.org/api/revenuecat-webhook
  * Configure in RevenueCat Dashboard → Integrations → Webhooks
  */
 
 import type { Endpoint } from 'payload'
+import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 // RevenueCat webhook event types
 type RevenueCatEventType =
@@ -93,24 +94,62 @@ export const revenuecatWebhookHandler: Endpoint = {
             switch (event.type) {
                 case 'INITIAL_PURCHASE':
                     await handleNewSubscription(payload, subscriberId, event)
+                    // Track in RudderStack
+                    trackServer('Subscription Started', {
+                        subscriber_id: subscriberId,
+                        product_id: event.product_id,
+                        price: event.price,
+                        currency: event.currency,
+                        source: 'revenuecat',
+                    }, { anonymousId: subscriberId })
                     break
 
                 case 'RENEWAL':
                     await handleRenewal(payload, subscriberId, event)
+                    // Track in RudderStack
+                    trackServer('Subscription Renewed', {
+                        subscriber_id: subscriberId,
+                        product_id: event.product_id,
+                        price: event.price,
+                        currency: event.currency,
+                        source: 'revenuecat',
+                    }, { anonymousId: subscriberId })
                     break
 
                 case 'CANCELLATION':
                 case 'EXPIRATION':
                     await handleCancellation(payload, subscriberId, event)
+                    // Track in RudderStack
+                    trackServer('Subscription Cancelled', {
+                        subscriber_id: subscriberId,
+                        event_type: event.type,
+                        source: 'revenuecat',
+                    }, { anonymousId: subscriberId })
                     break
 
                 case 'UNCANCELLATION':
                     await handleReactivation(payload, subscriberId, event)
+                    // Track in RudderStack
+                    trackServer('Subscription Reactivated', {
+                        subscriber_id: subscriberId,
+                        source: 'revenuecat',
+                    }, { anonymousId: subscriberId })
+                    break
+
+                case 'BILLING_ISSUE':
+                    // Track billing issue
+                    trackServer('Payment Failed', {
+                        subscriber_id: subscriberId,
+                        source: 'revenuecat',
+                    }, { anonymousId: subscriberId })
                     break
 
                 default:
                     console.log(`[RevenueCat Webhook] Unhandled event type: ${event.type}`)
             }
+
+            // Flush events before responding
+            await flushServer()
 
             return Response.json({ success: true })
         } catch (error) {

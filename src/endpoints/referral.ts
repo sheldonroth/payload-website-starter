@@ -11,6 +11,7 @@
 
 import type { Endpoint } from 'payload'
 import { Payload } from 'payload'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 interface ValidateRequest {
     code: string
@@ -75,8 +76,23 @@ export const validateReferralCode: Endpoint = {
             })
 
             if (devices.docs.length === 0) {
+                // Track failed validation
+                trackServer('Referral Code Validated', {
+                    code: body.code.toUpperCase(),
+                    valid: false,
+                    error: 'not_found',
+                }, { anonymousId: `code_${body.code.toUpperCase()}` })
+                await flushServer()
                 return Response.json({ valid: false, error: 'Invalid referral code' }, { status: 404 })
             }
+
+            // Track successful validation
+            trackServer('Referral Code Validated', {
+                code: body.code.toUpperCase(),
+                valid: true,
+                referrer_id: String(devices.docs[0].id),
+            }, { anonymousId: `code_${body.code.toUpperCase()}` })
+            await flushServer()
 
             return Response.json({
                 valid: true,
@@ -152,6 +168,24 @@ export const registerReferral: Endpoint = {
                 } as any,
             })
 
+            // Track referral registration
+            trackServer('Referral Registered', {
+                referrer_id: String(referrer.id),
+                referrer_code: body.referrerCode.toUpperCase(),
+                referred_device_id: body.referredDeviceId,
+                reward_days: 7,
+            }, { anonymousId: body.referredDeviceId })
+
+            // Also track for the referrer
+            trackServer('Referral Received', {
+                referrer_id: String(referrer.id),
+                referrer_code: body.referrerCode.toUpperCase(),
+                referred_device_id: body.referredDeviceId,
+                pending_count: currentPending + 1,
+            }, { anonymousId: String(referrer.id) })
+
+            await flushServer()
+
             return Response.json({
                 success: true,
                 rewardDays: 7, // Both parties get 7 days
@@ -213,6 +247,18 @@ export const getReferralStats: Endpoint = {
                 rewardsEarned,
                 tier,
             }
+
+            // Track stats view
+            trackServer('Referral Stats Viewed', {
+                device_id: deviceId,
+                referral_code: device.referralCode,
+                total_referrals: referrals.docs.length,
+                successful_referrals: successfulReferrals,
+                pending_referrals: pendingReferrals,
+                tier,
+                rewards_earned: rewardsEarned,
+            }, { anonymousId: deviceId })
+            await flushServer()
 
             return Response.json(stats)
         } catch (error) {

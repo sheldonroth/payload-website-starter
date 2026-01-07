@@ -1,5 +1,6 @@
 import { PayloadHandler } from 'payload'
 import { renderOneShotReceipt, emailSubjects } from '../email'
+import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 /**
  * Product Unlock Endpoint
@@ -127,6 +128,15 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
             // Check if free credit is available
             const usedCredits = fingerprint?.unlockCreditsUsed || 0
             if (usedCredits >= 1) {
+                // Track upgrade required event - important for conversion funnel
+                trackServer('Upgrade Required', {
+                    product_id: productId,
+                    product_name: (product as { name: string }).name,
+                    member_state: memberState,
+                    credits_used: usedCredits,
+                }, { anonymousId: fingerprintHash })
+                await flushServer()
+
                 // No free credits - requires subscription
                 return Response.json({
                     success: false,
@@ -284,10 +294,41 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
             memberState = newMemberState
         }
 
+        // Track product unlock - this is the core conversion event
+        const productName = (product as { name: string }).name
+        const trackingProps = {
+            product_id: productId,
+            product_name: productName,
+            unlock_type: unlockType,
+            member_state: memberState,
+            archetype: archetype || undefined,
+            referral_source: referralSource || undefined,
+            source_product_id: sourceProductId || undefined,
+            session_id: sessionId || undefined,
+            has_email: !!email,
+        }
+
+        trackServer('Product Unlocked', trackingProps, {
+            anonymousId: fingerprintHash,
+            userId: userId ? String(userId) : undefined,
+        })
+
+        // If we have a user, update their traits
+        if (userId) {
+            identifyServer(String(userId), {
+                email: email || undefined,
+                member_state: memberState,
+                total_unlocks: ((await req.payload.findByID({
+                    collection: 'users',
+                    id: userId,
+                }) as { totalUnlocks?: number }).totalUnlocks || 0),
+                last_unlock_at: now,
+            })
+        }
+
         // Send One-Shot receipt email for free credit unlocks
         if (unlockType === 'free_credit' && email) {
             try {
-                const productName = (product as { name: string }).name
                 const productSlug = (product as { slug: string }).slug
                 const userName = email.split('@')[0]
 
@@ -310,13 +351,15 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
             }
         }
 
+        await flushServer()
+
         return Response.json({
             success: true,
             unlockType,
             memberState,
             product: {
                 id: product.id,
-                name: (product as { name: string }).name,
+                name: productName,
             },
             remainingCredits: unlockType === 'subscription' ? 'unlimited' : 0,
         })

@@ -1,18 +1,19 @@
 /**
  * Resend Webhook Handler
- * 
+ *
  * Receives webhooks from Resend for email events:
  * - email.delivered
  * - email.opened
  * - email.clicked
  * - email.bounced
  * - email.complained
- * 
+ *
  * Updates EmailSends collection and calculates A/B test results.
  */
 
-import { Endpoint } from 'payload';
-import crypto from 'crypto';
+import { Endpoint } from 'payload'
+import crypto from 'crypto'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 // Verify Resend webhook signature
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -68,6 +69,11 @@ export const resendWebhookHandler: Endpoint = {
             const emailSend = emailSends.docs[0];
             const now = new Date().toISOString();
 
+            // Get recipient info for tracking
+            const recipientEmail = (emailSend as any).recipient || data.to?.[0]
+            const templateName = (emailSend as any).templateName || 'unknown'
+            const campaign = (emailSend as any).campaign || templateName
+
             // Update based on event type
             switch (type) {
                 case 'email.delivered':
@@ -77,8 +83,19 @@ export const resendWebhookHandler: Endpoint = {
                         data: {
                             status: 'delivered',
                         },
-                    });
-                    break;
+                    })
+                    // Track in RudderStack
+                    trackServer(
+                        'Email Delivered',
+                        {
+                            email_id: data.email_id,
+                            campaign,
+                            template: templateName,
+                            recipient: recipientEmail,
+                        },
+                        { anonymousId: recipientEmail || data.email_id },
+                    )
+                    break
 
                 case 'email.opened':
                     // Only update if not already opened (first open matters for stats)
@@ -90,12 +107,24 @@ export const resendWebhookHandler: Endpoint = {
                                 status: 'opened',
                                 openedAt: now,
                             },
-                        });
+                        })
 
                         // Update template stats
-                        await updateTemplateStats(payload, String((emailSend as any).template), 'opened');
+                        await updateTemplateStats(payload, String((emailSend as any).template), 'opened')
+
+                        // Track in RudderStack
+                        trackServer(
+                            'Email Opened',
+                            {
+                                email_id: data.email_id,
+                                campaign,
+                                template: templateName,
+                                recipient: recipientEmail,
+                            },
+                            { anonymousId: recipientEmail || data.email_id },
+                        )
                     }
-                    break;
+                    break
 
                 case 'email.clicked':
                     await payload.update({
@@ -106,11 +135,24 @@ export const resendWebhookHandler: Endpoint = {
                             clickedAt: now,
                             clickedUrl: data.link || data.url,
                         },
-                    });
+                    })
 
                     // Update template stats
-                    await updateTemplateStats(payload, String((emailSend as any).template), 'clicked');
-                    break;
+                    await updateTemplateStats(payload, String((emailSend as any).template), 'clicked')
+
+                    // Track in RudderStack
+                    trackServer(
+                        'Email Clicked',
+                        {
+                            email_id: data.email_id,
+                            campaign,
+                            template: templateName,
+                            recipient: recipientEmail,
+                            clicked_url: data.link || data.url,
+                        },
+                        { anonymousId: recipientEmail || data.email_id },
+                    )
+                    break
 
                 case 'email.bounced':
                     await payload.update({
@@ -119,8 +161,20 @@ export const resendWebhookHandler: Endpoint = {
                         data: {
                             status: 'bounced',
                         },
-                    });
-                    break;
+                    })
+                    // Track in RudderStack
+                    trackServer(
+                        'Email Bounced',
+                        {
+                            email_id: data.email_id,
+                            campaign,
+                            template: templateName,
+                            recipient: recipientEmail,
+                            bounce_type: data.bounce_type,
+                        },
+                        { anonymousId: recipientEmail || data.email_id },
+                    )
+                    break
 
                 case 'email.complained':
                     await payload.update({
@@ -129,11 +183,25 @@ export const resendWebhookHandler: Endpoint = {
                         data: {
                             status: 'complained',
                         },
-                    });
-                    break;
+                    })
+                    // Track in RudderStack
+                    trackServer(
+                        'Email Complained',
+                        {
+                            email_id: data.email_id,
+                            campaign,
+                            template: templateName,
+                            recipient: recipientEmail,
+                        },
+                        { anonymousId: recipientEmail || data.email_id },
+                    )
+                    break
             }
 
-            return Response.json({ received: true, matched: true });
+            // Flush events before responding
+            await flushServer()
+
+            return Response.json({ received: true, matched: true })
 
         } catch (error) {
             console.error('[ResendWebhook] Error:', error);

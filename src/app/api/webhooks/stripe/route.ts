@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import Stripe from 'stripe'
+import { trackServer, identifyServer, flushServer } from '@/lib/analytics/rudderstack-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -187,6 +188,29 @@ export async function POST(request: Request) {
           stripeSubscriptionId: subscriptionId,
         })
 
+        // Track subscription started in RudderStack
+        const priceAmount = subscription.items.data[0]?.price?.unit_amount
+        const currency = subscription.items.data[0]?.price?.currency
+        const interval = subscription.items.data[0]?.price?.recurring?.interval
+
+        trackServer('Subscription Started', {
+          subscription_id: subscriptionId,
+          customer_id: customerId,
+          plan: subscription.items.data[0]?.price?.nickname || 'premium',
+          amount: priceAmount ? priceAmount / 100 : undefined,
+          currency: currency?.toUpperCase(),
+          interval,
+          source: 'stripe',
+        }, { userId: String(user.id) })
+
+        // Update user traits
+        identifyServer(String(user.id), {
+          email: user.email,
+          subscription_status: 'premium',
+          stripe_customer_id: customerId,
+          subscription_started_at: new Date().toISOString(),
+        })
+
         break
       }
 
@@ -216,11 +240,28 @@ export async function POST(request: Request) {
         }
 
         const newStatus = mapStripeStatus(subscription.status, subscription.cancel_at_period_end)
+        const previousStatus = user.subscriptionStatus
 
         await updateUserSubscription(payload, user.id, {
           subscriptionStatus: newStatus,
           stripeSubscriptionId: subscription.id,
         })
+
+        // Track status change if significant
+        if (previousStatus !== newStatus) {
+          trackServer('Subscription Updated', {
+            subscription_id: subscription.id,
+            previous_status: previousStatus,
+            new_status: newStatus,
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            source: 'stripe',
+          }, { userId: String(user.id) })
+
+          // Update user traits
+          identifyServer(String(user.id), {
+            subscription_status: newStatus,
+          })
+        }
 
         break
       }
@@ -253,6 +294,20 @@ export async function POST(request: Request) {
           subscriptionStatus: 'cancelled',
         })
 
+        // Track subscription cancellation
+        trackServer('Subscription Cancelled', {
+          subscription_id: subscription.id,
+          customer_id: customerId,
+          cancellation_reason: subscription.cancellation_details?.reason || 'unknown',
+          source: 'stripe',
+        }, { userId: String(user.id) })
+
+        // Update user traits
+        identifyServer(String(user.id), {
+          subscription_status: 'cancelled',
+          subscription_cancelled_at: new Date().toISOString(),
+        })
+
         break
       }
 
@@ -283,6 +338,15 @@ export async function POST(request: Request) {
           subscriptionStatus: 'premium',
         })
 
+        // Track renewal payment
+        trackServer('Subscription Renewed', {
+          invoice_id: invoice.id,
+          customer_id: customerId,
+          amount: invoice.amount_paid ? invoice.amount_paid / 100 : undefined,
+          currency: invoice.currency?.toUpperCase(),
+          source: 'stripe',
+        }, { userId: String(user.id) })
+
         break
       }
 
@@ -311,12 +375,25 @@ export async function POST(request: Request) {
         // Just log for now, subscription.updated will handle status change
         console.log(`[Stripe Webhook] Payment failed for user ${user.id}, invoice ${invoice.id}`)
 
+        // Track payment failure
+        trackServer('Payment Failed', {
+          invoice_id: invoice.id,
+          customer_id: customerId,
+          amount: invoice.amount_due ? invoice.amount_due / 100 : undefined,
+          currency: invoice.currency?.toUpperCase(),
+          attempt_count: invoice.attempt_count,
+          source: 'stripe',
+        }, { userId: String(user.id) })
+
         break
       }
 
       default:
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`)
     }
+
+    // Flush RudderStack events before responding
+    await flushServer()
 
     return NextResponse.json({ received: true })
   } catch (error) {

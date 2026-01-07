@@ -1,4 +1,5 @@
 import { PayloadHandler } from 'payload'
+import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 /**
  * Generate a unique 6-character referral code
@@ -137,6 +138,17 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
                 totalCommissionEarned: 0,
             },
         })
+
+        // Track new device registration
+        trackServer('Device Registered', {
+            fingerprint_id: newFingerprint.id,
+            referral_code: referralCode,
+            browser,
+            os,
+            device_type: deviceType,
+            platform: 'web',
+        }, { anonymousId: fingerprintHash })
+        await flushServer()
 
         return Response.json({
             success: true,

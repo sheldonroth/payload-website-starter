@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 
+import { AnalyticsProvider } from './Analytics'
 import { HeaderThemeProvider } from './HeaderTheme'
 import { IntercomProvider } from './Intercom'
 import { ThemeProvider } from './Theme'
@@ -10,7 +11,11 @@ export const Providers: React.FC<{
   return (
     <ThemeProvider>
       <HeaderThemeProvider>
-        <IntercomProvider>{children}</IntercomProvider>
+        <Suspense fallback={null}>
+          <AnalyticsProvider>
+            <IntercomProvider>{children}</IntercomProvider>
+          </AnalyticsProvider>
+        </Suspense>
       </HeaderThemeProvider>
     </ThemeProvider>
   )

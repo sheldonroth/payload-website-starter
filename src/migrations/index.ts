@@ -51,6 +51,7 @@ import * as migration_20260106_000000_add_referrals_collections from './20260106
 import * as migration_20260106_100000_fix_locked_docs_double_underscore from './20260106_100000_fix_locked_docs_double_underscore';
 import * as migration_20260106_200000_scout_program_velocity_and_bounties from './20260106_200000_scout_program_velocity_and_bounties';
 import * as migration_20260107_000000_add_email_collections from './20260107_000000_add_email_collections';
+import * as migration_20260107_010000_add_content_collections from './20260107_010000_add_content_collections';
 
 export const migrations = [
   {
@@ -317,5 +318,10 @@ export const migrations = [
     up: migration_20260107_000000_add_email_collections.up,
     down: migration_20260107_000000_add_email_collections.down,
     name: '20260107_000000_add_email_collections'
+  },
+  {
+    up: migration_20260107_010000_add_content_collections.up,
+    down: migration_20260107_010000_add_content_collections.down,
+    name: '20260107_010000_add_content_collections'
   },
 ];

@@ -24,6 +24,7 @@ import {
     createResultsReadyNotification,
     ExpoPushMessage,
 } from '../lib/push'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 interface SendResultsRequest {
     barcode: string
@@ -95,6 +96,18 @@ export const sendResultsNotificationHandler = async (
         const successCount = tickets.filter((t) => t.status === 'ok').length
         const failedCount = tickets.filter((t) => t.status === 'error').length
 
+        // Track push notification batch sent
+        trackServer('Push Notification Sent', {
+            notification_type: 'results_ready',
+            barcode,
+            product_id: productId,
+            product_name: productName,
+            score,
+            total_recipients: subscribers.docs.length,
+            successful: successCount,
+            failed: failedCount,
+        }, { anonymousId: `product_${barcode}` })
+
         // Mark subscribers as notified and handle failures
         const failedTokens: string[] = []
 
@@ -163,6 +176,9 @@ export const sendResultsNotificationHandler = async (
                 })
             }
         }
+
+        // Flush events before responding
+        await flushServer()
 
         return Response.json({
             success: true,
@@ -242,6 +258,17 @@ export const sendTestingNotificationHandler = async (
         const tickets = await sendPushNotificationBatch(messages)
 
         const successCount = tickets.filter((t) => t.status === 'ok').length
+        const failedCount = tickets.filter((t) => t.status === 'error').length
+
+        // Track push notification batch sent
+        trackServer('Push Notification Sent', {
+            notification_type: 'testing_started',
+            barcode,
+            product_name: productName,
+            total_recipients: subscribers.docs.length,
+            successful: successCount,
+            failed: failedCount,
+        }, { anonymousId: `product_${barcode}` })
 
         // Update ProductVote status to testing
         const voteRecord = await req.payload.find({
@@ -258,6 +285,9 @@ export const sendTestingNotificationHandler = async (
                 data: { status: 'testing' },
             })
         }
+
+        // Flush events before responding
+        await flushServer()
 
         return Response.json({
             success: true,
