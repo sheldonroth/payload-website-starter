@@ -124,6 +124,10 @@ import { userAnalyticsHandler } from './endpoints/user-analytics'
 import { productEngagementAnalyticsHandler } from './endpoints/product-engagement-analytics'
 import { contentModerationHandler } from './endpoints/content-moderation'
 import { cacheStatusHandler } from './endpoints/cache-status'
+import { mobileHealthHandler } from './endpoints/mobile-health'
+import { mobileConfigHandler } from './endpoints/mobile-config'
+import { mobileAnalyticsHandler } from './endpoints/mobile-analytics'
+import { mobileErrorsHandler } from './endpoints/mobile-errors'
 import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
@@ -835,6 +839,27 @@ export default buildConfig({
       path: '/cache-status',
       method: 'delete',
       handler: cacheStatusHandler,
+    },
+    // Mobile App Endpoints
+    {
+      path: '/mobile/health',
+      method: 'get',
+      handler: mobileHealthHandler,
+    },
+    {
+      path: '/mobile/config',
+      method: 'get',
+      handler: mobileConfigHandler,
+    },
+    {
+      path: '/mobile/analytics',
+      method: 'post',
+      handler: mobileAnalyticsHandler,
+    },
+    {
+      path: '/mobile/errors',
+      method: 'post',
+      handler: mobileErrorsHandler,
     },
     // Brand Portal Auth
     ...brandAuthEndpoints,
