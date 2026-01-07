@@ -205,9 +205,9 @@ export const brandSignupHandler: Endpoint = {
                     email: email.toLowerCase(),
                     password,
                     name,
-                    jobTitle: jobTitle || null,
-                    phone: phone || null,
-                    brand: matchedBrand?.id || null,
+                    jobTitle: jobTitle || undefined,
+                    phone: phone || undefined,
+                    brand: matchedBrand?.id || undefined,
                     role: 'analyst', // Default role
                     subscription: 'free',
                     isVerified: false,

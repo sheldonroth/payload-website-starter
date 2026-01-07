@@ -121,7 +121,10 @@ import { emailTemplateTestEndpoint } from './endpoints/email-template-test'
 import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
 import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
 import { userAnalyticsHandler } from './endpoints/user-analytics'
+import { productEngagementAnalyticsHandler } from './endpoints/product-engagement-analytics'
 import { brandAuthEndpoints } from './endpoints/brand-auth'
+import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
+import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -182,6 +185,10 @@ export default buildConfig({
         'user-analytics': {
           Component: '@/components/UserAnalyticsDashboard',
           path: '/user-analytics',
+        },
+        'product-engagement': {
+          Component: '@/components/ProductEngagementDashboard',
+          path: '/product-engagement',
         },
       },
       // Sidebar nav links
@@ -772,8 +779,18 @@ export default buildConfig({
       method: 'get',
       handler: userAnalyticsHandler,
     },
+    // Product Engagement Analytics
+    {
+      path: '/product-engagement-analytics',
+      method: 'get',
+      handler: productEngagementAnalyticsHandler,
+    },
     // Brand Portal Auth
     ...brandAuthEndpoints,
+    // Brand Portal Dashboard
+    ...brandDashboardEndpoints,
+    // Brand Portal Subscription
+    ...brandSubscriptionEndpoints,
   ],
   plugins: [
     ...plugins,

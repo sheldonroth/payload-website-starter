@@ -190,6 +190,22 @@ const AdminNavLinks: React.FC = () => {
                     >
                         User Analytics
                     </Link>
+                    <Link
+                        href="/admin/product-engagement"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        Product Engagement
+                    </Link>
                 </div>
             </div>
         </>
