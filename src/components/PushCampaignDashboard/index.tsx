@@ -37,10 +37,14 @@ const PushCampaignDashboard: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewCampaign, setShowNewCampaign] = useState(false)
-  const [newCampaign, setNewCampaign] = useState({
+  const [newCampaign, setNewCampaign] = useState<{
+    title: string
+    message: string
+    targetAudience: 'all' | 'ios' | 'android' | 'subscribers'
+  }>({
     title: '',
     message: '',
-    targetAudience: 'all' as const,
+    targetAudience: 'all',
   })
   const [sending, setSending] = useState(false)
 

@@ -257,6 +257,10 @@ export default buildConfig({
           Component: '@/components/PushCampaignDashboard',
           path: '/push-campaigns',
         },
+        'brand-management': {
+          Component: '@/components/BrandManagementDashboard',
+          path: '/brand-management',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
