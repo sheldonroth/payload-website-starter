@@ -195,6 +195,10 @@ export default buildConfig({
           Component: '@/components/ContentModerationDashboard',
           path: '/content-moderation',
         },
+        'system-health': {
+          Component: '@/components/SystemHealthDashboard',
+          path: '/system-health',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
