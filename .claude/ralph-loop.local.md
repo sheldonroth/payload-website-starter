@@ -11,7 +11,7 @@ started_at: "2026-01-07T06:42:49Z"
 **Mode**: Ultra Think + Planning + Frontend Design Skill
 **Repositories**: payload-website-starter (backend) + product-report-mobile (mobile app)
 
-## CURRENT TASK: Phase 3.2 - Testing & Documentation
+## CURRENT TASK: Phase 4.2 - Offline & Performance
 
 ## TASK LIST
 
@@ -99,9 +99,10 @@ started_at: "2026-01-07T06:42:49Z"
 - [ ] ~~Correlation IDs~~ SKIPPED (lower priority)
 - [ ] ~~N+1 audit~~ DEFERRED (requires extensive runtime testing)
 
-**3.2 Testing & Documentation**
-- [ ] Write unit tests for embeddings utility
-- [ ] Write unit tests for rate limiter
+**3.2 Testing & Documentation** ✅ PARTIAL (Unit tests complete)
+- [x] Write unit tests for rate limiter (24 tests)
+- [x] Write unit tests for embeddings utility (20 tests)
+- [x] Updated vitest.config.mts to include unit tests
 - [ ] Write integration tests for semantic search API
 - [ ] Write integration tests for product-requests API
 - [ ] Create OpenAPI spec for public endpoints
@@ -218,5 +219,5 @@ started_at: "2026-01-07T06:42:49Z"
 | 9 | Phase 3.1 API & Performance | COMPLETE | Infrastructure already solid (rate limiter, health check, audit log) |
 | 10 | Phase 4.4 Polish & UX | COMPLETE | Already well-implemented (haptics, empty states, a11y) |
 | 11 | Phase 4.1 Semantic Search Integration | COMPLETE | Already implemented: smartSearch(), SearchTabScreen integrated, SafeAlternatives |
-| 12 | Phase 3.2 Testing & Documentation | IN PROGRESS | Writing unit tests for core utilities |
+| 12 | Phase 3.2 Unit Tests | COMPLETE | 44 tests: rate-limiter (24) + embeddings (20), vitest config updated |
 

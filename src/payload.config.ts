@@ -236,6 +236,10 @@ export default buildConfig({
           Component: '@/components/SecurityDashboard',
           path: '/security',
         },
+        'performance': {
+          Component: '@/components/PerformanceDashboard',
+          path: '/performance',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
