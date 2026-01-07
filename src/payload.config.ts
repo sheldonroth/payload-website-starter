@@ -232,6 +232,10 @@ export default buildConfig({
           Component: '@/components/SEOAuditDashboard',
           path: '/seo-audit',
         },
+        'security': {
+          Component: '@/components/SecurityDashboard',
+          path: '/security',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],

@@ -371,6 +371,22 @@ const AdminNavLinks: React.FC = () => {
                     >
                         SEO Audit
                     </Link>
+                    <Link
+                        href="/admin/security"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        Security
+                    </Link>
                 </div>
             </div>
         </>
