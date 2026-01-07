@@ -59,7 +59,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/login', {
@@ -164,7 +164,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: false,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/login', {
@@ -262,7 +262,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: false,
-                    },
+                    } as any,
                 })
 
                 // Try to create duplicate
@@ -346,7 +346,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/verify-email', {
@@ -511,7 +511,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/resend-verification', {
@@ -584,7 +584,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/me', {
@@ -659,7 +659,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 const request = new Request('http://localhost/api/brand-auth/login', {
@@ -701,7 +701,7 @@ describe('Brand Auth Endpoints', () => {
                         role: 'analyst',
                         subscription: 'free',
                         isVerified: true,
-                    },
+                    } as any,
                 })
 
                 // Login with mixed case should work

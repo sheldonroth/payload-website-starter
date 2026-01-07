@@ -111,7 +111,7 @@ export async function createTestBrandUser(
     try {
         const user = await payload.create({
             collection: 'brand-users',
-            data,
+            data: data as any,
         })
         return { user, password: data.password }
     } catch (e) {
@@ -129,7 +129,7 @@ export async function createTestUser(
         email: string
         password: string
         role: 'user' | 'admin' | 'product_editor'
-        subscriptionStatus: 'free' | 'subscribed' | 'trial'
+        subscriptionStatus: 'free' | 'trial' | 'premium' | 'cancelled'
     }> = {}
 ) {
     const defaults = {
