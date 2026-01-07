@@ -8,6 +8,7 @@ export interface StatsigVariant {
   name: string
   weight: number
   json?: Record<string, unknown>
+  parameterValues?: Record<string, unknown>
 }
 
 export interface StatsigExperiment {
@@ -38,6 +39,41 @@ export interface StatsigExperiment {
 export interface StatsigApiResponse {
   data: StatsigExperiment[]
   message?: string
+  cached?: boolean
+  lastUpdated?: string
+}
+
+export interface StatsigGateCondition {
+  type: string
+  targetValue: string[] | number | boolean
+  operator: string
+  field: string
+}
+
+export interface StatsigGateRule {
+  name: string
+  passPercentage: number
+  conditions: StatsigGateCondition[]
+  id?: string
+}
+
+export interface StatsigGate {
+  id: string
+  name: string
+  description?: string
+  isEnabled: boolean
+  enabled?: boolean
+  rules: StatsigGateRule[]
+  salt?: string
+  defaultValue?: boolean
+  lastModifiedTime?: number
+  tags?: string[]
+  creatorName?: string
+  checksPerHour?: number
+}
+
+export interface StatsigGatesApiResponse {
+  data: StatsigGate[]
   cached?: boolean
   lastUpdated?: string
 }

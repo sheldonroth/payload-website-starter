@@ -15,6 +15,7 @@
 
 import type { PayloadHandler } from 'payload'
 import crypto from 'crypto'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 // Email preference types
 interface EmailPreferences {
@@ -134,6 +135,18 @@ export const emailPreferencesHandler: PayloadHandler = async (req) => {
           } as any, // Type will match after payload-types regeneration
         })
 
+        // Track email unsubscribe in analytics
+        trackServer(
+          'Email Unsubscribed',
+          {
+            unsubscribe_type: 'all',
+            previous_preferences: targetUser.emailPreferences || DEFAULT_PREFERENCES,
+            unsubscribe_method: token ? 'unsubscribe_link' : 'account_settings',
+          },
+          { userId: String(targetUser.id), anonymousId: targetUser.email },
+        )
+        await flushServer()
+
         return Response.json({
           success: true,
           message: 'You have been unsubscribed from all emails',
@@ -166,6 +179,34 @@ export const emailPreferencesHandler: PayloadHandler = async (req) => {
           },
         } as any, // Type will match after payload-types regeneration
       })
+
+      // Track preference changes in analytics
+      const changedPreferences: Record<string, { from: boolean; to: boolean }> = {}
+      for (const key of Object.keys(updatedPreferences) as (keyof EmailPreferences)[]) {
+        if (currentPreferences[key] !== updatedPreferences[key]) {
+          changedPreferences[key] = {
+            from: currentPreferences[key],
+            to: updatedPreferences[key]!,
+          }
+        }
+      }
+
+      if (Object.keys(changedPreferences).length > 0) {
+        // Check if any preferences were turned off
+        const anyTurnedOff = Object.values(changedPreferences).some(c => c.from === true && c.to === false)
+
+        trackServer(
+          anyTurnedOff ? 'Email Preferences Reduced' : 'Email Preferences Updated',
+          {
+            changes: changedPreferences,
+            new_preferences: newPreferences,
+            preferences_enabled_count: Object.values(newPreferences).filter(v => v).length,
+            update_method: token ? 'unsubscribe_link' : 'account_settings',
+          },
+          { userId: String(targetUser.id), anonymousId: targetUser.email },
+        )
+        await flushServer()
+      }
 
       return Response.json({
         success: true,

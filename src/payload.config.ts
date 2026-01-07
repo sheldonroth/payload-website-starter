@@ -119,7 +119,9 @@ import { emailPreferencesEndpoint, emailPreferencesUpdateEndpoint, emailPreferen
 import { emailTemplatePreviewEndpoint } from './endpoints/email-template-preview'
 import { emailTemplateTestEndpoint } from './endpoints/email-template-test'
 import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
+import { mixpanelDashboardEndpoint } from './endpoints/mixpanel-dashboard'
 import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
+import { statsigGatesHandler } from './endpoints/statsig-gates'
 import { userAnalyticsHandler } from './endpoints/user-analytics'
 import { productEngagementAnalyticsHandler } from './endpoints/product-engagement-analytics'
 import { contentModerationHandler } from './endpoints/content-moderation'
@@ -186,6 +188,10 @@ export default buildConfig({
         'email-analytics': {
           Component: '@/components/EmailAnalyticsDashboard',
           path: '/email-analytics',
+        },
+        'mixpanel-analytics': {
+          Component: '@/components/MixpanelDashboard',
+          path: '/mixpanel-analytics',
         },
         'statsig-experiments': {
           Component: '@/components/StatsigDashboard',
@@ -840,11 +846,19 @@ export default buildConfig({
     emailTemplatePreviewEndpoint,
     emailTemplateTestEndpoint,
     emailAnalyticsEndpoint,
+    // Mixpanel Analytics Dashboard
+    mixpanelDashboardEndpoint,
     // Statsig Experiments Dashboard
     {
       path: '/statsig-experiments',
       method: 'get',
       handler: statsigExperimentsHandler,
+    },
+    // Statsig Feature Gates Dashboard
+    {
+      path: '/statsig-gates',
+      method: 'get',
+      handler: statsigGatesHandler,
     },
     // User Analytics Dashboard
     {
