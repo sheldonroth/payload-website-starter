@@ -40,7 +40,27 @@ import { default as default_86712f171ecea78dd5c08b610c485a95 } from '@/component
 import { default as default_df74f8fbbec6091d5eebbd136a4e7900 } from '@/components/AIBusinessAssistant'
 import { default as default_5590276bd4a5d7520aeb8b6d0ce78934 } from '@/components/ContentEngine'
 import { default as default_bd65cc96ffe5e56189e9e5b043d16e0c } from '@/components/EmailABDashboard'
-import { default as default_api_connections_dashboard } from '@/components/APIConnectionsDashboard'
+import { default as default_1653fd6fe5779164c9810b2e5991ed78 } from '@/components/EmailAnalyticsDashboard'
+import { default as default_ee0056d558c689d274b6570de24a00fa } from '@/components/MixpanelDashboard'
+import { default as default_26ab8128003b7059fe9b63859f4c6b82 } from '@/components/StatsigDashboard'
+import { default as default_0c821f2f1edf81ec3fd67fd0ff29306a } from '@/components/UserAnalyticsDashboard'
+import { default as default_7caf5622c269d69ae8b35e6d1dacbcd5 } from '@/components/ProductEngagementDashboard'
+import { default as default_44f517c7a033610e59e985327ff22c76 } from '@/components/ContentModerationDashboard'
+import { default as default_121f637033e7ef90cb289a7dc387a718 } from '@/components/SystemHealthDashboard'
+import { default as default_5cb7c969d3f283225f5e3cef88e84352 } from '@/components/AIDraftInbox'
+import { default as default_d0e938ca65e5c5e2804b04705779ca18 } from '@/components/ActivityFeedDashboard'
+import { default as default_0d3552c71d14ebbaa0d54a52dc311a4c } from '@/components/DataExportDashboard'
+import { default as default_1323c6a65548e8ee41b56f7fe76d8501 } from '@/components/ApiStatusDashboard'
+import { default as default_4d0f6fe94161c814e9bb425924e0902e } from '@/components/CacheStatusDashboard'
+import { default as default_f678d68fde33b868cd5fcdb10daa6cc8 } from '@/components/ContributorLeaderboard'
+import { default as default_39370d8972d865c782e2cdb427984128 } from '@/components/SEOAuditDashboard'
+import { default as default_e4572bf72e2bcc4cf2cfd299594a3928 } from '@/components/SecurityDashboard'
+import { default as default_8bb5c68ca748f55ec3299abd6099f975 } from '@/components/PerformanceDashboard'
+import { default as default_14eb468bbb6ad210fe914efc37fd53b6 } from '@/components/ApiDocsDashboard'
+import { default as default_eb472984c9f3c6870a4f88b7520610f1 } from '@/components/AdminHomeDashboard'
+import { default as default_db995979eba3bf25a722330a9a2c26d2 } from '@/components/SearchAnalyticsDashboard'
+import { default as default_b82b9a41c721ba4600befcb3e7a2ff87 } from '@/components/PushCampaignDashboard'
+import { default as default_7be51c385492a9005b85dc50c7a2526f } from '@/components/BrandManagementDashboard'
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -85,5 +105,25 @@ export const importMap = {
   "@/components/AIBusinessAssistant#default": default_df74f8fbbec6091d5eebbd136a4e7900,
   "@/components/ContentEngine#default": default_5590276bd4a5d7520aeb8b6d0ce78934,
   "@/components/EmailABDashboard#default": default_bd65cc96ffe5e56189e9e5b043d16e0c,
-  "@/components/APIConnectionsDashboard#default": default_api_connections_dashboard
+  "@/components/EmailAnalyticsDashboard#default": default_1653fd6fe5779164c9810b2e5991ed78,
+  "@/components/MixpanelDashboard#default": default_ee0056d558c689d274b6570de24a00fa,
+  "@/components/StatsigDashboard#default": default_26ab8128003b7059fe9b63859f4c6b82,
+  "@/components/UserAnalyticsDashboard#default": default_0c821f2f1edf81ec3fd67fd0ff29306a,
+  "@/components/ProductEngagementDashboard#default": default_7caf5622c269d69ae8b35e6d1dacbcd5,
+  "@/components/ContentModerationDashboard#default": default_44f517c7a033610e59e985327ff22c76,
+  "@/components/SystemHealthDashboard#default": default_121f637033e7ef90cb289a7dc387a718,
+  "@/components/AIDraftInbox#default": default_5cb7c969d3f283225f5e3cef88e84352,
+  "@/components/ActivityFeedDashboard#default": default_d0e938ca65e5c5e2804b04705779ca18,
+  "@/components/DataExportDashboard#default": default_0d3552c71d14ebbaa0d54a52dc311a4c,
+  "@/components/ApiStatusDashboard#default": default_1323c6a65548e8ee41b56f7fe76d8501,
+  "@/components/CacheStatusDashboard#default": default_4d0f6fe94161c814e9bb425924e0902e,
+  "@/components/ContributorLeaderboard#default": default_f678d68fde33b868cd5fcdb10daa6cc8,
+  "@/components/SEOAuditDashboard#default": default_39370d8972d865c782e2cdb427984128,
+  "@/components/SecurityDashboard#default": default_e4572bf72e2bcc4cf2cfd299594a3928,
+  "@/components/PerformanceDashboard#default": default_8bb5c68ca748f55ec3299abd6099f975,
+  "@/components/ApiDocsDashboard#default": default_14eb468bbb6ad210fe914efc37fd53b6,
+  "@/components/AdminHomeDashboard#default": default_eb472984c9f3c6870a4f88b7520610f1,
+  "@/components/SearchAnalyticsDashboard#default": default_db995979eba3bf25a722330a9a2c26d2,
+  "@/components/PushCampaignDashboard#default": default_b82b9a41c721ba4600befcb3e7a2ff87,
+  "@/components/BrandManagementDashboard#default": default_7be51c385492a9005b85dc50c7a2526f
 }
