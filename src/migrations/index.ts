@@ -63,6 +63,7 @@ import * as migration_20260107_090000_update_embedding_dimension from './2026010
 import * as migration_20260106_300000_enhance_feedback_user_attribution from './20260106_300000_enhance_feedback_user_attribution';
 import * as migration_20260107_100000_scout_program_collections from './20260107_100000_scout_program_collections';
 import * as migration_20260107_110000_add_performance_indexes from './20260107_110000_add_performance_indexes';
+import * as migration_20260107_120000_rename_scout_to_contributor from './20260107_120000_rename_scout_to_contributor';
 
 export const migrations = [
   {
@@ -389,5 +390,10 @@ export const migrations = [
     up: migration_20260107_110000_add_performance_indexes.up,
     down: migration_20260107_110000_add_performance_indexes.down,
     name: '20260107_110000_add_performance_indexes'
+  },
+  {
+    up: migration_20260107_120000_rename_scout_to_contributor.up,
+    down: migration_20260107_120000_rename_scout_to_contributor.down,
+    name: '20260107_120000_rename_scout_to_contributor'
   },
 ];
