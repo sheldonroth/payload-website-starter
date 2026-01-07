@@ -80,7 +80,7 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         const contributions = await req.payload.find({
             collection: 'product-votes',
             where: {
-                'caseContributors': {
+                'scoutContributors': {
                     contains: profile.id.toString(),
                 },
             },
@@ -92,8 +92,8 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
         const testedProducts = await req.payload.find({
             collection: 'products',
             where: {
-                'caseAttribution.caseContributors': {
-                    contains: profile.id.toString(),
+                'scoutAttribution.firstScout': {
+                    equals: profile.id,
                 },
             },
             limit: 5,
@@ -200,7 +200,7 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
             where: {
                 and: [
                     {
-                        caseContributors: {
+                        scoutContributors: {
                             contains: profile.id.toString(),
                         },
                     },
@@ -219,8 +219,8 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
         const completedProducts = await req.payload.find({
             collection: 'products',
             where: {
-                'caseAttribution.caseContributors': {
-                    contains: profile.id.toString(),
+                'scoutAttribution.firstScout': {
+                    equals: profile.id,
                 },
             },
             limit: 10,
@@ -410,13 +410,13 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
             id: body.productVoteId,
         }) as {
             id: string | number
-            firstContributor?: string | number
-            caseContributors?: CaseContributor[]
-            totalContributors?: number
+            firstScout?: string | number
+            scoutContributors?: CaseContributor[]
+            totalScouts?: number
         }
 
-        const existingContributors = productVote.caseContributors || []
-        const isFirstContributor = !productVote.firstContributor
+        const existingContributors = productVote.scoutContributors || []
+        const isFirstContributor = !productVote.firstScout
         const alreadyContributed = existingContributors.some(
             (c: CaseContributor) => c.fingerprintHash === body.fingerprintHash
         )
@@ -432,14 +432,14 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
             }
 
             const updateData: Record<string, unknown> = {
-                caseContributors: [...existingContributors, newContributor],
-                totalContributors: existingContributors.length + 1,
+                scoutContributors: [...existingContributors, newContributor],
+                totalScouts: existingContributors.length + 1,
             }
 
             // Set first contributor if this is the first contribution
             if (isFirstContributor) {
-                updateData.firstContributor = contributorProfile.id
-                updateData.firstContributorNumber = contributorProfile.contributorNumber
+                updateData.firstScout = contributorProfile.id
+                updateData.firstScoutNumber = contributorProfile.contributorNumber
 
                 // Update contributor's firstCases count
                 await req.payload.update({

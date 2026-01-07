@@ -20,6 +20,7 @@ import ImageInternalizer from '../ImageInternalizer'
 import NewsletterExport from '../NewsletterExport'
 import EmailTester from '../EmailTester'
 import SystemHealthDashboard from '../SystemHealthDashboard'
+import CronJobsDashboard from '../CronJobsDashboard'
 import FetchProduct from '../FetchProduct'
 
 import './index.scss'
@@ -134,6 +135,11 @@ const BeforeDashboard: React.FC = () => {
       {/* System Health - Error Monitoring */}
       <CollapsibleSection title="System Health" icon="&#x1F6A8;" defaultOpen={false}>
         <SystemHealthDashboard />
+      </CollapsibleSection>
+
+      {/* Cron Jobs - Scheduled Tasks */}
+      <CollapsibleSection title="Cron Jobs" icon="&#x23F0;" defaultOpen={false}>
+        <CronJobsDashboard />
       </CollapsibleSection>
 
       {/* Legacy Content Ingestion Tools (collapsed by default) */}

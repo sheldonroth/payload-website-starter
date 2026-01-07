@@ -47,7 +47,7 @@ function createMockRequest(
     findByID: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-    ...overrides.payload,
+    ...(overrides.payload || {}),
   }
 
   return {

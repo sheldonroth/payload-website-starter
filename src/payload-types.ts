@@ -97,7 +97,7 @@ export interface Config {
     'daily-discoveries': DailyDiscovery;
     'email-templates': EmailTemplate;
     'email-sends': EmailSend;
-    'scout-profiles': ScoutProfile;
+    'contributor-profiles': ContributorProfile;
     'market-intelligence': MarketIntelligence;
     'brand-analytics': BrandAnalytic;
     'brand-users': BrandUser;
@@ -147,7 +147,7 @@ export interface Config {
     'daily-discoveries': DailyDiscoveriesSelect<false> | DailyDiscoveriesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     'email-sends': EmailSendsSelect<false> | EmailSendsSelect<true>;
-    'scout-profiles': ScoutProfilesSelect<false> | ScoutProfilesSelect<true>;
+    'contributor-profiles': ContributorProfilesSelect<false> | ContributorProfilesSelect<true>;
     'market-intelligence': MarketIntelligenceSelect<false> | MarketIntelligenceSelect<true>;
     'brand-analytics': BrandAnalyticsSelect<false> | BrandAnalyticsSelect<true>;
     'brand-users': BrandUsersSelect<false> | BrandUsersSelect<true>;
@@ -804,23 +804,23 @@ export interface Product {
     trendingReason?: string | null;
   };
   /**
-   * Scouts who helped get this product tested
+   * Contributors who helped get this product tested
    */
   scoutAttribution?: {
     /**
-     * The first scout to document this product
+     * The first contributor to open this case
      */
-    firstScout?: (number | null) | ScoutProfile;
+    firstScout?: (number | null) | ContributorProfile;
     /**
-     * Scout number for display (e.g., "Scout #47")
+     * Contributor number for display (e.g., "Contributor #47")
      */
     firstScoutNumber?: number | null;
     /**
-     * Total scouts who documented this product
+     * Total contributors who documented this product
      */
     totalScouts?: number | null;
     /**
-     * All scouts who helped. Structure: [{ scoutId, scoutNumber, displayName }]
+     * All contributors who helped. Structure: [{ scoutId, scoutNumber, displayName }]
      */
     scoutContributors?:
       | {
@@ -1229,19 +1229,19 @@ export interface Video {
   createdAt: string;
 }
 /**
- * Scout profiles - the heroes who document products for testing
+ * Contributor profiles - the heroes who document products for testing
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scout-profiles".
+ * via the `definition` "contributor-profiles".
  */
-export interface ScoutProfile {
+export interface ContributorProfile {
   id: number;
   /**
    * Public display name (can be changed by user)
    */
   displayName: string;
   /**
-   * Device fingerprint for anonymous scouts
+   * Device fingerprint for anonymous contributors
    */
   fingerprintHash?: string | null;
   /**
@@ -1257,11 +1257,11 @@ export interface ScoutProfile {
    */
   bio?: string | null;
   /**
-   * Sequential scout number (e.g., Scout #47)
+   * Sequential contributor number (e.g., Contributor #47)
    */
-  scoutNumber?: number | null;
+  contributorNumber?: number | null;
   /**
-   * Total products this scout has documented
+   * Total products this contributor has documented
    */
   documentsSubmitted?: number | null;
   /**
@@ -1273,19 +1273,19 @@ export interface ScoutProfile {
    */
   peopleHelped?: number | null;
   /**
-   * Products where they were the FIRST scout
+   * Products where they were the FIRST to open a case
    */
-  firstDiscoveries?: number | null;
+  firstCases?: number | null;
   /**
-   * Scout level based on documentsSubmitted
+   * Contributor level based on documentsSubmitted
    */
-  scoutLevel?: ('new' | 'explorer' | 'pathfinder' | 'pioneer') | null;
+  contributorLevel?: ('new' | 'builder' | 'veteran' | 'champion') | null;
   /**
    * Allow profile to be viewed publicly
    */
   isPublic?: boolean | null;
   /**
-   * URL-friendly slug (e.g., "scout-47" or custom)
+   * URL-friendly slug (e.g., "contributor-47" or custom)
    */
   shareableSlug?: string | null;
   /**
@@ -1301,9 +1301,9 @@ export interface ScoutProfile {
     | boolean
     | null;
   /**
-   * Array of barcode strings for their top discoveries
+   * Array of barcode strings for their top cases
    */
-  featuredDiscoveries?:
+  featuredCases?:
     | {
         [k: string]: unknown;
       }
@@ -1425,15 +1425,15 @@ export interface ProductVote {
     | boolean
     | null;
   /**
-   * The first scout to document this product
+   * The first contributor to open this case
    */
-  firstScout?: (number | null) | ScoutProfile;
+  firstScout?: (number | null) | ContributorProfile;
   /**
-   * Scout number of the first documenter (for display)
+   * Contributor number of the first documenter (for display)
    */
   firstScoutNumber?: number | null;
   /**
-   * All scouts who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]
+   * All contributors who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]
    */
   scoutContributors?:
     | {
@@ -1445,7 +1445,7 @@ export interface ProductVote {
     | boolean
     | null;
   /**
-   * Total number of scouts who documented this product
+   * Total number of contributors who documented this product
    */
   totalScouts?: number | null;
   /**
@@ -2697,7 +2697,7 @@ export interface BountyCategory {
    */
   totalScansThisWeek?: number | null;
   /**
-   * Number of unique scouts who contributed to this category
+   * Number of unique contributors who helped with this category
    */
   totalContributors?: number | null;
   updatedAt: string;
@@ -4005,8 +4005,8 @@ export interface PayloadLockedDocument {
         value: number | EmailSend;
       } | null)
     | ({
-        relationTo: 'scout-profiles';
-        value: number | ScoutProfile;
+        relationTo: 'contributor-profiles';
+        value: number | ContributorProfile;
       } | null)
     | ({
         relationTo: 'market-intelligence';
@@ -5296,24 +5296,24 @@ export interface EmailSendsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scout-profiles_select".
+ * via the `definition` "contributor-profiles_select".
  */
-export interface ScoutProfilesSelect<T extends boolean = true> {
+export interface ContributorProfilesSelect<T extends boolean = true> {
   displayName?: T;
   fingerprintHash?: T;
   user?: T;
   avatar?: T;
   bio?: T;
-  scoutNumber?: T;
+  contributorNumber?: T;
   documentsSubmitted?: T;
   productsTestedFromSubmissions?: T;
   peopleHelped?: T;
-  firstDiscoveries?: T;
-  scoutLevel?: T;
+  firstCases?: T;
+  contributorLevel?: T;
   isPublic?: T;
   shareableSlug?: T;
   badges?: T;
-  featuredDiscoveries?: T;
+  featuredCases?: T;
   notifyOnResults?: T;
   notifyOnMilestones?: T;
   updatedAt?: T;
