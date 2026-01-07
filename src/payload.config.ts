@@ -111,6 +111,9 @@ import { aiAssistantEndpoint, aiAssistantClearCacheEndpoint } from './endpoints/
 import { sendResultsNotificationHandler, sendTestingNotificationHandler } from './endpoints/send-results-notification'
 import { activeBountiesHandler, checkBountyHandler } from './endpoints/bounty-categories'
 import { emailPreferencesEndpoint, emailPreferencesUpdateEndpoint, emailPreferencesUnsubscribeEndpoint } from './endpoints/email-preferences'
+import { emailTemplatePreviewEndpoint } from './endpoints/email-template-preview'
+import { emailTemplateTestEndpoint } from './endpoints/email-template-test'
+import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -159,6 +162,10 @@ export default buildConfig({
         'email-ab': {
           Component: '@/components/EmailABDashboard',
           path: '/email-ab',
+        },
+        'email-analytics': {
+          Component: '@/components/EmailAnalyticsDashboard',
+          path: '/email-analytics',
         },
       },
       // Sidebar nav links
@@ -706,6 +713,10 @@ export default buildConfig({
     emailPreferencesEndpoint,
     emailPreferencesUpdateEndpoint,
     emailPreferencesUnsubscribeEndpoint,
+    // Email Template Preview & Testing
+    emailTemplatePreviewEndpoint,
+    emailTemplateTestEndpoint,
+    emailAnalyticsEndpoint,
   ],
   plugins: [
     ...plugins,
