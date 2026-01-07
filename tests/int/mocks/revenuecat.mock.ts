@@ -141,9 +141,9 @@ export function setSubscriptionTier(appUserId: string, tier: SubscriptionTier): 
 }
 
 /**
- * Create a mock webhook event for testing
+ * Create a mock RevenueCat webhook event for testing
  */
-export function createMockWebhookEvent(
+export function createMockRevenueCatWebhookEvent(
     type: 'INITIAL_PURCHASE' | 'RENEWAL' | 'CANCELLATION' | 'UNCANCELLATION' | 'NON_RENEWING_PURCHASE' | 'SUBSCRIPTION_PAUSED' | 'EXPIRATION' | 'BILLING_ISSUE' | 'PRODUCT_CHANGE',
     appUserId: string,
     additionalData: Record<string, any> = {}
@@ -218,7 +218,7 @@ export default {
     addMockSubscriber,
     removeMockSubscriber,
     setSubscriptionTier,
-    createMockWebhookEvent,
+    createMockRevenueCatWebhookEvent,
     verifyWebhookAuth,
     getTierFromProductId,
 }

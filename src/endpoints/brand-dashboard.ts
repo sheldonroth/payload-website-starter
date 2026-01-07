@@ -267,7 +267,7 @@ export const brandCompetitorsHandler: Endpoint = {
     method: 'get',
     handler: async (req) => {
         try {
-            const brandId = req.routeParams?.brandId
+            const brandId = (req.routeParams as Record<string, string>)?.brandId
             if (!brandId) {
                 return Response.json({ error: 'Brand ID required' }, { status: 400 })
             }
@@ -436,7 +436,7 @@ export const brandDemandSignalsHandler: Endpoint = {
     method: 'get',
     handler: async (req) => {
         try {
-            const brandId = req.routeParams?.brandId
+            const brandId = (req.routeParams as Record<string, string>)?.brandId
             if (!brandId) {
                 return Response.json({ error: 'Brand ID required' }, { status: 400 })
             }
@@ -575,7 +575,7 @@ export const brandOverviewHandler: Endpoint = {
     method: 'get',
     handler: async (req) => {
         try {
-            const brandId = req.routeParams?.brandId
+            const brandId = (req.routeParams as Record<string, string>)?.brandId
             if (!brandId) {
                 return Response.json({ error: 'Brand ID required' }, { status: 400 })
             }

@@ -139,9 +139,9 @@ export function generateWebhookSignature(
 }
 
 /**
- * Create a mock webhook event for testing
+ * Create a mock Resend webhook event for testing
  */
-export function createMockWebhookEvent(
+export function createMockResendWebhookEvent(
     type: 'email.sent' | 'email.delivered' | 'email.opened' | 'email.clicked' | 'email.bounced' | 'email.complained',
     messageId: string,
     additionalData: Record<string, any> = {}
@@ -185,6 +185,6 @@ export default {
     getLastSentEmail,
     getEmailsSentTo,
     generateWebhookSignature,
-    createMockWebhookEvent,
+    createMockResendWebhookEvent,
     installResendMock,
 }

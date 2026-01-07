@@ -47,6 +47,22 @@ const AdminNavLinks: React.FC = () => {
                     >
                         System Health
                     </Link>
+                    <Link
+                        href="/admin/activity-feed"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        Activity Feed
+                    </Link>
                 </div>
             </div>
             <div style={{ padding: '0 12px', marginTop: '8px' }}>

@@ -13,7 +13,7 @@ import Stripe from 'stripe'
 
 // Initialize Stripe (will be undefined if not configured)
 const stripe = process.env.STRIPE_SECRET_KEY
-    ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-01-27.acacia' })
+    ? new Stripe(process.env.STRIPE_SECRET_KEY)
     : null
 
 // Stripe Product/Price IDs (configure in environment)
@@ -223,10 +223,14 @@ export const brandSubscriptionStatusHandler: Endpoint = {
             // Fetch live subscription data from Stripe if available
             if (stripe && user.stripeSubscriptionId) {
                 try {
-                    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId)
+                    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId) as Stripe.Subscription
+                    // In Stripe v20+, current_period_end is on SubscriptionItem, not Subscription
+                    const currentPeriodEnd = subscription.items.data[0]?.current_period_end
                     stripeDetails = {
                         status: subscription.status,
-                        currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+                        currentPeriodEnd: currentPeriodEnd
+                            ? new Date(currentPeriodEnd * 1000).toISOString()
+                            : null,
                         cancelAtPeriodEnd: subscription.cancel_at_period_end,
                         cancelAt: subscription.cancel_at
                             ? new Date(subscription.cancel_at * 1000).toISOString()
@@ -402,14 +406,18 @@ export const brandCancelSubscriptionHandler: Endpoint = {
                     cancellationReason: reason || 'not_specified',
                     cancellationFeedback: feedback || '',
                 },
-            })
+            }) as Stripe.Subscription
 
-            console.log(`[BrandSubscription] Cancelled for user ${user.id}, ends: ${new Date(subscription.current_period_end * 1000)}`)
+            // In Stripe v20+, current_period_end is on SubscriptionItem
+            const currentPeriodEnd = subscription.items.data[0]?.current_period_end
+            const cancelAtDate = currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : new Date()
+
+            console.log(`[BrandSubscription] Cancelled for user ${user.id}, ends: ${cancelAtDate}`)
 
             return Response.json({
                 success: true,
                 message: 'Subscription will cancel at the end of the billing period',
-                cancelAt: new Date(subscription.current_period_end * 1000).toISOString(),
+                cancelAt: cancelAtDate.toISOString(),
             })
         } catch (error) {
             console.error('[BrandSubscription] Cancel error:', error)
@@ -450,7 +458,7 @@ export const brandReactivateSubscriptionHandler: Endpoint = {
             // Remove cancellation
             const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
                 cancel_at_period_end: false,
-            })
+            }) as Stripe.Subscription
 
             console.log(`[BrandSubscription] Reactivated for user ${user.id}`)
 

@@ -219,7 +219,7 @@ export const brandSignupHandler: Endpoint = {
                         Verification token hash: ${hashedToken}
                         Token expires: ${new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MS).toISOString()}
                     `.trim(),
-                },
+                } as any,
             })
 
             // Send verification email

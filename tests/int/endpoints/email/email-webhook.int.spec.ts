@@ -11,7 +11,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
 import {
-    createMockWebhookEvent,
+    createMockResendWebhookEvent,
     generateWebhookSignature,
 } from '../../mocks/resend.mock'
 import crypto from 'crypto'
@@ -67,7 +67,7 @@ describe('Email Webhook', () => {
     describe('Event Processing', () => {
         describe('email.delivered', () => {
             it('should update email-sends status to delivered', async () => {
-                const event = createMockWebhookEvent('email.delivered', 'msg_test_123')
+                const event = createMockResendWebhookEvent('email.delivered', 'msg_test_123')
 
                 expect(event.event).toHaveProperty('type', 'email.delivered')
                 expect(event.event).toHaveProperty('data')
@@ -87,7 +87,7 @@ describe('Email Webhook', () => {
 
         describe('email.opened', () => {
             it('should update email-sends status to opened', async () => {
-                const event = createMockWebhookEvent('email.opened', 'msg_test_123')
+                const event = createMockResendWebhookEvent('email.opened', 'msg_test_123')
 
                 expect(event.event).toHaveProperty('type', 'email.opened')
             })
@@ -115,7 +115,7 @@ describe('Email Webhook', () => {
 
         describe('email.clicked', () => {
             it('should update email-sends with click data', async () => {
-                const event = createMockWebhookEvent('email.clicked', 'msg_test_123', {
+                const event = createMockResendWebhookEvent('email.clicked', 'msg_test_123', {
                     link: 'https://theproductreport.org/products/test',
                 })
 
@@ -144,7 +144,7 @@ describe('Email Webhook', () => {
 
         describe('email.bounced', () => {
             it('should update email-sends status to bounced', async () => {
-                const event = createMockWebhookEvent('email.bounced', 'msg_test_123', {
+                const event = createMockResendWebhookEvent('email.bounced', 'msg_test_123', {
                     bounce_type: 'hard',
                 })
 
@@ -184,7 +184,7 @@ describe('Email Webhook', () => {
 
         describe('email.complained', () => {
             it('should update email-sends status to complained', async () => {
-                const event = createMockWebhookEvent('email.complained', 'msg_test_123')
+                const event = createMockResendWebhookEvent('email.complained', 'msg_test_123')
 
                 expect(event.event).toHaveProperty('type', 'email.complained')
             })

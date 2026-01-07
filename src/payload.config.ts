@@ -203,6 +203,10 @@ export default buildConfig({
           Component: '@/components/AIDraftInbox',
           path: '/ai-draft-inbox',
         },
+        'activity-feed': {
+          Component: '@/components/ActivityFeedDashboard',
+          path: '/activity-feed',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
