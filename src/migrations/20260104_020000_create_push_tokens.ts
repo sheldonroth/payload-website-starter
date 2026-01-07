@@ -1,4 +1,8 @@
 /**
+ * Database Migration
+ * @see /MIGRATIONS.md for defensive SQL patterns and utilities
+ */
+/**
  * Migration: Create Push Tokens Table
  *
  * Creates the push_tokens table for storing Expo push notification tokens

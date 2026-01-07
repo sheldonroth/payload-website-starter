@@ -1,3 +1,7 @@
+/**
+ * Database Migration
+ * @see /MIGRATIONS.md for defensive SQL patterns and utilities
+ */
 import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postgres'
 
 /**
