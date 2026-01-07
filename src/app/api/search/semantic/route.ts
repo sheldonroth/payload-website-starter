@@ -28,28 +28,103 @@ function checkRateLimit(ip: string): boolean {
 }
 
 /**
- * POST /api/search/semantic
- *
- * Semantic search for products using pgvector embeddings.
- *
- * Request body:
- * {
- *   query: string,           // Search query
- *   limit?: number,          // Max results (default 20, max 50)
- *   minSimilarity?: number,  // Minimum similarity threshold (default 0.3)
- *   verdictFilter?: string,  // Filter by verdict: 'recommend' | 'caution' | 'avoid'
- *   excludeIds?: number[],   // Product IDs to exclude
- * }
- *
- * Response:
- * {
- *   results: [
- *     { id, name, brand, similarity, verdict, imageUrl, category }
- *   ],
- *   query: string,
- *   count: number,
- *   embeddingStats?: { totalProducts, withEmbeddings, percentComplete }
- * }
+ * @swagger
+ * /api/search/semantic:
+ *   post:
+ *     summary: Semantic product search
+ *     description: |
+ *       Search for products using AI-powered semantic similarity.
+ *       Uses pgvector embeddings with Gemini text-embedding-004 model.
+ *       Returns products ordered by cosine similarity to the query.
+ *     tags: [Mobile, Scanner]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [query]
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 description: Natural language search query (2-500 characters)
+ *                 example: "organic moisturizer for sensitive skin"
+ *               limit:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 50
+ *                 default: 20
+ *                 description: Maximum number of results to return
+ *               minSimilarity:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 1
+ *                 default: 0.3
+ *                 description: Minimum cosine similarity threshold
+ *               verdictFilter:
+ *                 type: string
+ *                 enum: [recommend, caution, avoid]
+ *                 description: Filter results by product verdict
+ *               excludeIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Product IDs to exclude from results
+ *     responses:
+ *       200:
+ *         description: Search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       brand:
+ *                         type: string
+ *                       similarity:
+ *                         type: number
+ *                         description: Cosine similarity score (0-1)
+ *                       verdict:
+ *                         type: string
+ *                         enum: [recommend, caution, avoid]
+ *                       imageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       category:
+ *                         type: string
+ *                         nullable: true
+ *                 query:
+ *                   type: string
+ *                 count:
+ *                   type: integer
+ *                 embeddingStats:
+ *                   type: object
+ *                   description: Only included when embeddings are not 100% complete
+ *                   properties:
+ *                     totalProducts:
+ *                       type: integer
+ *                     withEmbeddings:
+ *                       type: integer
+ *                     percentComplete:
+ *                       type: number
+ *       400:
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         $ref: '#/components/responses/RateLimited'
+ *       503:
+ *         description: Service unavailable (embeddings not configured)
  */
 export async function POST(request: Request) {
   try {
@@ -159,10 +234,41 @@ export async function POST(request: Request) {
 }
 
 /**
- * GET /api/search/semantic
- *
- * Alternative GET endpoint for simple queries.
- * Query params: ?q=search+query&limit=20
+ * @swagger
+ * /api/search/semantic:
+ *   get:
+ *     summary: Semantic product search (GET)
+ *     description: Alternative GET endpoint for simple semantic search queries.
+ *     tags: [Mobile, Scanner]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query (2-500 characters)
+ *         example: "organic sunscreen"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *         description: Maximum number of results
+ *       - in: query
+ *         name: verdict
+ *         schema:
+ *           type: string
+ *           enum: [recommend, caution, avoid]
+ *         description: Filter by product verdict
+ *     responses:
+ *       200:
+ *         description: Search results (same as POST response)
+ *       400:
+ *         description: Missing or invalid query parameter
+ *       429:
+ *         $ref: '#/components/responses/RateLimited'
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
