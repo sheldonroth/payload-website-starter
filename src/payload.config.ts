@@ -199,6 +199,10 @@ export default buildConfig({
           Component: '@/components/SystemHealthDashboard',
           path: '/system-health',
         },
+        'ai-draft-inbox': {
+          Component: '@/components/AIDraftInbox',
+          path: '/ai-draft-inbox',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],

@@ -55,6 +55,22 @@ const AdminNavLinks: React.FC = () => {
                         AI
                     </span>
                     <Link
+                        href="/admin/ai-draft-inbox"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        AI Draft Inbox
+                    </Link>
+                    <Link
                         href="/admin/ai-suggestions"
                         style={{
                             display: 'flex',
