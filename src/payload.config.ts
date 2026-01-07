@@ -100,6 +100,7 @@ import { behaviorUpdateHandler } from './endpoints/behavior-update'
 import { revenuecatWebhookHandler } from './endpoints/revenuecat-webhook'
 import { referralEndpoints } from './endpoints/referral'
 import { businessAnalyticsEndpoint } from './endpoints/business-analytics'
+import { businessAnalyticsExportEndpoint } from './endpoints/business-analytics/export'
 import contentGeneratorHandler from './endpoints/content-generator'
 import { emailCronHandler } from './endpoints/email-cron'
 import { resendWebhookHandler } from './endpoints/email-webhook'
@@ -109,6 +110,7 @@ import { recalculateCategoryCountsEndpoint } from './endpoints/recalculate-categ
 import { aiAssistantEndpoint, aiAssistantClearCacheEndpoint } from './endpoints/ai-assistant'
 import { sendResultsNotificationHandler, sendTestingNotificationHandler } from './endpoints/send-results-notification'
 import { activeBountiesHandler, checkBountyHandler } from './endpoints/bounty-categories'
+import { emailPreferencesEndpoint, emailPreferencesUpdateEndpoint, emailPreferencesUnsubscribeEndpoint } from './endpoints/email-preferences'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -687,6 +689,7 @@ export default buildConfig({
     ...referralEndpoints,
     // Business Analytics Dashboard
     businessAnalyticsEndpoint,
+    businessAnalyticsExportEndpoint,
     // Content Generator
     {
       path: '/content/generate',
@@ -699,6 +702,10 @@ export default buildConfig({
     emailEventTriggerHandler,
     // Smart Scan AI Vision
     smartScanHandler,
+    // Email Preferences (One-Click Unsubscribe)
+    emailPreferencesEndpoint,
+    emailPreferencesUpdateEndpoint,
+    emailPreferencesUnsubscribeEndpoint,
   ],
   plugins: [
     ...plugins,

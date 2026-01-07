@@ -1700,8 +1700,17 @@ export interface AuditLog {
     | 'conflict_detected'
     | 'freshness_check'
     | 'ai_draft_created'
-    | 'error';
-  sourceType?: ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule') | null;
+    | 'error'
+    | 'subscription_started'
+    | 'subscription_renewed'
+    | 'subscription_cancelled'
+    | 'subscription_paused'
+    | 'billing_issue'
+    | 'trial_started'
+    | 'trial_converted';
+  sourceType?:
+    | ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule' | 'revenuecat')
+    | null;
   /**
    * Video ID, URL, UPC, or rule ID
    */

@@ -57,6 +57,32 @@ const BusinessAnalyticsDashboard: React.FC = () => {
         fetchAnalytics(true)
     }
 
+    const handleExport = async (format: 'csv' | 'json') => {
+        try {
+            const response = await fetch(`/api/business-analytics/export?format=${format}`, {
+                credentials: 'include',
+            })
+
+            if (!response.ok) {
+                throw new Error(`Export failed: ${response.status}`)
+            }
+
+            // Get the blob and download it
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `analytics-export-${new Date().toISOString().split('T')[0]}.${format}`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+        } catch (err) {
+            console.error('[BusinessAnalytics] Export error:', err)
+            setError(err instanceof Error ? err.message : 'Export failed')
+        }
+    }
+
     if (error && !data) {
         return (
             <div style={styles.container}>
@@ -80,6 +106,22 @@ const BusinessAnalyticsDashboard: React.FC = () => {
                     <p style={styles.subtitle}>Real-time metrics from RevenueCat, Mixpanel, and Statsig</p>
                 </div>
                 <div style={styles.headerRight}>
+                    <div style={styles.exportButtons}>
+                        <button
+                            style={styles.exportButton}
+                            onClick={() => handleExport('csv')}
+                            title="Export as CSV"
+                        >
+                            📊 CSV
+                        </button>
+                        <button
+                            style={styles.exportButton}
+                            onClick={() => handleExport('json')}
+                            title="Export as JSON"
+                        >
+                            📄 JSON
+                        </button>
+                    </div>
                     {lastUpdated && (
                         <span style={styles.lastUpdated}>
                             Last updated: {lastUpdated.toLocaleTimeString()}
@@ -206,6 +248,24 @@ const styles: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         alignItems: 'flex-end',
         gap: '8px',
+    },
+    exportButtons: {
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '4px',
+    },
+    exportButton: {
+        padding: '6px 12px',
+        backgroundColor: '#f3f4f6',
+        border: '1px solid #e5e7eb',
+        borderRadius: '6px',
+        fontSize: '12px',
+        fontWeight: 500,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        transition: 'background-color 0.2s',
     },
     lastUpdated: {
         fontSize: '12px',

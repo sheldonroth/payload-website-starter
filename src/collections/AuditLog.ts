@@ -54,6 +54,20 @@ export const AuditLog: CollectionConfig = {
                 { label: '🔍 Freshness Check', value: 'freshness_check' },
                 { label: '📝 AI Draft Created', value: 'ai_draft_created' },
                 { label: '❌ Error', value: 'error' },
+                // Subscription events
+                { label: '💳 Subscription Started', value: 'subscription_started' },
+                { label: '🔄 Subscription Renewed', value: 'subscription_renewed' },
+                { label: '❌ Subscription Cancelled', value: 'subscription_cancelled' },
+                { label: '⏸️ Subscription Paused', value: 'subscription_paused' },
+                { label: '⚠️ Billing Issue', value: 'billing_issue' },
+                { label: '🎁 Trial Started', value: 'trial_started' },
+                { label: '✅ Trial Converted', value: 'trial_converted' },
+                // Sentry alert events
+                { label: '🔴 Sentry Issue Created', value: 'sentry_issue_created' },
+                { label: '🟢 Sentry Issue Resolved', value: 'sentry_issue_resolved' },
+                { label: '📈 Sentry Spike Alert', value: 'sentry_spike_alert' },
+                { label: '🔁 Sentry Regression Alert', value: 'sentry_regression_alert' },
+                { label: '🔥 Sentry Critical Alert', value: 'sentry_critical_alert' },
             ],
             admin: {
                 position: 'sidebar',
@@ -73,6 +87,8 @@ export const AuditLog: CollectionConfig = {
                 { label: '👤 Manual', value: 'manual' },
                 { label: '⚙️ System', value: 'system' },
                 { label: '📋 Rule', value: 'rule' },
+                { label: '💰 RevenueCat', value: 'revenuecat' },
+                { label: '🐛 Sentry', value: 'sentry' },
             ],
             admin: {
                 position: 'sidebar',

@@ -447,11 +447,81 @@ export const Users: CollectionConfig = {
     // Email Preferences
     // ============================================
     {
+      name: 'emailPreferences',
+      type: 'group',
+      fields: [
+        {
+          name: 'weeklyDigest',
+          type: 'checkbox',
+          defaultValue: true,
+          label: 'Weekly Digest',
+          admin: {
+            description: 'Receive weekly digest emails with new products and community highlights',
+          },
+        },
+        {
+          name: 'productAlerts',
+          type: 'checkbox',
+          defaultValue: true,
+          label: 'Product Alerts',
+          admin: {
+            description: 'Get notified about products you saved or watched',
+          },
+        },
+        {
+          name: 'badgeUnlocks',
+          type: 'checkbox',
+          defaultValue: true,
+          label: 'Badge Unlocks',
+          admin: {
+            description: 'Celebrate when you unlock new badges',
+          },
+        },
+        {
+          name: 'streakReminders',
+          type: 'checkbox',
+          defaultValue: true,
+          label: 'Streak Reminders',
+          admin: {
+            description: 'Gentle reminder to keep your scanning streak going',
+          },
+        },
+        {
+          name: 'regulatoryUpdates',
+          type: 'checkbox',
+          defaultValue: false,
+          label: 'Regulatory Updates',
+          admin: {
+            description: 'FDA and regulatory news affecting products you care about',
+          },
+        },
+        {
+          name: 'communityHighlights',
+          type: 'checkbox',
+          defaultValue: false,
+          label: 'Community Highlights',
+          admin: {
+            description: 'What the community is discovering and discussing',
+          },
+        },
+      ],
+    },
+    {
+      name: 'emailUnsubscribeToken',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description: 'Token for one-click unsubscribe from emails',
+      },
+    },
+    // Legacy field for backwards compatibility
+    {
       name: 'weeklyDigestEnabled',
       type: 'checkbox',
       defaultValue: true,
       admin: {
-        description: 'Receive weekly digest emails with new products and community highlights',
+        hidden: true, // Hide from admin - use emailPreferences.weeklyDigest instead
+        description: 'Legacy field - use emailPreferences.weeklyDigest instead',
       },
     },
     // ============================================

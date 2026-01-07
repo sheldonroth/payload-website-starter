@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { createAuditLog } from '@/collections/AuditLog'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,6 +90,31 @@ interface RevenueCatEvent {
 interface RevenueCatWebhookPayload {
   api_version: string
   event: RevenueCatEvent
+}
+
+/**
+ * Map RevenueCat event to audit log action
+ */
+function mapEventToAuditAction(event: RevenueCatEvent): string | null {
+  switch (event.type) {
+    case 'INITIAL_PURCHASE':
+      return event.period_type === 'TRIAL' ? 'trial_started' : 'subscription_started'
+    case 'RENEWAL':
+      return 'subscription_renewed'
+    case 'CANCELLATION':
+      return 'subscription_cancelled'
+    case 'EXPIRATION':
+      return 'subscription_cancelled'
+    case 'BILLING_ISSUE':
+      return 'billing_issue'
+    case 'SUBSCRIPTION_PAUSED':
+      return 'subscription_paused'
+    case 'UNCANCELLATION':
+    case 'SUBSCRIPTION_EXTENDED':
+      return 'subscription_started' // Reactivation
+    default:
+      return null
+  }
 }
 
 /**
@@ -353,6 +379,40 @@ export async function POST(request: Request) {
       })
 
       console.log(`[RevenueCat Webhook] User ${user.id} subscription updated to: ${newStatus}`)
+
+      // Handle referral attribution on initial purchase
+      if (event.type === 'INITIAL_PURCHASE' && user.referredBy) {
+        try {
+          // Find the referral record and update it
+          const referrals = await payload.find({
+            collection: 'referrals',
+            where: {
+              and: [
+                { referrer: { equals: user.referredBy } },
+                { referredUser: { equals: user.id } },
+              ]
+            },
+            limit: 1,
+          })
+
+          if (referrals.docs.length > 0) {
+            const referral = referrals.docs[0]
+            // Mark referral as converted with revenue
+            await payload.update({
+              collection: 'referrals',
+              id: referral.id,
+              data: {
+                status: 'converted',
+                convertedAt: new Date().toISOString(),
+                revenueGenerated: event.price_in_purchased_currency || event.price || 0,
+              },
+            })
+            console.log(`[RevenueCat Webhook] Referral ${referral.id} marked as converted`)
+          }
+        } catch (refError) {
+          console.error('[RevenueCat Webhook] Error updating referral:', refError)
+        }
+      }
     } else {
       // Event doesn't change status, but still update RevenueCat ID if needed
       if (!user.revenuecatUserId) {
@@ -361,6 +421,32 @@ export async function POST(request: Request) {
         })
       }
       console.log(`[RevenueCat Webhook] Event ${event.type} processed, no status change`)
+    }
+
+    // Create audit log entry for subscription events
+    const auditAction = mapEventToAuditAction(event)
+    if (auditAction) {
+      await createAuditLog(payload, {
+        action: auditAction,
+        sourceType: 'revenuecat',
+        sourceId: event.id,
+        targetCollection: 'users',
+        targetId: user.id,
+        targetName: user.email || user.name || `User ${user.id}`,
+        before: { subscriptionStatus: user.subscriptionStatus },
+        after: { subscriptionStatus: newStatus || user.subscriptionStatus },
+        metadata: {
+          eventType: event.type,
+          productId: event.product_id,
+          periodType: event.period_type,
+          store: event.store,
+          environment: event.environment,
+          price: event.price,
+          currency: event.currency,
+          offerCode: event.offer_code,
+        },
+        success: true,
+      })
     }
 
     return NextResponse.json({

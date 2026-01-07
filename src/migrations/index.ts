@@ -52,6 +52,11 @@ import * as migration_20260106_100000_fix_locked_docs_double_underscore from './
 import * as migration_20260106_200000_scout_program_velocity_and_bounties from './20260106_200000_scout_program_velocity_and_bounties';
 import * as migration_20260107_000000_add_email_collections from './20260107_000000_add_email_collections';
 import * as migration_20260107_010000_add_content_collections from './20260107_010000_add_content_collections';
+import * as migration_20260107_020000_fix_content_collection_columns from './20260107_020000_fix_content_collection_columns';
+import * as migration_20260107_030000_add_referral_breakdown_table from './20260107_030000_add_referral_breakdown_table';
+import * as migration_20260107_040000_fix_referral_and_fingerprint_columns from './20260107_040000_fix_referral_and_fingerprint_columns';
+import * as migration_20260107_050000_fix_generated_content_columns from './20260107_050000_fix_generated_content_columns';
+import * as migration_20260107_060000_fix_regulatory_changes_columns from './20260107_060000_fix_regulatory_changes_columns';
 
 export const migrations = [
   {
@@ -323,5 +328,30 @@ export const migrations = [
     up: migration_20260107_010000_add_content_collections.up,
     down: migration_20260107_010000_add_content_collections.down,
     name: '20260107_010000_add_content_collections'
+  },
+  {
+    up: migration_20260107_020000_fix_content_collection_columns.up,
+    down: migration_20260107_020000_fix_content_collection_columns.down,
+    name: '20260107_020000_fix_content_collection_columns'
+  },
+  {
+    up: migration_20260107_030000_add_referral_breakdown_table.up,
+    down: migration_20260107_030000_add_referral_breakdown_table.down,
+    name: '20260107_030000_add_referral_breakdown_table'
+  },
+  {
+    up: migration_20260107_040000_fix_referral_and_fingerprint_columns.up,
+    down: migration_20260107_040000_fix_referral_and_fingerprint_columns.down,
+    name: '20260107_040000_fix_referral_and_fingerprint_columns'
+  },
+  {
+    up: migration_20260107_050000_fix_generated_content_columns.up,
+    down: migration_20260107_050000_fix_generated_content_columns.down,
+    name: '20260107_050000_fix_generated_content_columns'
+  },
+  {
+    up: migration_20260107_060000_fix_regulatory_changes_columns.up,
+    down: migration_20260107_060000_fix_regulatory_changes_columns.down,
+    name: '20260107_060000_fix_regulatory_changes_columns'
   },
 ];

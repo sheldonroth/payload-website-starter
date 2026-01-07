@@ -100,8 +100,11 @@ async function fetchGDELTNews(query: string, days: number = 7): Promise<NewsArti
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
 
+        // Add English language filter and source country filter for better relevance
+        const enhancedQuery = `${query} sourcelang:english`
+
         const url = `https://api.gdeltproject.org/api/v2/doc/doc?` +
-            `query=${encodeURIComponent(query)}` +
+            `query=${encodeURIComponent(enhancedQuery)}` +
             `&mode=artlist&maxrecords=50&format=json` +
             `&startdatetime=${formatGDELTDate(startDate)}` +
             `&enddatetime=${formatGDELTDate(endDate)}`
@@ -573,6 +576,39 @@ export async function runTrendingEngine(
                         },
                     } as any,
                 })
+
+                // Store top news snippets (limit to 5 per brand)
+                // First, delete old news for this brand
+                const existingNews = await payload.find({
+                    collection: 'trending-news' as any,
+                    where: { brand: { equals: brand.id } },
+                    limit: 100,
+                })
+                for (const news of existingNews.docs) {
+                    await payload.delete({
+                        collection: 'trending-news' as any,
+                        id: news.id,
+                    })
+                }
+
+                // Add new snippets
+                for (const article of unique.slice(0, 5)) {
+                    const publishedAt = safeISOString(article.publishedAt)
+                    await payload.create({
+                        collection: 'trending-news' as any,
+                        data: {
+                            brand: brand.id,
+                            title: article.title,
+                            source: article.source,
+                            url: article.url,
+                            publishedAt: publishedAt || new Date().toISOString(),
+                            sentiment: article.sentiment !== undefined
+                                ? (article.sentiment > 0.1 ? 'positive' : article.sentiment < -0.1 ? 'negative' : 'neutral')
+                                : 'neutral',
+                            matchedTerms: brand.name,
+                        } as any,
+                    })
+                }
 
                 await propagateTrendingToProducts(payload, brand.id, { isTrending, score, analysis })
 

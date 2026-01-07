@@ -246,6 +246,47 @@ export async function calculateReferralAttribution(payload: Payload): Promise<Re
 }
 
 /**
+ * Calculate actual trial-to-premium conversion rate from Users collection
+ */
+async function calculateActualConversionRate(payload: Payload): Promise<number> {
+    try {
+        // Count users who have ever been on trial (have trialStartDate set)
+        const trialUsers = await payload.find({
+            collection: 'users',
+            where: {
+                trialStartDate: { exists: true },
+            },
+            limit: 0,
+        })
+
+        // Count users who converted to premium
+        const premiumUsers = await payload.find({
+            collection: 'users',
+            where: {
+                subscriptionStatus: { equals: 'premium' },
+                trialStartDate: { exists: true },
+            },
+            limit: 0,
+        })
+
+        const totalTrials = trialUsers.totalDocs
+        const converted = premiumUsers.totalDocs
+
+        if (totalTrials === 0) {
+            return 0.3 // Default fallback if no trial data
+        }
+
+        const conversionRate = converted / totalTrials
+        console.log(`[MetricsCalculator] Actual conversion rate: ${(conversionRate * 100).toFixed(1)}% (${converted}/${totalTrials})`)
+
+        return conversionRate
+    } catch (error) {
+        console.error('[MetricsCalculator] Error calculating conversion rate:', error)
+        return 0.3 // Fallback to 30%
+    }
+}
+
+/**
  * Predict MRR based on current trends
  */
 export async function predictMRR(payload: Payload): Promise<MRRPrediction> {
@@ -262,10 +303,11 @@ export async function predictMRR(payload: Payload): Promise<MRRPrediction> {
         // Get subscription counts for growth calculation
         const counts = await getSubscriptionCounts()
 
-        // Calculate monthly growth rate
-        // Using a simple approach based on recent subscriber growth
-        // In production, you'd want historical data for better predictions
-        const newSubscribersPerWeek = counts.trials * 0.3 // Assume 30% trial conversion
+        // Calculate actual conversion rate from historical data
+        const actualConversionRate = await calculateActualConversionRate(payload)
+
+        // Calculate monthly growth rate using actual conversion rate
+        const newSubscribersPerWeek = counts.trials * actualConversionRate
         const monthlyGrowth = (newSubscribersPerWeek * 4) / Math.max(counts.active, 1)
 
         // Calculate churn impact
@@ -284,8 +326,10 @@ export async function predictMRR(payload: Payload): Promise<MRRPrediction> {
         else if (netGrowthRate < -0.02) trend = 'down'
 
         // Confidence based on data quality
-        // Higher confidence with more active subscribers
-        const confidence = Math.min(0.95, 0.5 + (counts.active / 1000) * 0.4)
+        // Higher confidence with more active subscribers and actual conversion data
+        const hasActualData = actualConversionRate !== 0.3
+        const baseConfidence = hasActualData ? 0.6 : 0.4
+        const confidence = Math.min(0.95, baseConfidence + (counts.active / 1000) * 0.3)
 
         const result: MRRPrediction = {
             current: Math.round(currentMRR),
