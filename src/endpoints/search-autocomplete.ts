@@ -84,19 +84,15 @@ export const searchAutocompleteHandler = async (req: PayloadRequest): Promise<Re
             },
             limit,
             sort: '-overallScore', // Prioritize higher-scored products
-            select: {
-                id: true,
-                name: true,
-                brand: true,
-                category: true,
-            },
+            depth: 1, // Include related docs for category/brand names
         })
 
-        const suggestions = results.docs.map((doc) => ({
+        // Map results to suggestions with explicit type handling
+        const suggestions = results.docs.map((doc: any) => ({
             id: doc.id,
-            name: doc.name,
-            brand: typeof doc.brand === 'object' ? doc.brand?.name : doc.brand,
-            category: typeof doc.category === 'object' ? doc.category?.name : doc.category,
+            name: doc.name || 'Unknown',
+            brand: typeof doc.brand === 'object' ? doc.brand?.name : (doc.brand || 'Unknown'),
+            category: typeof doc.category === 'object' ? doc.category?.name : (doc.category || 'Unknown'),
         }))
 
         return successResponse({
