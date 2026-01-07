@@ -29,7 +29,7 @@
  *       The signature is validated against `RESEND_WEBHOOK_SECRET`.
  *
  *       **Configure in Resend:**
- *       Dashboard > Webhooks > Add Endpoint > `https://cms.theproductreport.org/api/email-webhook`
+ *       Dashboard > Webhooks > Add Endpoint > `https://payload-website-starter-smoky-sigma.vercel.app/api/email-webhook`
  *     tags: [Webhooks, Email]
  *     requestBody:
  *       required: true

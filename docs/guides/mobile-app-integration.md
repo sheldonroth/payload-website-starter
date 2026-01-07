@@ -788,8 +788,8 @@ RevenueCat events are forwarded if you've configured webhook forwarding:
 
 Full interactive API documentation is available at:
 
-- **Swagger UI**: https://cms.theproductreport.org/api/docs
-- **OpenAPI Spec**: https://cms.theproductreport.org/api/docs?format=json
+- **Swagger UI**: https://payload-website-starter-smoky-sigma.vercel.app/api/docs
+- **OpenAPI Spec**: https://payload-website-starter-smoky-sigma.vercel.app/api/docs?format=json
 
 ## SDK (Coming Soon)
 

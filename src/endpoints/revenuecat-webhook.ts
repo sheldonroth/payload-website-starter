@@ -10,7 +10,7 @@
  * Commission: $25/year per active referred subscriber
  * Timing: Annual payouts on subscription anniversary
  *
- * Webhook URL: https://cms.theproductreport.org/api/revenuecat-webhook
+ * Webhook URL: https://payload-website-starter-smoky-sigma.vercel.app/api/revenuecat-webhook
  * Configure in RevenueCat Dashboard → Integrations → Webhooks
  *
  * @openapi

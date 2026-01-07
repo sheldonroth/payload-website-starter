@@ -361,5 +361,5 @@ started_at: "2026-01-07T06:42:49Z"
 - ✅ Auto-refresh every 60 seconds
 - ✅ Created statsig-gates API endpoint
 - ✅ Created MixpanelDashboard component for cohort/funnel visualization
-- ✅ Deployed to https://cms.theproductreport.org
+- ✅ Deployed to https://payload-website-starter-smoky-sigma.vercel.app
 

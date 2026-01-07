@@ -30,7 +30,7 @@ The Product Report provides a comprehensive API for:
 
 | Environment | URL |
 |-------------|-----|
-| Production | \`https://cms.theproductreport.org/api\` |
+| Production | \`https://payload-website-starter-smoky-sigma.vercel.app/api\` |
 | Brand Portal | \`https://brands.theproductreport.org/api\` |
 | Development | \`http://localhost:3000/api\` |
 
@@ -135,8 +135,8 @@ All webhooks require signature verification for security.
         },
         servers: [
             {
-                url: 'https://cms.theproductreport.org/api',
-                description: 'Production CMS API',
+                url: 'https://payload-website-starter-smoky-sigma.vercel.app/api',
+                description: 'Production API',
             },
             {
                 url: 'https://theproductreport.org/api',
