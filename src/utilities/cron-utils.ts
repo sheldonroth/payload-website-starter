@@ -4,8 +4,8 @@
  * Provides retry logic, logging, and error handling for background jobs.
  */
 
-import { getPayload } from 'payload'
-import config from '@payload-config'
+// Note: getPayload and config are imported dynamically in functions that need them
+// to avoid breaking tests that don't need payload
 
 interface RetryOptions {
   maxRetries?: number
@@ -111,6 +111,9 @@ export async function logCronExecution(
   }
 ): Promise<void> {
   try {
+    // Dynamic imports to avoid breaking tests
+    const { getPayload } = await import('payload')
+    const config = (await import('@payload-config')).default
     const payload = await getPayload({ config })
 
     await payload.create({
@@ -145,7 +148,7 @@ export async function logCronExecution(
  */
 export function wrapCronHandler<T>(
   jobName: string,
-  handler: (payload: Awaited<ReturnType<typeof getPayload>>) => Promise<T>,
+  handler: (payload: unknown) => Promise<T>,
   options?: RetryOptions
 ) {
   return async (request: Request): Promise<Response> => {
@@ -163,6 +166,9 @@ export function wrapCronHandler<T>(
     // Log job start
     await logCronExecution(jobName, 'started')
 
+    // Dynamic imports to avoid breaking tests
+    const { getPayload } = await import('payload')
+    const config = (await import('@payload-config')).default
     const payload = await getPayload({ config })
 
     // Execute with retry

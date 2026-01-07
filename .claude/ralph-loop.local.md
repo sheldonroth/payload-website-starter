@@ -108,9 +108,9 @@ started_at: "2026-01-07T06:42:49Z"
 - [x] Create OpenAPI spec for public endpoints (@swagger JSDoc)
 - [x] Document all cron jobs and their schedules (CRON_JOBS.md)
 
-**3.3 Background Jobs** ✅ PARTIAL (Dashboard complete)
+**3.3 Background Jobs** ✅ MOSTLY COMPLETE
 - [x] Add job status dashboard in admin (CronJobsDashboard)
-- [ ] Add retry logic for failed cron jobs
+- [x] Add retry logic for failed cron jobs (cron-utils.ts with 18 tests)
 - [ ] Add dead letter queue for webhooks
 - [ ] Improve error reporting for background jobs
 
@@ -254,4 +254,5 @@ started_at: "2026-01-07T06:42:49Z"
 | 23 | iOS Widget Integration | COMPLETE | ProductReportScreen updates widget on scan via addRecentScan() |
 | 24 | Product Requests Unit Tests | COMPLETE | 22 tests for list, create, vote endpoints |
 | 25 | Cron Jobs Dashboard | COMPLETE | Admin dashboard for 14 cron jobs with manual trigger |
+| 26 | Cron Retry Utilities | COMPLETE | withRetry, circuit breaker, batch processor (18 tests) |
 
