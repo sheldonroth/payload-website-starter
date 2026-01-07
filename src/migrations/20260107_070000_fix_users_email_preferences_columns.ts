@@ -3,11 +3,11 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postg
 /**
  * Fix Users Email Preferences columns
  *
- * Adds missing email_preferences_* columns to users table.
+ * Adds missing email_preferences_* columns and email_unsubscribe_token to users table.
  * Payload groups are stored with underscore prefix.
  */
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
-    console.log('[Migration] Adding email_preferences columns to users table...')
+    console.log('[Migration] Adding email_preferences columns and email_unsubscribe_token to users table...')
 
     // Add email_preferences_weekly_digest
     await db.execute(sql`
@@ -63,7 +63,16 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
         END $$;
     `)
 
-    console.log('[Migration] Added email_preferences columns to users table')
+    // Add email_unsubscribe_token (text field for one-click unsubscribe)
+    await db.execute(sql`
+        DO $$ BEGIN
+            ALTER TABLE "users" ADD COLUMN "email_unsubscribe_token" varchar;
+        EXCEPTION
+            WHEN duplicate_column THEN NULL;
+        END $$;
+    `)
+
+    console.log('[Migration] Added email_preferences columns and email_unsubscribe_token to users table')
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {

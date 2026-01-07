@@ -27,6 +27,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/trending-notifications",
+      "schedule": "0 */6 * * *"
+    },
+    {
       "path": "/api/year-in-clean-cron",
       "schedule": "0 9 20 12 *"
     },

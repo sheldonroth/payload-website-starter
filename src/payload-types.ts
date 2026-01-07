@@ -872,8 +872,38 @@ export interface User {
     | number
     | boolean
     | null;
+  emailPreferences?: {
+    /**
+     * Receive weekly digest emails with new products and community highlights
+     */
+    weeklyDigest?: boolean | null;
+    /**
+     * Get notified about products you saved or watched
+     */
+    productAlerts?: boolean | null;
+    /**
+     * Celebrate when you unlock new badges
+     */
+    badgeUnlocks?: boolean | null;
+    /**
+     * Gentle reminder to keep your scanning streak going
+     */
+    streakReminders?: boolean | null;
+    /**
+     * FDA and regulatory news affecting products you care about
+     */
+    regulatoryUpdates?: boolean | null;
+    /**
+     * What the community is discovering and discussing
+     */
+    communityHighlights?: boolean | null;
+  };
   /**
-   * Receive weekly digest emails with new products and community highlights
+   * Token for one-click unsubscribe from emails
+   */
+  emailUnsubscribeToken?: string | null;
+  /**
+   * Legacy field - use emailPreferences.weeklyDigest instead
    */
   weeklyDigestEnabled?: boolean | null;
   /**
@@ -1707,9 +1737,14 @@ export interface AuditLog {
     | 'subscription_paused'
     | 'billing_issue'
     | 'trial_started'
-    | 'trial_converted';
+    | 'trial_converted'
+    | 'sentry_issue_created'
+    | 'sentry_issue_resolved'
+    | 'sentry_spike_alert'
+    | 'sentry_regression_alert'
+    | 'sentry_critical_alert';
   sourceType?:
-    | ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule' | 'revenuecat')
+    | ('youtube' | 'tiktok' | 'amazon' | 'web_url' | 'barcode' | 'manual' | 'system' | 'rule' | 'revenuecat' | 'sentry')
     | null;
   /**
    * Video ID, URL, UPC, or rule ID
@@ -2410,6 +2445,14 @@ export interface ProductVote {
    * Auto-set based on velocity: Trending (20+ 24h / 100+ 7d), Urgent (100+ 24h / 500+ 7d)
    */
   urgencyFlag?: ('normal' | 'trending' | 'urgent') | null;
+  /**
+   * Last time trending notifications were sent for this product
+   */
+  lastTrendingNotification?: string | null;
+  /**
+   * Queue position at last notification (for calculating jump)
+   */
+  previousQueuePosition?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -3972,6 +4015,17 @@ export interface UsersSelect<T extends boolean = true> {
   savedArticleIds?: T;
   watchlistCategories?: T;
   ingredientWatchlist?: T;
+  emailPreferences?:
+    | T
+    | {
+        weeklyDigest?: T;
+        productAlerts?: T;
+        badgeUnlocks?: T;
+        streakReminders?: T;
+        regulatoryUpdates?: T;
+        communityHighlights?: T;
+      };
+  emailUnsubscribeToken?: T;
   weeklyDigestEnabled?: T;
   memberState?: T;
   freeUnlockCredits?: T;
@@ -4259,6 +4313,8 @@ export interface ProductVotesSelect<T extends boolean = true> {
   scansLast7d?: T;
   velocityScore?: T;
   urgencyFlag?: T;
+  lastTrendingNotification?: T;
+  previousQueuePosition?: T;
   updatedAt?: T;
   createdAt?: T;
 }

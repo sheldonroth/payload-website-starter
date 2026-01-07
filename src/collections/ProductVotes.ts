@@ -284,6 +284,26 @@ export const ProductVotes: CollectionConfig = {
                 position: 'sidebar',
             },
         },
+
+        // === NOTIFICATION TRACKING ===
+        {
+            name: 'lastTrendingNotification',
+            type: 'date',
+            admin: {
+                description: 'Last time trending notifications were sent for this product',
+                readOnly: true,
+                condition: () => false, // Hidden from admin
+            },
+        },
+        {
+            name: 'previousQueuePosition',
+            type: 'number',
+            admin: {
+                description: 'Queue position at last notification (for calculating jump)',
+                readOnly: true,
+                condition: () => false, // Hidden from admin
+            },
+        },
     ],
     timestamps: true,
 }
