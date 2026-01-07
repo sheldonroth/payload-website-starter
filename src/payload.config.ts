@@ -228,6 +228,10 @@ export default buildConfig({
           Component: '@/components/ScoutLeaderboardDashboard',
           path: '/scout-leaderboard',
         },
+        'seo-audit': {
+          Component: '@/components/SEOAuditDashboard',
+          path: '/seo-audit',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
