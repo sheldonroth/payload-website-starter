@@ -11,6 +11,70 @@
  * - timestamp: ISO string
  * - version: API version
  * - features: Available features status
+ *
+ * @openapi
+ * /mobile/health:
+ *   get:
+ *     summary: Mobile app health check
+ *     description: |
+ *       Lightweight status check for mobile apps to verify API connectivity.
+ *       Returns server status, API version, and feature availability flags.
+ *       No authentication required.
+ *     tags: [Mobile, Health]
+ *     responses:
+ *       200:
+ *         description: Server is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [ok, degraded, maintenance]
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-01-15T10:30:00.000Z"
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
+ *                 serverTime:
+ *                   type: number
+ *                   description: Unix timestamp in milliseconds
+ *                   example: 1705315800000
+ *                 features:
+ *                   type: object
+ *                   properties:
+ *                     scanner:
+ *                       type: boolean
+ *                       description: Barcode scanning feature availability
+ *                     pushNotifications:
+ *                       type: boolean
+ *                       description: Push notification service status
+ *                     aiAnalysis:
+ *                       type: boolean
+ *                       description: AI-powered analysis availability
+ *                     userAccounts:
+ *                       type: boolean
+ *                       description: User account features status
+ *                 message:
+ *                   type: string
+ *                   description: Optional status message (present during degraded/maintenance)
+ *       503:
+ *         description: Server is in maintenance mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: maintenance
+ *                 message:
+ *                   type: string
+ *                   example: "The service is currently undergoing maintenance."
  */
 
 import type { PayloadHandler } from 'payload'

@@ -2,9 +2,10 @@ import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
 import { hydrateCategory } from '../utilities/smart-automation'
-import { findPotentialDuplicates, calculateDuplicateScore } from '../utilities/fuzzy-match'
+import { calculateDuplicateScore } from '../utilities/fuzzy-match'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import { sanitizeCategoryList, sanitizeTranscript, wrapUserContent } from '../utilities/prompt-sanitizer'
+import { type AIExtractedProductData, createProductData } from './ai-product-types'
 
 // Extract YouTube video ID from various URL formats
 function extractYouTubeVideoId(url: string): string | null {
@@ -357,29 +358,118 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
         const mergedProducts: { id: number; name: string; status: string }[] = []
         const createdProductIds: number[] = []
 
+        // ============================================
+        // BATCH DUPLICATE DETECTION - Pre-fetch all potential matches
+        // Collect search terms from all products and query once
+        // ============================================
+        const allSearchTerms: string[] = []
         for (const product of products) {
+            const normalizedName = product.productName
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\b(the|a|an|and|or|of|for|with)\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+            const searchTerms = normalizedName.split(' ').filter(word => word.length > 2)
+            allSearchTerms.push(...searchTerms.slice(0, 3))
+        }
+
+        // Single query to fetch all candidate products for duplicate checking
+        const uniqueSearchTerms = [...new Set(allSearchTerms)].slice(0, 20) // Limit to prevent query bloat
+        let allCandidateProducts: Array<{ id: number; name: string; brand?: string; upc?: string; status: string; sourceCount?: number }> = []
+
+        if (uniqueSearchTerms.length > 0) {
+            const candidatesResult = await req.payload.find({
+                collection: 'products',
+                where: {
+                    or: uniqueSearchTerms.map(term => ({
+                        name: { contains: term },
+                    })),
+                },
+                limit: 200, // Fetch more candidates for all products
+            })
+            allCandidateProducts = candidatesResult.docs.map(doc => ({
+                id: doc.id as number,
+                name: doc.name as string,
+                brand: doc.brand as string | undefined,
+                upc: doc.upc as string | undefined,
+                status: doc.status as string,
+                sourceCount: (doc as { sourceCount?: number }).sourceCount,
+            }))
+        }
+
+        // Build category lookup map (categories already fetched in Step 1)
+        const categoryMap = new Map<string, number>()
+        for (const cat of categoriesResult.docs) {
+            const c = cat as { name: string; id: number }
+            categoryMap.set(c.name.toLowerCase(), c.id)
+        }
+
+        // Track new categories that need to be created
+        const newCategoryPaths = new Set<string>()
+        for (const product of products) {
+            if (product.isNewCategory && product.suggestedCategory) {
+                newCategoryPaths.add(product.suggestedCategory)
+            }
+        }
+
+        // Batch create new categories before processing products
+        const newCategoryMap = new Map<string, number>()
+        for (const categoryPath of newCategoryPaths) {
             try {
-                // ============================================
-                // CROSS-PLATFORM DEDUPLICATION with FUZZY MATCHING
-                // Check ALL statuses using smart duplicate detection
-                // ============================================
-                const duplicates = await findPotentialDuplicates(
-                    { name: product.productName, brand: product.brandName },
+                const catResult = await hydrateCategory(
+                    categoryPath,
                     req.payload,
-                    { threshold: 0.75, limit: 1 }
+                    { aiSuggested: true, sourceVideoId: videoId || undefined }
                 )
+                newCategoryMap.set(categoryPath.toLowerCase(), catResult.categoryId)
+            } catch (catError) {
+                console.error('Category hydration failed:', catError)
+            }
+        }
 
-                if (duplicates.length > 0) {
-                    const existing = duplicates[0]
+        // ============================================
+        // PROCESS PRODUCTS WITH BATCHED CONCURRENCY
+        // Process in batches of 10 for controlled parallelism
+        // ============================================
+        const BATCH_SIZE = 10
+        const auditLogEntries: Array<Parameters<typeof createAuditLog>[1]> = []
+        const productUpdates: Array<{ id: number; data: Record<string, unknown> }> = []
 
-                    // If product exists in any status, update sourceCount and link to video
-                    await req.payload.update({
-                        collection: 'products',
+        // Helper function to find duplicates from pre-fetched candidates
+        const findDuplicateFromCache = (product: { productName: string; brandName: string }): { id: number; name: string; status: string; score: number; sourceCount?: number } | null => {
+            const threshold = 0.75
+            let bestMatch: { id: number; name: string; status: string; score: number; sourceCount?: number } | null = null
+            let bestScore = 0
+
+            for (const candidate of allCandidateProducts) {
+                const score = calculateDuplicateScore(
+                    { name: product.productName, brand: product.brandName },
+                    { name: candidate.name, brand: candidate.brand, upc: candidate.upc }
+                )
+                if (score >= threshold && score > bestScore) {
+                    bestScore = score
+                    bestMatch = { ...candidate, score }
+                }
+            }
+
+            return bestMatch
+        }
+
+        // Process products in parallel batches
+        const processProduct = async (product: ExtractedProduct): Promise<void> => {
+            try {
+                // Check for duplicates using cached candidates
+                const existing = findDuplicateFromCache(product)
+
+                if (existing) {
+                    // Queue update for existing product (will batch later)
+                    productUpdates.push({
                         id: existing.id,
                         data: {
-                            sourceCount: ((await req.payload.findByID({ collection: 'products', id: existing.id }) as any).sourceCount || 1) + 1,
+                            sourceCount: (existing.sourceCount || 1) + 1,
                             ...(videoRecord ? { sourceVideo: videoRecord.id } : {}),
-                        } as Record<string, unknown>,
+                        },
                     })
 
                     if (existing.status === 'ai_draft') {
@@ -388,41 +478,24 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                         mergedProducts.push({ id: existing.id, name: existing.name, status: existing.status })
                     }
                     createdProductIds.push(existing.id)
-                    continue
+                    return
                 }
 
                 // ============================================
-                // INSTANT CATEGORY HYDRATION
-                // Create hierarchical categories immediately
+                // CATEGORY LOOKUP (from pre-fetched maps)
                 // ============================================
                 let categoryId: number | null = null
                 if (product.suggestedCategory) {
+                    const lowerCategory = product.suggestedCategory.toLowerCase()
                     if (product.isNewCategory) {
-                        // Create category hierarchy immediately
-                        try {
-                            const catResult = await hydrateCategory(
-                                product.suggestedCategory,
-                                req.payload,
-                                { aiSuggested: true, sourceVideoId: videoId || undefined }
-                            )
-                            categoryId = catResult.categoryId
-                        } catch (catError) {
-                            console.error('Category hydration failed:', catError)
-                        }
+                        categoryId = newCategoryMap.get(lowerCategory) || null
                     } else {
-                        // Find existing category
-                        const existingCat = categoriesResult.docs.find(
-                            (cat: { name: string; id: number }) =>
-                                cat.name.toLowerCase() === product.suggestedCategory.toLowerCase()
-                        )
-                        if (existingCat) {
-                            categoryId = existingCat.id as number
-                        }
+                        categoryId = categoryMap.get(lowerCategory) || null
                     }
                 }
 
-                // Build product data object with BIDIRECTIONAL LINKING
-                const productData: Record<string, unknown> = {
+                // Build product data object with BIDIRECTIONAL LINKING and proper typing
+                const aiProductData: AIExtractedProductData = {
                     name: product.productName,
                     brand: product.brandName,
                     status: 'ai_draft',
@@ -434,30 +507,31 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
                     sourceUrl: videoUrl,
                     sourceCount: 1,
                     // AI extraction metadata
-                    aiConfidence: product.confidence || 'medium',
+                    aiConfidence: (product.confidence || 'medium') as 'high' | 'medium' | 'low',
                     aiSourceType: analysisMethod === 'transcript' ? 'transcript' : 'video_watching',
                     aiMentions: product.mentionCount || 1,
                 }
 
-                // Add category (now hydrated immediately)
-                if (categoryId) productData.category = categoryId
+                // Add category (from pre-fetched maps)
+                if (categoryId) aiProductData.category = categoryId
 
                 // Add source video link (BIDIRECTIONAL)
                 if (videoRecord) {
-                    productData.sourceVideo = videoRecord.id
+                    aiProductData.sourceVideo = videoRecord.id
                 }
 
-                // @ts-expect-error - Payload types require specific product shape but we're building dynamically
-                const created = await req.payload.create({
+                // Type assertion needed: Payload's strict typing requires draft mode for partial data,
+                // but we're creating products with all required fields present (name, brand, verdict)
+                const created = await (req.payload.create as Function)({
                     collection: 'products',
-                    data: productData,
+                    data: createProductData(aiProductData),
                 })
 
                 const createdId = created.id as number
                 createdProductIds.push(createdId)
 
-                // Create audit log
-                await createAuditLog(req.payload, {
+                // Queue audit log entry (will batch create later)
+                auditLogEntries.push({
                     action: 'ai_product_created',
                     sourceType: 'youtube',
                     sourceId: videoId || undefined,
@@ -484,6 +558,38 @@ export const videoAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) =
             } catch (error) {
                 console.error(`Error creating draft for ${product.productName}:`, error)
             }
+        }
+
+        // Process products in batches with controlled concurrency
+        for (let i = 0; i < products.length; i += BATCH_SIZE) {
+            const batch = products.slice(i, i + BATCH_SIZE)
+            await Promise.all(batch.map(processProduct))
+        }
+
+        // ============================================
+        // BATCH UPDATE EXISTING PRODUCTS
+        // ============================================
+        if (productUpdates.length > 0) {
+            await Promise.all(
+                productUpdates.map(update =>
+                    req.payload.update({
+                        collection: 'products',
+                        id: update.id,
+                        data: update.data,
+                    }).catch(err => console.error(`Failed to update product ${update.id}:`, err))
+                )
+            )
+        }
+
+        // ============================================
+        // BATCH CREATE AUDIT LOGS
+        // ============================================
+        if (auditLogEntries.length > 0) {
+            await Promise.all(
+                auditLogEntries.map(entry =>
+                    createAuditLog(req.payload, entry)
+                )
+            )
         }
 
         // ============================================

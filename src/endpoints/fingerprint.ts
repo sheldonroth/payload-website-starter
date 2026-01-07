@@ -2,6 +2,113 @@ import { PayloadHandler } from 'payload'
 import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
 
 /**
+ * @openapi
+ * /fingerprint/register:
+ *   post:
+ *     summary: Register device fingerprint
+ *     description: |
+ *       Registers or updates a device fingerprint for the One-Shot Engine.
+ *       Used by FingerprintJS Pro on the frontend to track devices.
+ *       Respects Global Privacy Control (GPC) signals - when enabled,
+ *       fingerprints are not stored.
+ *     tags: [Fingerprint, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fingerprintHash]
+ *             properties:
+ *               fingerprintHash:
+ *                 type: string
+ *                 description: Unique device fingerprint hash
+ *               browser:
+ *                 type: string
+ *                 description: Browser name/version
+ *               os:
+ *                 type: string
+ *                 description: Operating system
+ *               deviceType:
+ *                 type: string
+ *                 description: Device type (mobile, tablet, desktop)
+ *               gpcEnabled:
+ *                 type: boolean
+ *                 description: Global Privacy Control flag from client
+ *     responses:
+ *       200:
+ *         description: Fingerprint registered/updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 fingerprintId:
+ *                   type: integer
+ *                   nullable: true
+ *                   description: Null when GPC is enabled
+ *                 canUnlock:
+ *                   type: boolean
+ *                   description: Whether device can unlock content
+ *                 remainingCredits:
+ *                   type: integer
+ *                 isExisting:
+ *                   type: boolean
+ *                 userId:
+ *                   type: integer
+ *                   nullable: true
+ *                 gpcRespected:
+ *                   type: boolean
+ *                   description: Present when GPC signal was honored
+ *       400:
+ *         description: Missing fingerprintHash
+ *       403:
+ *         description: Device is banned
+ *       500:
+ *         description: Registration failed
+ *
+ * @openapi
+ * /fingerprint/check:
+ *   get:
+ *     summary: Check fingerprint status
+ *     description: Check device fingerprint status without updating last seen time
+ *     tags: [Fingerprint, Mobile]
+ *     parameters:
+ *       - in: query
+ *         name: hash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device fingerprint hash
+ *     responses:
+ *       200:
+ *         description: Fingerprint status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *                 fingerprintId:
+ *                   type: integer
+ *                 canUnlock:
+ *                   type: boolean
+ *                 remainingCredits:
+ *                   type: integer
+ *                 userId:
+ *                   type: integer
+ *                   nullable: true
+ *                 reason:
+ *                   type: string
+ *                   description: Present if device cannot unlock (banned)
+ *       400:
+ *         description: Missing hash parameter
+ */
+
+/**
  * Generate a unique 6-character referral code
  */
 function generateReferralCode(): string {

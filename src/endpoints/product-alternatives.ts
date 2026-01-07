@@ -16,6 +16,120 @@ import { applyLiabilityShield, isPremiumUser } from '../access/liabilityShield'
  * - Best Value: Cheapest recommended product
  * - Premium Pick: Most expensive recommended product
  * - Hidden Gem: Least popular (lowest sourceCount) - FREE UNLOCK
+ *
+ * @openapi
+ * /products/alternatives:
+ *   get:
+ *     summary: Find safer product alternatives
+ *     description: |
+ *       Returns products in the same category with better safety profiles.
+ *       Scoring considers verdict improvement (50%), ingredient safety (30%),
+ *       and price similarity (20%).
+ *
+ *       With archetypes=true, returns classified alternatives:
+ *       - Best Value: Cheapest recommended product (locked for free users)
+ *       - Premium Pick: Most expensive recommended (locked for free users)
+ *       - Hidden Gem: Least popular product (FREE for all users)
+ *     tags: [Products, Mobile]
+ *     parameters:
+ *       - in: query
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Source product ID to find alternatives for
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *           maximum: 10
+ *         description: Maximum alternatives to return
+ *       - in: query
+ *         name: archetypes
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Return classified archetypes (bestValue, premiumPick, hiddenGem)
+ *       - in: query
+ *         name: fingerprintHash
+ *         schema:
+ *           type: string
+ *         description: Device fingerprint for unlock status checking
+ *     responses:
+ *       200:
+ *         description: Alternatives found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Standard response
+ *                   properties:
+ *                     alternatives:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           slug:
+ *                             type: string
+ *                           verdict:
+ *                             type: string
+ *                           overallScore:
+ *                             type: number
+ *                           priceRange:
+ *                             type: string
+ *                           brand:
+ *                             type: string
+ *                           image:
+ *                             type: object
+ *                             properties:
+ *                               url:
+ *                                 type: string
+ *                               alt:
+ *                                 type: string
+ *                           score:
+ *                             type: number
+ *                             description: Match score (0-100)
+ *                           improvements:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                     sourceProduct:
+ *                       type: object
+ *                     totalCandidates:
+ *                       type: integer
+ *                 - type: object
+ *                   description: Archetypes response
+ *                   properties:
+ *                     archetypes:
+ *                       type: object
+ *                       properties:
+ *                         bestValue:
+ *                           type: object
+ *                           nullable: true
+ *                         premiumPick:
+ *                           type: object
+ *                           nullable: true
+ *                         hiddenGem:
+ *                           type: object
+ *                           nullable: true
+ *                     sourceProduct:
+ *                       type: object
+ *                     isPremium:
+ *                       type: boolean
+ *                     totalCandidates:
+ *                       type: integer
+ *       400:
+ *         description: Missing productId
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Failed to find alternatives
  */
 
 interface ProductAlternative {

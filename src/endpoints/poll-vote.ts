@@ -1,5 +1,13 @@
 import { PayloadHandler } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import {
+  validationError,
+  unauthorizedError,
+  notFoundError,
+  badRequestError,
+  internalError,
+  successResponse,
+} from '../utilities/api-response'
 
 /**
  * Poll Voting Endpoint
@@ -27,10 +35,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
     const body = await req.json?.() as VoteRequest | undefined
 
     if (!body?.pollId || body.optionIndex === undefined) {
-      return Response.json(
-        { error: 'pollId and optionIndex are required' },
-        { status: 400 }
-      )
+      return validationError('pollId and optionIndex are required')
     }
 
     const { pollId, optionIndex, fingerprintHash } = body
@@ -40,10 +45,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
     const voterId = user?.id ? `user_${user.id}` : fingerprintHash ? `fp_${fingerprintHash}` : null
 
     if (!voterId) {
-      return Response.json(
-        { error: 'Must be logged in or provide fingerprintHash to vote' },
-        { status: 401 }
-      )
+      return unauthorizedError('Must be logged in or provide fingerprintHash to vote')
     }
 
     // Fetch the poll
@@ -53,26 +55,17 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
     })
 
     if (!poll) {
-      return Response.json(
-        { error: 'Poll not found' },
-        { status: 404 }
-      )
+      return notFoundError('Poll')
     }
 
     // Check if poll is active
     if (poll.status !== 'active') {
-      return Response.json(
-        { error: 'This poll is closed and no longer accepting votes' },
-        { status: 400 }
-      )
+      return badRequestError('This poll is closed and no longer accepting votes')
     }
 
     // Check if poll has ended
     if (poll.endDate && new Date(poll.endDate) < new Date()) {
-      return Response.json(
-        { error: 'This poll has ended' },
-        { status: 400 }
-      )
+      return badRequestError('This poll has ended')
     }
 
     // Check if option index is valid
@@ -84,10 +77,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
     }>
 
     if (optionIndex < 0 || optionIndex >= options.length) {
-      return Response.json(
-        { error: 'Invalid option index' },
-        { status: 400 }
-      )
+      return validationError('Invalid option index')
     }
 
     // Check if user already voted
@@ -95,9 +85,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
 
     if (voters[voterId] !== undefined) {
       const previousVote = voters[voterId]
-      return Response.json({
-        success: false,
-        error: 'You have already voted on this poll',
+      return badRequestError('You have already voted on this poll', {
         previousVote: previousVote,
         votedFor: options[previousVote]?.name,
         poll: {
@@ -106,7 +94,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
           options: options.map(o => ({ name: o.name, votes: o.votes })),
           totalVotes: poll.totalVotes,
         },
-      }, { status: 400 })
+      })
     }
 
     // Record the vote
@@ -135,8 +123,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
 
     console.log(`[Poll Vote] ${voterId} voted for option ${optionIndex} on poll ${pollId}`)
 
-    return Response.json({
-      success: true,
+    return successResponse({
       message: `Vote recorded for "${options[optionIndex].name}"`,
       poll: {
         id: updatedPoll.id,
@@ -148,10 +135,7 @@ export const pollVoteHandler: PayloadHandler = async (req) => {
 
   } catch (error) {
     console.error('[Poll Vote] Error:', error)
-    return Response.json(
-      { error: 'Failed to record vote' },
-      { status: 500 }
-    )
+    return internalError('Failed to record vote')
   }
 }
 
@@ -206,17 +190,11 @@ export const pollsActiveHandler: PayloadHandler = async (req) => {
       }
     })
 
-    return Response.json({
-      success: true,
-      polls: pollsWithVoteStatus,
-    })
+    return successResponse({ polls: pollsWithVoteStatus })
 
   } catch (error) {
     console.error('[Polls Active] Error:', error)
-    return Response.json(
-      { error: 'Failed to fetch polls' },
-      { status: 500 }
-    )
+    return internalError('Failed to fetch polls')
   }
 }
 
@@ -231,10 +209,7 @@ export const pollGetHandler: PayloadHandler = async (req) => {
     const pollId = url.searchParams.get('id')
 
     if (!pollId) {
-      return Response.json(
-        { error: 'Poll ID is required' },
-        { status: 400 }
-      )
+      return validationError('Poll ID is required')
     }
 
     const poll = await req.payload.findByID({
@@ -243,10 +218,7 @@ export const pollGetHandler: PayloadHandler = async (req) => {
     })
 
     if (!poll) {
-      return Response.json(
-        { error: 'Poll not found' },
-        { status: 404 }
-      )
+      return notFoundError('Poll')
     }
 
     // Get voter identifier
@@ -264,8 +236,7 @@ export const pollGetHandler: PayloadHandler = async (req) => {
     const hasVoted = voterId ? voters[voterId] !== undefined : false
     const userVote = voterId && hasVoted ? voters[voterId] : null
 
-    return Response.json({
-      success: true,
+    return successResponse({
       poll: {
         id: poll.id,
         title: poll.title,
@@ -287,9 +258,6 @@ export const pollGetHandler: PayloadHandler = async (req) => {
 
   } catch (error) {
     console.error('[Poll Get] Error:', error)
-    return Response.json(
-      { error: 'Failed to fetch poll' },
-      { status: 500 }
-    )
+    return internalError('Failed to fetch poll')
   }
 }

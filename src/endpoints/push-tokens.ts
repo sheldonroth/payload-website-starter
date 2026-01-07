@@ -2,6 +2,132 @@
  * Push Tokens API Endpoints
  *
  * Handles push token registration and notification sending.
+ *
+ * @openapi
+ * /push-tokens/register:
+ *   post:
+ *     summary: Register push notification token
+ *     description: |
+ *       Registers or updates an Expo push token for a device.
+ *       Used to enable push notifications for product testing updates.
+ *     tags: [Push Notifications, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Expo push token (ExponentPushToken[...])
+ *                 example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+ *               platform:
+ *                 type: string
+ *                 enum: [ios, android]
+ *                 default: ios
+ *               fingerprintHash:
+ *                 type: string
+ *                 description: Device fingerprint for linking
+ *     responses:
+ *       200:
+ *         description: Token registered/updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 tokenId:
+ *                   type: integer
+ *       400:
+ *         description: Missing or invalid token format
+ *       500:
+ *         description: Registration failed
+ *
+ * @openapi
+ * /push-tokens/subscribe:
+ *   post:
+ *     summary: Subscribe to product testing notifications
+ *     description: Subscribe a device to receive notifications when a product's testing is complete
+ *     tags: [Push Notifications, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, barcode]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Expo push token
+ *               barcode:
+ *                 type: string
+ *                 description: Product barcode to subscribe to
+ *     responses:
+ *       200:
+ *         description: Subscription successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 barcode:
+ *                   type: string
+ *                 alreadySubscribed:
+ *                   type: boolean
+ *       400:
+ *         description: Missing token or barcode
+ *       404:
+ *         description: Push token not found
+ *
+ * @openapi
+ * /push-tokens/unsubscribe:
+ *   post:
+ *     summary: Unsubscribe from product notifications
+ *     description: Remove subscription for a specific product's testing notifications
+ *     tags: [Push Notifications, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, barcode]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Expo push token
+ *               barcode:
+ *                 type: string
+ *                 description: Product barcode to unsubscribe from
+ *     responses:
+ *       200:
+ *         description: Unsubscription successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 barcode:
+ *                   type: string
+ *       400:
+ *         description: Missing token or barcode
+ *       404:
+ *         description: Push token not found
  */
 
 import type { PayloadRequest } from 'payload'

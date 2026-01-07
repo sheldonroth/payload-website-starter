@@ -27,7 +27,7 @@ The fingerprint should be a stable identifier for the device (e.g., iOS `identif
 For authenticated endpoints:
 
 ```http
-GET /api/my-scout-stats
+GET /api/my-contributor-stats
 Authorization: Bearer <jwt-token>
 ```
 
@@ -95,12 +95,19 @@ backPhoto: <file>
 ingredientsPhoto: <file>
 ```
 
-### Scout Profile
+**OCR Processing:**
+Back label photos are processed using **Gemini 1.5 Flash** for ingredient extraction. The AI analyzes the ingredients panel and extracts:
+- Full ingredient list
+- Nutritional information
+- Allergen warnings
+- Product claims and certifications
+
+### Contributor Profile
 
 #### Get Public Profile
 
 ```http
-GET /api/scout-profile/{slug}
+GET /api/contributor-profile/{slug}
 ```
 
 **Response:**
@@ -111,7 +118,7 @@ GET /api/scout-profile/{slug}
   "bio": "Passionate about clean products",
   "totalScans": 150,
   "totalSubmissions": 25,
-  "badges": ["Early Adopter", "Verified Scout"],
+  "badges": ["Early Adopter", "Verified Contributor"],
   "rank": "Gold",
   "joinedAt": "2024-01-15T00:00:00Z"
 }
@@ -120,7 +127,7 @@ GET /api/scout-profile/{slug}
 #### Get My Stats (Authenticated)
 
 ```http
-GET /api/my-scout-stats
+GET /api/my-contributor-stats
 x-fingerprint: <fingerprint>
 ```
 
@@ -131,7 +138,7 @@ x-fingerprint: <fingerprint>
   "totalSubmissions": 25,
   "rank": "Gold",
   "points": 2500,
-  "badges": ["Early Adopter", "Verified Scout"],
+  "badges": ["Early Adopter", "Verified Contributor"],
   "recentActivity": [...]
 }
 ```
@@ -139,13 +146,36 @@ x-fingerprint: <fingerprint>
 #### Update Profile
 
 ```http
-POST /api/scout-profile/update
+POST /api/contributor-profile/update
 Content-Type: application/json
 x-fingerprint: <fingerprint>
 
 {
   "displayName": "EcoWarrior",
   "bio": "Updated bio"
+}
+```
+
+#### Register Contribution
+
+```http
+POST /api/contributor-profile/register-contribution
+Content-Type: application/json
+x-fingerprint: <fingerprint>
+
+{
+  "type": "scan",
+  "barcode": "5000328657950",
+  "metadata": {}
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pointsEarned": 10,
+  "newTotal": 2510
 }
 ```
 
@@ -272,12 +302,75 @@ Retry-After: 60
 | `AUTH_REQUIRED` | 401 | Authentication needed |
 | `UPLOAD_FAILED` | 500 | File upload error |
 
+## Device Fingerprint Registration
+
+### Register Device
+
+Register a new device with optional referral code for attribution tracking.
+
+```http
+POST /api/fingerprint/register
+Content-Type: application/json
+
+{
+  "fingerprintHash": "<device-fingerprint-hash>",
+  "referralCode": "ABC123",
+  "platform": "ios",
+  "appVersion": "2.1.0",
+  "gpcEnabled": false
+}
+```
+
+**Request Fields:**
+- `fingerprintHash` (required) - Stable device identifier
+- `referralCode` (optional) - Referral code for attribution
+- `platform` (required) - "ios" or "android"
+- `appVersion` (required) - App version string
+- `gpcEnabled` (optional) - Whether Global Privacy Control is enabled on the device
+
+**Response:**
+```json
+{
+  "success": true,
+  "isNew": true,
+  "referralApplied": true,
+  "deviceId": "dev_abc123"
+}
+```
+
+### Check Device Status
+
+```http
+GET /api/fingerprint/check
+x-fingerprint: <fingerprint>
+```
+
+**Response:**
+```json
+{
+  "registered": true,
+  "createdAt": "2024-01-15T00:00:00Z",
+  "referralCode": "ABC123",
+  "gpcEnabled": false,
+  "stats": {
+    "totalScans": 150,
+    "totalSubmissions": 25
+  }
+}
+```
+
+**Global Privacy Control (GPC) Support:**
+The API respects the GPC signal. When `gpcEnabled: true` is sent during registration or detected via the `Sec-GPC` header:
+- Analytics data collection is minimized
+- Device data is not shared with third parties
+- Personalization features may be limited
+
 ## Push Notifications
 
 ### Register Token
 
 ```http
-POST /api/push-tokens
+POST /api/push-tokens/register
 Content-Type: application/json
 x-fingerprint: <fingerprint>
 
@@ -285,6 +378,46 @@ x-fingerprint: <fingerprint>
   "token": "<apns-or-fcm-token>",
   "platform": "ios",
   "deviceId": "<device-id>"
+}
+```
+
+### Subscribe to Topics
+
+```http
+POST /api/push-tokens/subscribe
+Content-Type: application/json
+x-fingerprint: <fingerprint>
+
+{
+  "topics": ["product_updates", "weekly_digest", "badge_alerts"]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "subscribedTopics": ["product_updates", "weekly_digest", "badge_alerts"]
+}
+```
+
+### Unsubscribe from Topics
+
+```http
+POST /api/push-tokens/unsubscribe
+Content-Type: application/json
+x-fingerprint: <fingerprint>
+
+{
+  "topics": ["weekly_digest"]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "remainingTopics": ["product_updates", "badge_alerts"]
 }
 ```
 

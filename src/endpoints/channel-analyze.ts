@@ -2,6 +2,7 @@ import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import { sanitizeCategoryList, sanitizeTranscript, wrapUserContent } from '../utilities/prompt-sanitizer'
+import { type AIExtractedProductData, createProductData } from './ai-product-types'
 
 interface YouTubeVideo {
     id: string
@@ -359,8 +360,8 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
                         }
                     }
 
-                    // Build product data object
-                    const productData: Record<string, unknown> = {
+                    // Build product data object with proper typing
+                    const aiProductData: AIExtractedProductData = {
                         name: product.productName,
                         brand: product.brandName,
                         status: 'ai_draft',
@@ -370,18 +371,19 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
                             product.sentimentScore >= 4 ? 'caution' : 'avoid',
                         verdictReason: `AI-extracted from video. Sentiment: ${product.sentimentScore}/10.`,
                         // AI extraction metadata
-                        aiConfidence: product.confidence || 'medium',
+                        aiConfidence: (product.confidence || 'medium') as 'high' | 'medium' | 'low',
                         aiSourceType: 'transcript',
                         aiMentions: product.mentionCount || 1,
                     }
-                    if (categoryId) productData.category = categoryId
-                    if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
-                    if (videoRecord) productData.sourceVideo = videoRecord.id
+                    if (categoryId) aiProductData.category = categoryId
+                    if (product.isNewCategory) aiProductData.pendingCategoryName = product.suggestedCategory
+                    if (videoRecord) aiProductData.sourceVideo = videoRecord.id
 
-                    // @ts-expect-error - Payload types require specific product shape but we're building dynamically
-                    const created = await payload.create({
+                    // Type assertion needed: Payload's strict typing requires draft mode for partial data,
+                    // but we're creating products with all required fields present (name, brand, verdict)
+                    const created = await (payload.create as Function)({
                         collection: 'products',
-                        data: productData,
+                        data: createProductData(aiProductData),
                     })
 
                     results.draftsCreated++

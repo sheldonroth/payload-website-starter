@@ -1,5 +1,33 @@
 import type { Payload, PayloadHandler, PayloadRequest } from 'payload'
+import type { Product, Brand, Media } from '@/payload-types'
 import { checkRateLimit, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
+
+/**
+ * Product with populated brand for image internalization
+ */
+interface ProductWithBrand extends Omit<Product, 'brand'> {
+    brand?: Brand | string | null
+}
+
+/**
+ * Product data needed for image internalization
+ */
+interface ProductForInternalization {
+    id: number
+    name?: string
+    imageUrl: string
+    brand?: { name?: string } | null
+}
+
+/**
+ * Result of internalizing a single product's image
+ */
+interface InternalizationResult {
+    success: boolean
+    productId: number
+    mediaId?: number
+    error?: string
+}
 
 /**
  * Image Internalization Endpoint
@@ -66,15 +94,10 @@ async function fetchImageFromUrl(url: string): Promise<Buffer> {
  */
 async function internalizeProductImage(
     payload: Payload,
-    product: {
-        id: number
-        name?: string
-        imageUrl: string
-        brand?: { name?: string } | null
-    }
-): Promise<{ success: boolean; productId: number; mediaId?: number; error?: string }> {
+    product: ProductForInternalization
+): Promise<InternalizationResult> {
     try {
-        const productName = (product.name as string) || 'product'
+        const productName = product.name || 'product'
         const brandName = product.brand?.name || null
 
         // Download the image
@@ -134,7 +157,7 @@ async function internalizeProductImage(
         return {
             success: true,
             productId: product.id,
-            mediaId: media.id as number,
+            mediaId: typeof media.id === 'number' ? media.id : parseInt(String(media.id), 10),
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -223,31 +246,41 @@ export const imageInternalizeHandler: PayloadHandler = async (req: PayloadReques
         const body = await req.json?.().catch(() => null)
         const specificProductIds = body?.productIds as number[] | undefined
 
-        let products: any
+        // Type for the find result with populated brand
+        interface ProductFindResult {
+            docs: ProductWithBrand[]
+            totalDocs: number
+            totalPages: number
+            page: number
+            hasNextPage: boolean
+            hasPrevPage: boolean
+        }
+
+        let productsResult: ProductFindResult
 
         if (specificProductIds && specificProductIds.length > 0) {
             // Fetch specific products
-            products = await req.payload.find({
+            productsResult = await req.payload.find({
                 collection: 'products',
                 where: {
                     id: { in: specificProductIds },
                 },
                 limit: specificProductIds.length,
                 depth: 1,
-            })
+            }) as ProductFindResult
         } else {
             // Find all products with external imageUrl
-            products = await req.payload.find({
+            productsResult = await req.payload.find({
                 collection: 'products',
                 where: {
                     imageUrl: { exists: true },
                 },
                 limit: 200, // Process in batches
                 depth: 1, // Get brand info
-            })
+            }) as ProductFindResult
         }
 
-        if (products.docs.length === 0) {
+        if (productsResult.docs.length === 0) {
             return Response.json({
                 success: true,
                 message: 'No products with external URLs found',
@@ -267,19 +300,29 @@ export const imageInternalizeHandler: PayloadHandler = async (req: PayloadReques
         }> = []
 
         // Process each product with delay to avoid overwhelming external servers
-        for (let i = 0; i < products.docs.length; i++) {
-            const product = products.docs[i] as any
+        for (let i = 0; i < productsResult.docs.length; i++) {
+            const product = productsResult.docs[i]
+
+            // Skip products without imageUrl
+            if (!product.imageUrl) {
+                continue
+            }
 
             // Add delay between requests
             if (i > 0) {
                 await new Promise((resolve) => setTimeout(resolve, 500))
             }
 
+            // Extract brand name from populated brand object or use null
+            const brandData = typeof product.brand === 'object' && product.brand !== null
+                ? { name: product.brand.name }
+                : null
+
             const result = await internalizeProductImage(req.payload, {
                 id: product.id,
                 name: product.name,
                 imageUrl: product.imageUrl,
-                brand: product.brand,
+                brand: brandData,
             })
 
             results.push({
@@ -299,7 +342,7 @@ export const imageInternalizeHandler: PayloadHandler = async (req: PayloadReques
             processed: results.length,
             successCount,
             failureCount,
-            remaining: products.totalDocs - results.length,
+            remaining: productsResult.totalDocs - results.length,
             results,
         })
     } catch (error) {

@@ -15,7 +15,7 @@ export const maxDuration = 300 // 5 minutes
  * Runs every 6 hours
  *
  * Notifies users when their subscribed products become trending.
- * This is part of the Scout Program - making users feel connected
+ * This is part of My Cases - making users feel connected
  * to the movement.
  */
 export async function GET(request: Request) {

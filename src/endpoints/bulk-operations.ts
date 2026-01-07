@@ -2,6 +2,23 @@ import type { PayloadHandler } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
+ * Process items in parallel batches to improve performance
+ * @param items - Array of items to process
+ * @param batchSize - Number of items to process in parallel at a time
+ * @param fn - Async function to apply to each item
+ */
+async function batchProcess<T>(
+    items: T[],
+    batchSize: number,
+    fn: (item: T) => Promise<void>
+): Promise<void> {
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize)
+        await Promise.all(batch.map(fn))
+    }
+}
+
+/**
  * Bulk Operations Endpoint
  * Supports batch operations on products
  *
@@ -77,12 +94,12 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
         switch (operation) {
             case 'approve': {
                 // Approve AI drafts → move to draft status
-                for (const product of products) {
+                await batchProcess(products, 10, async (product) => {
                     try {
                         if ((product as any).status !== 'ai_draft') {
                             results.errors.push(`${product.id}: Not an AI draft`)
                             results.failed++
-                            continue
+                            return
                         }
                         await payload.update({
                             collection: 'products',
@@ -94,18 +111,18 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                         results.failed++
                         results.errors.push(`${product.id}: ${error}`)
                     }
-                }
+                })
                 break
             }
 
             case 'publish': {
                 // Publish drafts
-                for (const product of products) {
+                await batchProcess(products, 10, async (product) => {
                     try {
                         if ((product as any).status === 'published') {
                             results.errors.push(`${product.id}: Already published`)
                             results.failed++
-                            continue
+                            return
                         }
                         await payload.update({
                             collection: 'products',
@@ -117,18 +134,18 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                         results.failed++
                         results.errors.push(`${product.id}: ${error}`)
                     }
-                }
+                })
                 break
             }
 
             case 'reject': {
                 // Delete AI drafts
-                for (const product of products) {
+                await batchProcess(products, 10, async (product) => {
                     try {
                         if ((product as any).status !== 'ai_draft') {
                             results.errors.push(`${product.id}: Not an AI draft, skipping delete`)
                             results.failed++
-                            continue
+                            return
                         }
                         await payload.delete({
                             collection: 'products',
@@ -139,7 +156,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                         results.failed++
                         results.errors.push(`${product.id}: ${error}`)
                     }
-                }
+                })
                 break
             }
 
@@ -148,7 +165,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                 if (!categoryId) {
                     return Response.json({ error: 'categoryId required for assign_category' }, { status: 400 })
                 }
-                for (const product of products) {
+                await batchProcess(products, 10, async (product) => {
                     try {
                         await payload.update({
                             collection: 'products',
@@ -160,7 +177,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                         results.failed++
                         results.errors.push(`${product.id}: ${error}`)
                     }
-                }
+                })
                 break
             }
 
@@ -169,7 +186,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                 if (!verdict) {
                     return Response.json({ error: 'verdict required for set_verdict' }, { status: 400 })
                 }
-                for (const product of products) {
+                await batchProcess(products, 10, async (product) => {
                     try {
                         await payload.update({
                             collection: 'products',
@@ -184,7 +201,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
                         results.failed++
                         results.errors.push(`${product.id}: ${error}`)
                     }
-                }
+                })
                 break
             }
 

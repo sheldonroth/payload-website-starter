@@ -13,6 +13,119 @@
 
 import type { PayloadRequest } from 'payload'
 
+// ============================================================================
+// Cache Configuration
+// ============================================================================
+
+interface CacheEntry<T> {
+    data: T
+    timestamp: number
+    ttl: number
+}
+
+class ContributorCache {
+    private cache = new Map<string, CacheEntry<unknown>>()
+
+    /**
+     * Get cached data if valid
+     */
+    get<T>(key: string): T | null {
+        const entry = this.cache.get(key)
+        if (!entry) return null
+
+        const now = Date.now()
+        if (now - entry.timestamp > entry.ttl) {
+            this.cache.delete(key)
+            return null
+        }
+
+        return entry.data as T
+    }
+
+    /**
+     * Set data with TTL
+     */
+    set<T>(key: string, data: T, ttlMs: number): void {
+        this.cache.set(key, {
+            data,
+            timestamp: Date.now(),
+            ttl: ttlMs,
+        })
+    }
+
+    /**
+     * Delete a specific key
+     */
+    delete(key: string): void {
+        this.cache.delete(key)
+    }
+
+    /**
+     * Delete all keys matching a pattern (prefix)
+     */
+    deleteByPrefix(prefix: string): void {
+        for (const key of this.cache.keys()) {
+            if (key.startsWith(prefix)) {
+                this.cache.delete(key)
+            }
+        }
+    }
+
+    /**
+     * Cleanup expired entries
+     */
+    cleanup(): number {
+        const now = Date.now()
+        let cleaned = 0
+
+        for (const [key, entry] of this.cache.entries()) {
+            if (now - entry.timestamp > entry.ttl) {
+                this.cache.delete(key)
+                cleaned++
+            }
+        }
+
+        return cleaned
+    }
+}
+
+// Singleton cache instance
+const contributorCache = new ContributorCache()
+
+// Cache TTL constants (in milliseconds)
+const CACHE_TTL = {
+    PROFILE: 5 * 60 * 1000, // 5 minutes for public profiles
+    STATS: 2 * 60 * 1000, // 2 minutes for personal stats
+} as const
+
+// Cache key prefixes
+const CACHE_KEYS = {
+    PROFILE: 'contributor:profile:',
+    STATS: 'contributor:stats:',
+} as const
+
+// Start cleanup interval (every 5 minutes)
+if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+        const cleaned = contributorCache.cleanup()
+        if (cleaned > 0) {
+            console.log(`[ContributorCache] Cleaned ${cleaned} expired entries`)
+        }
+    }, 5 * 60 * 1000)
+}
+
+/**
+ * Invalidate cache for a specific profile
+ */
+export function invalidateContributorCache(slug?: string, fingerprintHash?: string): void {
+    if (slug) {
+        contributorCache.delete(`${CACHE_KEYS.PROFILE}${slug}`)
+    }
+    if (fingerprintHash) {
+        contributorCache.delete(`${CACHE_KEYS.STATS}${fingerprintHash}`)
+    }
+}
+
 interface CaseContributor {
     contributorId: string | number
     contributorNumber: number
@@ -38,6 +151,20 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
 
         if (!slug || slug === 'contributor-profile') {
             return Response.json({ error: 'Contributor slug is required' }, { status: 400 })
+        }
+
+        // Check cache first
+        const cacheKey = `${CACHE_KEYS.PROFILE}${slug}`
+        const cachedResponse = contributorCache.get<object>(cacheKey)
+        if (cachedResponse) {
+            return new Response(JSON.stringify({ ...cachedResponse, cached: true }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'public, max-age=300', // 5 minutes
+                    'X-Cache': 'HIT',
+                },
+            })
         }
 
         // Find contributor profile by slug
@@ -100,7 +227,7 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
             sort: '-createdAt',
         })
 
-        return Response.json({
+        const responseData = {
             success: true,
             profile: {
                 displayName: profile.displayName,
@@ -128,6 +255,19 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
                 name: (p as { name: string }).name,
                 verdict: (p as { verdict: string }).verdict,
             })),
+            generatedAt: new Date().toISOString(),
+        }
+
+        // Cache the response
+        contributorCache.set(cacheKey, responseData, CACHE_TTL.PROFILE)
+
+        return new Response(JSON.stringify({ ...responseData, cached: false }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, max-age=300', // 5 minutes
+                'X-Cache': 'MISS',
+            },
         })
     } catch (error) {
         console.error('[contributor-profile] Error:', error)
@@ -152,6 +292,20 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
 
         if (!fingerprintHash) {
             return Response.json({ error: 'Fingerprint required' }, { status: 400 })
+        }
+
+        // Check cache first
+        const cacheKey = `${CACHE_KEYS.STATS}${fingerprintHash}`
+        const cachedResponse = contributorCache.get<object>(cacheKey)
+        if (cachedResponse) {
+            return new Response(JSON.stringify({ ...cachedResponse, cached: true }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=120', // 2 minutes
+                    'X-Cache': 'HIT',
+                },
+            })
         }
 
         // Find or create contributor profile
@@ -180,7 +334,7 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
 
         // If no profile exists, this contributor hasn't documented anything yet
         if (!profile) {
-            return Response.json({
+            const noProfileResponse = {
                 success: true,
                 hasProfile: false,
                 stats: {
@@ -191,6 +345,17 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
                     level: 'new',
                 },
                 message: 'Document your first product to open a case!',
+                generatedAt: new Date().toISOString(),
+            }
+            // Cache the no-profile response too (short TTL)
+            contributorCache.set(cacheKey, noProfileResponse, CACHE_TTL.STATS)
+            return new Response(JSON.stringify({ ...noProfileResponse, cached: false }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=120', // 2 minutes
+                    'X-Cache': 'MISS',
+                },
             })
         }
 
@@ -227,7 +392,7 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
             sort: '-createdAt',
         })
 
-        return Response.json({
+        const responseData = {
             success: true,
             hasProfile: true,
             profile: {
@@ -259,6 +424,19 @@ export const getMyContributorStatsHandler = async (req: PayloadRequest): Promise
                 verdict: (p as { verdict: string }).verdict,
             })),
             nextMilestone: getNextMilestone(profile.documentsSubmitted),
+            generatedAt: new Date().toISOString(),
+        }
+
+        // Cache the response
+        contributorCache.set(cacheKey, responseData, CACHE_TTL.STATS)
+
+        return new Response(JSON.stringify({ ...responseData, cached: false }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'private, max-age=120', // 2 minutes
+                'X-Cache': 'MISS',
+            },
         })
     } catch (error) {
         console.error('[my-contributor-stats] Error:', error)
@@ -305,7 +483,7 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
             return Response.json({ error: 'Contributor profile not found' }, { status: 404 })
         }
 
-        const profile = profiles.docs[0] as { id: string | number }
+        const profile = profiles.docs[0] as { id: string | number; shareableSlug?: string }
 
         // Update profile
         const updateData: Record<string, unknown> = {}
@@ -319,6 +497,9 @@ export const updateContributorProfileHandler = async (req: PayloadRequest): Prom
             id: profile.id,
             data: updateData,
         })
+
+        // Invalidate cache for this profile (both by slug and fingerprint)
+        invalidateContributorCache(profile.shareableSlug, fingerprintHash)
 
         return Response.json({
             success: true,
@@ -457,6 +638,9 @@ export const registerContributorContributionHandler = async (req: PayloadRequest
                 data: updateData,
             })
         }
+
+        // Invalidate stats cache for this fingerprint (their stats have changed)
+        invalidateContributorCache(undefined, body.fingerprintHash)
 
         return Response.json({
             success: true,

@@ -9,6 +9,91 @@ import { classifyCategory } from '../utilities/ai-category'
  * Includes AI category suggestion.
  *
  * Request body: { input: string } - URL, barcode, or product identifier
+ *
+ * @openapi
+ * /product/preview:
+ *   post:
+ *     summary: Preview product data extraction
+ *     description: |
+ *       Extracts product data from a URL, barcode, or identifier without creating it.
+ *       Returns extracted data and AI-suggested category.
+ *       Requires admin or product_editor role.
+ *     tags: [Products, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [input]
+ *             properties:
+ *               input:
+ *                 type: string
+ *                 description: URL, barcode, or product identifier
+ *                 example: "https://amazon.com/dp/B08..."
+ *     responses:
+ *       200:
+ *         description: Product preview generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 inputType:
+ *                   type: string
+ *                   description: Detected input type (url, barcode, amazon, etc.)
+ *                 product:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     brand:
+ *                       type: string
+ *                     imageUrl:
+ *                       type: string
+ *                     ingredients:
+ *                       type: string
+ *                     summary:
+ *                       type: string
+ *                     priceRange:
+ *                       type: string
+ *                     sourceUrl:
+ *                       type: string
+ *                 suggestedCategory:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       nullable: true
+ *                     name:
+ *                       type: string
+ *                     confidence:
+ *                       type: number
+ *                     reasoning:
+ *                       type: string
+ *                 existingProduct:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Missing input
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (insufficient role)
  */
 
 interface ExtractedProduct {
@@ -169,6 +254,69 @@ export const productPreviewHandler: PayloadHandler = async (req: PayloadRequest)
  * Creates a product from previewed data.
  *
  * Request body: { product: ExtractedProduct, categoryId?: number }
+ *
+ * @openapi
+ * /product/confirm:
+ *   post:
+ *     summary: Create product from preview data
+ *     description: |
+ *       Creates a product in the database from previously previewed data.
+ *       Requires admin or product_editor role.
+ *     tags: [Products, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [product]
+ *             properties:
+ *               product:
+ *                 type: object
+ *                 required: [name]
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   brand:
+ *                     type: string
+ *                   imageUrl:
+ *                     type: string
+ *                   ingredients:
+ *                     type: string
+ *                   summary:
+ *                     type: string
+ *                   priceRange:
+ *                     type: string
+ *                   sourceUrl:
+ *                     type: string
+ *               categoryId:
+ *                 type: integer
+ *                 description: Category ID to assign
+ *     responses:
+ *       200:
+ *         description: Product created or already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 productId:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ *                 existingId:
+ *                   type: integer
+ *                   description: Present if product already exists
+ *       400:
+ *         description: Missing product name
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (insufficient role)
  */
 export const productConfirmHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (!req.user) {

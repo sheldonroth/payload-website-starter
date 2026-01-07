@@ -1,5 +1,50 @@
 import type { PayloadHandler, PayloadRequest, Where } from 'payload'
+import type { User, UserSubmission } from '../payload-types'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import {
+    successResponse,
+    internalError,
+    unauthorizedError,
+    validationError,
+    notFoundError,
+    badRequestError,
+    conflictError,
+} from '../utilities/api-response'
+
+/**
+ * Extended User type with the name field for authenticated requests
+ */
+interface AuthenticatedUser extends User {
+    id: number
+    email: string
+    name?: string | null
+}
+
+/**
+ * Product request submission data for creating new requests
+ */
+interface ProductRequestCreateData {
+    type: 'product_request'
+    submitterEmail: string
+    submitterName?: string
+    productRequestDetails: {
+        requestedProductName: string
+        requestedBrand?: string
+        productUrl?: string
+        reasonForRequest?: string
+    }
+    voteCount: number
+    voters: string[]
+    status: 'pending' | 'reviewing' | 'verified' | 'rejected' | 'duplicate' | 'spam'
+}
+
+/**
+ * Vote update data for product requests
+ */
+interface VoteUpdateData {
+    voters: string[]
+    voteCount: number
+}
 
 /**
  * Product Request Queue Endpoints
@@ -47,21 +92,28 @@ export const productRequestsListHandler: PayloadHandler = async (req: PayloadReq
         })
 
         // Transform results for cleaner response
-        const requests = results.docs.map((doc: any) => ({
-            id: doc.id,
-            productName: doc.productRequestDetails?.requestedProductName || doc.content,
-            brand: doc.productRequestDetails?.requestedBrand,
-            productUrl: doc.productRequestDetails?.productUrl,
-            reason: doc.productRequestDetails?.reasonForRequest,
-            voteCount: doc.voteCount || 0,
-            status: doc.status,
-            submittedBy: doc.submitterName || 'Anonymous',
-            submittedAt: doc.createdAt,
-            // Include voter list only if user is authenticated (for checking if they voted)
-            hasVoted: req.user ? ((doc.voters || []) as string[]).includes(String(req.user.id)) : false,
-        }))
+        const requests = results.docs.map((doc: UserSubmission) => {
+            // Parse voters - can be array of strings, JSON array, or other formats
+            const voters: string[] = Array.isArray(doc.voters)
+                ? doc.voters.map(String)
+                : []
 
-        return Response.json({
+            return {
+                id: doc.id,
+                productName: doc.productRequestDetails?.requestedProductName || doc.content,
+                brand: doc.productRequestDetails?.requestedBrand,
+                productUrl: doc.productRequestDetails?.productUrl,
+                reason: doc.productRequestDetails?.reasonForRequest,
+                voteCount: doc.voteCount || 0,
+                status: doc.status,
+                submittedBy: doc.submitterName || 'Anonymous',
+                submittedAt: doc.createdAt,
+                // Include voter list only if user is authenticated (for checking if they voted)
+                hasVoted: req.user ? voters.includes(String(req.user.id)) : false,
+            }
+        })
+
+        return successResponse({
             requests,
             totalDocs: results.totalDocs,
             totalPages: results.totalPages,
@@ -71,27 +123,22 @@ export const productRequestsListHandler: PayloadHandler = async (req: PayloadReq
         })
     } catch (error) {
         console.error('Product requests list error:', error)
-        return Response.json(
-            { error: 'Failed to fetch product requests' },
-            { status: 500 }
-        )
+        return internalError('Failed to fetch product requests')
     }
 }
 
 export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadRequest) => {
     // Rate limiting - 20 requests per minute
-    const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
+    const user = req.user as AuthenticatedUser | undefined
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, user?.id)
     const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }
 
     // Require authentication
-    if (!req.user) {
-        return Response.json(
-            { error: 'Login required to submit a product request' },
-            { status: 401 }
-        )
+    if (!user) {
+        return unauthorizedError('Login required to submit a product request')
     }
 
     try {
@@ -99,10 +146,7 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
         const { productName, brand, productUrl, reason } = body || {}
 
         if (!productName) {
-            return Response.json(
-                { error: 'Product name is required' },
-                { status: 400 }
-            )
+            return validationError('Product name is required')
         }
 
         const payload = req.payload
@@ -120,49 +164,47 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
         })
 
         if (existing.docs.length > 0) {
-            return Response.json({
-                error: 'A request for this product already exists',
+            const existingDoc = existing.docs[0] as UserSubmission
+            return conflictError('A request for this product already exists', {
                 existingRequest: {
-                    id: existing.docs[0].id,
-                    voteCount: (existing.docs[0] as any).voteCount || 0,
+                    id: existingDoc.id,
+                    voteCount: existingDoc.voteCount || 0,
                 },
-            }, { status: 409 })
+            })
         }
 
         // Create the request
+        const createData: ProductRequestCreateData = {
+            type: 'product_request',
+            submitterEmail: user.email,
+            submitterName: user.name || undefined,
+            productRequestDetails: {
+                requestedProductName: productName,
+                requestedBrand: brand || undefined,
+                productUrl: productUrl || undefined,
+                reasonForRequest: reason || undefined,
+            },
+            voteCount: 1, // Creator's vote counts
+            voters: [String(user.id)],
+            status: 'pending',
+        }
+
         const newRequest = await payload.create({
             collection: 'user-submissions',
-            data: {
-                type: 'product_request',
-                submitterEmail: req.user.email,
-                submitterName: (req.user as any).name || undefined,
-                productRequestDetails: {
-                    requestedProductName: productName,
-                    requestedBrand: brand || undefined,
-                    productUrl: productUrl || undefined,
-                    reasonForRequest: reason || undefined,
-                },
-                voteCount: 1, // Creator's vote counts
-                voters: [String(req.user.id)],
-                status: 'pending',
-            } as any,
+            data: createData,
         })
 
-        return Response.json({
-            success: true,
+        return successResponse({
             request: {
                 id: newRequest.id,
                 productName,
                 brand,
                 voteCount: 1,
             },
-        }, { status: 201 })
+        }, 201)
     } catch (error) {
         console.error('Product request create error:', error)
-        return Response.json(
-            { error: 'Failed to submit product request' },
-            { status: 500 }
-        )
+        return internalError('Failed to submit product request')
     }
 }
 
@@ -174,18 +216,16 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
  */
 export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequest) => {
     // Rate limiting - 20 votes per minute
-    const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
+    const user = req.user as AuthenticatedUser | undefined
+    const rateLimitKey = getRateLimitKey(req as unknown as Request, user?.id)
     const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }
 
     // Require authentication
-    if (!req.user) {
-        return Response.json(
-            { error: 'Login required to vote' },
-            { status: 401 }
-        )
+    if (!user) {
+        return unauthorizedError('Login required to vote')
     }
 
     try {
@@ -193,50 +233,38 @@ export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequ
         const { requestId, action = 'add' } = body || {} // action: 'add' or 'remove'
 
         if (!requestId) {
-            return Response.json(
-                { error: 'requestId is required' },
-                { status: 400 }
-            )
+            return validationError('requestId is required')
         }
 
         const payload = req.payload
-        const userId = String(req.user.id)
+        const userId = String(user.id)
 
         // Get the request
         const request = await payload.findByID({
             collection: 'user-submissions',
             id: requestId,
-        })
+        }) as UserSubmission | null
 
         if (!request) {
-            return Response.json(
-                { error: 'Request not found' },
-                { status: 404 }
-            )
+            return notFoundError('Request')
         }
 
-        if ((request as any).type !== 'product_request') {
-            return Response.json(
-                { error: 'Invalid request type' },
-                { status: 400 }
-            )
+        if (request.type !== 'product_request') {
+            return badRequestError('Invalid request type')
         }
 
-        const currentVoters = ((request as any).voters || []) as string[]
+        // Parse voters array from the document
+        const currentVoters: string[] = Array.isArray(request.voters)
+            ? request.voters.map(String)
+            : []
         const hasVoted = currentVoters.includes(userId)
 
         if (action === 'add' && hasVoted) {
-            return Response.json(
-                { error: 'You have already voted for this request' },
-                { status: 400 }
-            )
+            return badRequestError('You have already voted for this request')
         }
 
         if (action === 'remove' && !hasVoted) {
-            return Response.json(
-                { error: 'You have not voted for this request' },
-                { status: 400 }
-            )
+            return badRequestError('You have not voted for this request')
         }
 
         // Update vote
@@ -245,31 +273,29 @@ export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequ
 
         if (action === 'remove') {
             newVoters = currentVoters.filter(v => v !== userId)
-            newVoteCount = Math.max(0, ((request as any).voteCount || 1) - 1)
+            newVoteCount = Math.max(0, (request.voteCount || 1) - 1)
         } else {
             newVoters = [...currentVoters, userId]
-            newVoteCount = ((request as any).voteCount || 0) + 1
+            newVoteCount = (request.voteCount || 0) + 1
+        }
+
+        const updateData: VoteUpdateData = {
+            voters: newVoters,
+            voteCount: newVoteCount,
         }
 
         await payload.update({
             collection: 'user-submissions',
             id: requestId,
-            data: {
-                voters: newVoters,
-                voteCount: newVoteCount,
-            } as any,
+            data: updateData,
         })
 
-        return Response.json({
-            success: true,
+        return successResponse({
             voteCount: newVoteCount,
             hasVoted: action === 'add',
         })
     } catch (error) {
         console.error('Product request vote error:', error)
-        return Response.json(
-            { error: 'Failed to update vote' },
-            { status: 500 }
-        )
+        return internalError('Failed to update vote')
     }
 }

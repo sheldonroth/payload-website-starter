@@ -12,6 +12,67 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
  * Data Sources:
  * - GDELT Project: Free, unlimited, global news database
  * - Google News RSS: Free backup source
+ *
+ * @openapi
+ * /trending/update:
+ *   post:
+ *     summary: Update brand trending scores
+ *     description: |
+ *       Scans news sources (GDELT, Google News) for brand mentions and updates trending scores.
+ *       Uses Gemini AI for sentiment analysis and consumer safety relevance scoring.
+ *       Can process a single brand or full scan of all brands with products.
+ *
+ *       Requires authentication (admin user or cron secret).
+ *     tags: [Trending, Admin, Cron]
+ *     security:
+ *       - bearerAuth: []
+ *       - cronSecret: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               brandId:
+ *                 type: integer
+ *                 description: Specific brand ID to check (optional)
+ *               fullScan:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Scan all brands vs only active ones
+ *               daysBack:
+ *                 type: integer
+ *                 default: 7
+ *                 description: How many days of news to analyze
+ *     responses:
+ *       200:
+ *         description: Trending update completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 brandsScanned:
+ *                   type: integer
+ *                 brandsUpdated:
+ *                   type: integer
+ *                 newsArticlesFound:
+ *                   type: integer
+ *                 trendingBrands:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: Names of brands currently trending
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized (missing or invalid auth)
+ *       500:
+ *         description: Engine failed
  */
 
 interface NewsArticle {

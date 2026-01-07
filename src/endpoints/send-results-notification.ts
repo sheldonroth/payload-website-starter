@@ -2,7 +2,7 @@
  * Send Results Notification Endpoint
  *
  * Notifies all subscribers when a product's lab testing is complete.
- * This is the Scout Program's "Results Ready" moment.
+ * This is My Cases' "Results Ready" moment.
  *
  * POST /api/send-results-notification
  *

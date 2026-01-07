@@ -1,6 +1,7 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import { sanitizeCategoryList, sanitizeForPrompt } from '../utilities/prompt-sanitizer'
+import { type AIExtractedProductData, createProductData } from './ai-product-types'
 
 /* ============================================================================
  * TikTok Video Analyzer
@@ -288,8 +289,8 @@ export const tiktokAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) 
                         }
                     }
 
-                    // Build product data object
-                    const productData: Record<string, unknown> = {
+                    // Build product data object with proper typing
+                    const aiProductData: AIExtractedProductData = {
                         name: product.productName,
                         brand: product.brandName,
                         status: 'ai_draft',
@@ -300,17 +301,18 @@ export const tiktokAnalyzeHandler: PayloadHandler = async (req: PayloadRequest) 
                         verdictReason: `AI-extracted from TikTok. Sentiment: ${product.sentimentScore}/10.`,
                         sourceUrl: url, // Link to source TikTok video
                         // AI extraction metadata
-                        aiConfidence: product.confidence || 'medium',
+                        aiConfidence: (product.confidence || 'medium') as 'high' | 'medium' | 'low',
                         aiSourceType: 'profile',
                         aiMentions: product.mentionCount || 1,
                     }
-                    if (categoryId) productData.category = categoryId
-                    if (product.isNewCategory) productData.pendingCategoryName = product.suggestedCategory
+                    if (categoryId) aiProductData.category = categoryId
+                    if (product.isNewCategory) aiProductData.pendingCategoryName = product.suggestedCategory
 
-                    // @ts-expect-error - Payload types require specific product shape but we're building dynamically
-                    const created = await payload.create({
+                    // Type assertion needed: Payload's strict typing requires draft mode for partial data,
+                    // but we're creating products with all required fields present (name, brand, verdict)
+                    const created = await (payload.create as Function)({
                         collection: 'products',
-                        data: productData,
+                        data: createProductData(aiProductData),
                     })
 
                     results.draftsCreated++

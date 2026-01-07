@@ -1,5 +1,6 @@
 'use client'
 import type { FormFieldBlock, Form as FormType } from '@payloadcms/plugin-form-builder/types'
+import type { FieldErrorsImpl, FieldValues, UseFormRegister, Control } from 'react-hook-form'
 
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useState } from 'react'
@@ -10,6 +11,26 @@ import type { DefaultTypedEditorState } from '@payloadcms/richtext-lexical'
 
 import { fields } from './fields'
 import { getClientSideURL } from '@/utilities/getURL'
+
+/**
+ * Form submission data - key-value pairs from form fields
+ */
+type FormSubmissionData = FieldValues
+
+/**
+ * Common props passed to all form field components
+ */
+interface FormFieldCommonProps {
+  form: FormType
+  control: Control<FieldValues>
+  errors: Partial<FieldErrorsImpl<FieldValues>>
+  register: UseFormRegister<FieldValues>
+}
+
+/**
+ * Type for form field components that accept field-specific props plus common props
+ */
+type FormFieldRenderer = React.FC<FormFieldBlock & FormFieldCommonProps>
 
 export type FormBlockType = {
   blockName?: string
@@ -31,8 +52,8 @@ export const FormBlock: React.FC<
     introContent,
   } = props
 
-  const formMethods = useForm({
-    defaultValues: formFromProps.fields,
+  const formMethods = useForm<FormSubmissionData>({
+    defaultValues: {},
   })
   const {
     control,
@@ -47,7 +68,7 @@ export const FormBlock: React.FC<
   const router = useRouter()
 
   const onSubmit = useCallback(
-    (data: FormFieldBlock[]) => {
+    (data: FormSubmissionData) => {
       let loadingTimerID: ReturnType<typeof setTimeout>
       const submitForm = async () => {
         setError(undefined)
@@ -131,15 +152,17 @@ export const FormBlock: React.FC<
                 {formFromProps &&
                   formFromProps.fields &&
                   formFromProps.fields?.map((field, index) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const Field: React.FC<any> = fields?.[field.blockType as keyof typeof fields]
+                    // Get the field component based on blockType
+                    // Cast is needed because form field types are a discriminated union
+                    // and each field component expects specific props for its blockType
+                    const fieldType = field.blockType as keyof typeof fields
+                    const Field = fields?.[fieldType] as FormFieldRenderer | undefined
                     if (Field) {
                       return (
                         <div className="mb-6 last:mb-0" key={index}>
                           <Field
                             form={formFromProps}
                             {...field}
-                            {...formMethods}
                             control={control}
                             errors={errors}
                             register={register}

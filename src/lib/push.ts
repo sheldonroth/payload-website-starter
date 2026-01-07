@@ -3,7 +3,7 @@
  *
  * Sends push notifications to mobile devices using Expo's push service.
  *
- * Scout Program notifications:
+ * My Cases notifications:
  * - Results Ready: "🔬 Results are in" - when a product's testing is complete
  * - Testing Started: "🧪 Testing started" - when product enters lab
  * - Trending: "🔥 Your case is trending" - when a product gains velocity
@@ -122,7 +122,7 @@ export async function getPushReceipts(receiptIds: string[]): Promise<Record<stri
     return result.data || {}
 }
 
-// ===== Scout Program Notification Templates =====
+// ===== My Cases Notification Templates =====
 
 /**
  * Results Ready notification

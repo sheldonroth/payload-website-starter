@@ -6,6 +6,7 @@
  */
 
 import type { PayloadHandler } from 'payload'
+import { successResponse, unauthorizedError, internalError } from '../utilities/api-response'
 
 interface ServiceStatus {
     id: string
@@ -112,7 +113,7 @@ export const apiStatusHandler: PayloadHandler = async (req) => {
     try {
         // Check if user is admin
         if (!req.user) {
-            return Response.json({ error: 'Authentication required' }, { status: 401 })
+            return unauthorizedError()
         }
 
         // Check all services
@@ -125,7 +126,7 @@ export const apiStatusHandler: PayloadHandler = async (req) => {
         const configured = Object.values(services).filter((s) => s.configured).length
         const total = Object.keys(services).length
 
-        return Response.json({
+        return successResponse({
             services,
             summary: {
                 configured,
@@ -136,7 +137,7 @@ export const apiStatusHandler: PayloadHandler = async (req) => {
         })
     } catch (error) {
         console.error('[APIStatus] Error:', error)
-        return Response.json({ error: 'Failed to check API status' }, { status: 500 })
+        return internalError('Failed to check API status')
     }
 }
 

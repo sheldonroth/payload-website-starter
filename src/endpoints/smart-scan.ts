@@ -1,12 +1,90 @@
 /**
  * Smart Scan AI Vision Endpoint
- * 
+ *
  * Uses GPT-4 Vision to analyze any product photo:
  * - Barcode detection → instant lookup
  * - Package recognition → product identification
  * - Shelf photos → multiple product detection
- * 
+ *
  * Returns structured data for the mobile app to process.
+ *
+ * @openapi
+ * /smart-scan:
+ *   post:
+ *     summary: AI-powered product image analysis
+ *     description: |
+ *       Uses GPT-4 Vision to analyze product photos and identify:
+ *       - Barcodes (with number extraction)
+ *       - Single product packages (brand and name)
+ *       - Shelf photos (multiple products)
+ *       - Ingredient lists (text extraction)
+ *
+ *       Returns structured data with confidence scores and matched products from database.
+ *     tags: [Scanner, Mobile, AI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               imageBase64:
+ *                 type: string
+ *                 description: Base64-encoded image data
+ *               imageUrl:
+ *                 type: string
+ *                 format: uri
+ *                 description: URL to image (alternative to base64)
+ *             oneOf:
+ *               - required: [imageBase64]
+ *               - required: [imageUrl]
+ *     responses:
+ *       200:
+ *         description: Image analysis complete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   enum: [barcode, product, shelf, ingredient_list, unknown]
+ *                   description: Type of content detected
+ *                 confidence:
+ *                   type: number
+ *                   format: float
+ *                   minimum: 0
+ *                   maximum: 1
+ *                   description: AI confidence score
+ *                 products:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       brand:
+ *                         type: string
+ *                       barcode:
+ *                         type: string
+ *                       confidence:
+ *                         type: number
+ *                 rawText:
+ *                   type: string
+ *                   description: Any visible text extracted
+ *                 suggestedAction:
+ *                   type: string
+ *                   description: Recommended next action for user
+ *                 matchedProduct:
+ *                   type: object
+ *                   description: Database match for barcode scans
+ *                 matchedProducts:
+ *                   type: array
+ *                   description: Database matches for product/shelf scans
+ *       400:
+ *         description: Missing image data
+ *       500:
+ *         description: Analysis failed
  */
 
 import { Endpoint } from 'payload';

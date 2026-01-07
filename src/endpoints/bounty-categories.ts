@@ -1,7 +1,7 @@
 /**
  * Bounty Categories API Endpoints
  *
- * Returns active category bounties for the Scout Program.
+ * Returns active category bounties for My Cases.
  * Used by the mobile BountyBoard component.
  */
 
@@ -72,7 +72,7 @@ export const activeBountiesHandler = async (req: PayloadRequest): Promise<Respon
             totalContributors: bounty.totalContributors || 0,
         }))
 
-        // Calculate total contributors across all bounties (for "87 scouts contributed this week")
+        // Calculate total contributors across all bounties (for "87 contributors this week")
         const totalWeeklyContributors = activeBounties.reduce(
             (sum, b) => sum + b.totalContributors,
             0
