@@ -1,9 +1,9 @@
 ---
 active: true
 iteration: 1
-max_iterations: 0
-completion_promise: "OVERNIGHT SESSION COMPLETE"
-started_at: "2026-01-04T08:10:56Z"
+max_iterations: 100
+completion_promise: "ALL_96_TASKS_COMPLETE"
+started_at: "2026-01-07T06:31:28Z"
 ---
 
-/Users/sheldonroth/Documents/RALPH_WIGGUM_OVERNIGHT_PROMPT.md
+OVERNIGHT AUTONOMOUS WORK - Work through 96 tasks implementing features for payload-website-starter and product-report-mobile. WORKFLOW: 1) Audit codebase first to check if feature exists 2) Verify it works if found 3) Implement if needed 4) Commit and deploy 5) Move to next task. TASKS: Admin dashboards (user analytics, product analytics, revenue, content moderation, system health, feedback UI, bulk actions, activity feed, import/export tools, widgets, saved filters, search, scheduled tasks, AB test viewer), Mobile app (offline mode, performance audit, deep linking, push notifications, sharing, scan history, barcode improvements, camera optimization, haptics, iOS widget, app shortcuts, accessibility, localization, favorites, comparison, alternatives, review prompt, settings page), Backend (rate limiting, caching, webhooks, job queue, API docs, query optimization, full-text search, GraphQL, pagination, file uploads, versioning, request logging, health checks, connection pooling, batch endpoints, autocomplete, recommendations, validation, soft delete, backups), Email (welcome sequence, weekly digest, re-engagement, preference center, transactional templates, AB testing, unsubscribe, analytics, push backend, in-app notifications, SMS, template builder, scheduled sends, bounce handling, preferences API), SEO (structured data, sitemap, meta tags, landing pages, blog, OG images, canonicals, internal linking, redirects, audit tool), Security (audit logs, GDPR export, account deletion, security headers, session management, password policy, encryption, pen test fixes), DevEx (tests, error monitoring, dead code removal, TypeScript strict, CI/CD, documentation, seeds, env validation, performance monitoring, dependency audit). SKIP: 2FA, IP allowlist, price history charts, onboarding flow. Start with task 1 User Analytics Dashboard.

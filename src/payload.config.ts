@@ -120,6 +120,8 @@ import { emailTemplatePreviewEndpoint } from './endpoints/email-template-preview
 import { emailTemplateTestEndpoint } from './endpoints/email-template-test'
 import { emailAnalyticsEndpoint } from './endpoints/email-analytics'
 import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
+import { userAnalyticsHandler } from './endpoints/user-analytics'
+import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -177,6 +179,10 @@ export default buildConfig({
           Component: '@/components/StatsigDashboard',
           path: '/statsig-experiments',
         },
+        'user-analytics': {
+          Component: '@/components/UserAnalyticsDashboard',
+          path: '/user-analytics',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
@@ -223,11 +229,17 @@ export default buildConfig({
   }),
   collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ScoutProfiles, MarketIntelligence, BrandAnalytics, BrandUsers],
   cors: [
+    // Main website
     'https://www.theproductreport.org',
     'https://theproductreport.org',
     'https://theproductreport-61qu.vercel.app',
+    // Brand Portal
+    'https://brands.theproductreport.org',
+    'https://brand-portal.theproductreport.org',
+    // Development
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '',
     process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3002' : '', // Brand portal dev
   ].filter(Boolean) as string[],
   globals: [Header, Footer, YouTubeSettings, SiteSettings],
   endpoints: [
@@ -754,6 +766,14 @@ export default buildConfig({
       method: 'get',
       handler: statsigExperimentsHandler,
     },
+    // User Analytics Dashboard
+    {
+      path: '/user-analytics',
+      method: 'get',
+      handler: userAnalyticsHandler,
+    },
+    // Brand Portal Auth
+    ...brandAuthEndpoints,
   ],
   plugins: [
     ...plugins,

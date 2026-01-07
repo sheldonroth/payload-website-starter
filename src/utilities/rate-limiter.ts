@@ -140,6 +140,52 @@ export const RateLimits = {
         maxRequests: 5,
         windowMs: 60 * 1000, // 5 per minute
     },
+
+    // ═══════════════════════════════════════════════════════════════
+    // MOBILE API RATE LIMITS
+    // ═══════════════════════════════════════════════════════════════
+
+    // Mobile barcode scanning (frequent, lightweight)
+    MOBILE_SCAN: {
+        maxRequests: 30,
+        windowMs: 60 * 1000, // 30 scans per minute
+    },
+
+    // Mobile photo uploads (heavier, storage costs)
+    MOBILE_PHOTO_UPLOAD: {
+        maxRequests: 10,
+        windowMs: 60 * 1000, // 10 uploads per minute
+    },
+
+    // Scout profile updates
+    MOBILE_PROFILE_UPDATE: {
+        maxRequests: 5,
+        windowMs: 60 * 1000, // 5 updates per minute
+    },
+
+    // Mobile product submissions
+    MOBILE_PRODUCT_SUBMIT: {
+        maxRequests: 10,
+        windowMs: 60 * 1000, // 10 submissions per minute
+    },
+
+    // Mobile search queries
+    MOBILE_SEARCH: {
+        maxRequests: 60,
+        windowMs: 60 * 1000, // 60 searches per minute
+    },
+
+    // Mobile feedback submissions
+    MOBILE_FEEDBACK: {
+        maxRequests: 5,
+        windowMs: 60 * 1000, // 5 feedback per minute
+    },
+
+    // Smart Scan AI analysis (expensive OpenAI calls)
+    SMART_SCAN: {
+        maxRequests: 5,
+        windowMs: 60 * 1000, // 5 AI scans per minute
+    },
 }
 
 /**
@@ -157,4 +203,38 @@ export function getRateLimitKey(req: Request, userId?: string | number): string 
                'anonymous'
 
     return `ip:${ip}`
+}
+
+/**
+ * Get mobile device identifier for rate limiting
+ * Uses x-fingerprint header (device fingerprint) or falls back to IP
+ */
+export function getMobileRateLimitKey(req: Request): string {
+    // Mobile apps use x-fingerprint header for device identification
+    const fingerprint = req.headers.get('x-fingerprint')
+    if (fingerprint) {
+        return `device:${fingerprint}`
+    }
+
+    // Fallback to IP-based limiting
+    return getRateLimitKey(req)
+}
+
+/**
+ * Apply rate limiting with standardized response
+ * Returns null if allowed, Response if rate limited
+ */
+export function applyRateLimit(
+    req: Request,
+    limitConfig: RateLimitConfig,
+    identifier?: string
+): Response | null {
+    const key = identifier || getMobileRateLimitKey(req)
+    const result = checkRateLimit(key, limitConfig)
+
+    if (!result.allowed) {
+        return rateLimitResponse(result.resetAt)
+    }
+
+    return null
 }
