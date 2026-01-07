@@ -208,6 +208,44 @@ export const ProductVotes: CollectionConfig = {
             },
         },
 
+        // === SCOUT ATTRIBUTION ===
+        // Who documented this product first? Who else helped?
+        // This is the heart of the Scout Program recognition system.
+        {
+            name: 'firstScout',
+            type: 'relationship',
+            relationTo: 'scout-profiles',
+            admin: {
+                description: 'The first scout to document this product',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'firstScoutNumber',
+            type: 'number',
+            admin: {
+                description: 'Scout number of the first documenter (for display)',
+                readOnly: true,
+            },
+        },
+        {
+            name: 'scoutContributors',
+            type: 'json',
+            defaultValue: [],
+            admin: {
+                description: 'All scouts who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]',
+            },
+        },
+        {
+            name: 'totalScouts',
+            type: 'number',
+            defaultValue: 0,
+            admin: {
+                description: 'Total number of scouts who documented this product',
+                readOnly: true,
+            },
+        },
+
         // === EXTERNAL DATA ===
         {
             name: 'openFoodFactsData',

@@ -1442,5 +1442,70 @@ export const Products: CollectionConfig = {
             ],
         },
 
+        // ═══════════════════════════════════════════════════════════════
+        // SCOUT ATTRIBUTION
+        // Who helped get this product tested? Recognition for the community.
+        // ═══════════════════════════════════════════════════════════════
+        {
+            name: 'scoutAttribution',
+            type: 'group',
+            admin: {
+                description: 'Scouts who helped get this product tested',
+            },
+            fields: [
+                {
+                    name: 'firstScout',
+                    type: 'relationship',
+                    relationTo: 'scout-profiles',
+                    admin: {
+                        description: 'The first scout to document this product',
+                        readOnly: true,
+                    },
+                },
+                {
+                    name: 'firstScoutNumber',
+                    type: 'number',
+                    admin: {
+                        description: 'Scout number for display (e.g., "Scout #47")',
+                        readOnly: true,
+                    },
+                },
+                {
+                    name: 'totalScouts',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'Total scouts who documented this product',
+                        readOnly: true,
+                    },
+                },
+                {
+                    name: 'scoutContributors',
+                    type: 'json',
+                    defaultValue: [],
+                    admin: {
+                        description: 'All scouts who helped. Structure: [{ scoutId, scoutNumber, displayName }]',
+                    },
+                },
+                {
+                    name: 'linkedProductVote',
+                    type: 'relationship',
+                    relationTo: 'product-votes',
+                    admin: {
+                        description: 'The ProductVote that led to this product being tested',
+                    },
+                },
+                {
+                    name: 'scansAfterTesting',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: {
+                        description: 'How many people scanned this after testing (for "helped X people" metric)',
+                        readOnly: true,
+                    },
+                },
+            ],
+        },
+
     ],
 }

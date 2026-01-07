@@ -37,6 +37,10 @@ import { GeneratedContent } from './collections/GeneratedContent'
 import { DailyDiscoveries } from './collections/DailyDiscoveries'
 import { EmailTemplates } from './collections/EmailTemplates'
 import { EmailSends } from './collections/EmailSends'
+import { ScoutProfiles } from './collections/ScoutProfiles'
+import { MarketIntelligence } from './collections/MarketIntelligence'
+import { BrandAnalytics } from './collections/BrandAnalytics'
+import { BrandUsers } from './collections/BrandUsers'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -101,6 +105,7 @@ import { revenuecatWebhookHandler } from './endpoints/revenuecat-webhook'
 import { referralEndpoints } from './endpoints/referral'
 import { businessAnalyticsEndpoint } from './endpoints/business-analytics'
 import { businessAnalyticsExportEndpoint } from './endpoints/business-analytics/export'
+import { getScoutProfileHandler, getMyScoutStatsHandler, updateScoutProfileHandler, registerScoutContributionHandler } from './endpoints/scout-profile'
 import contentGeneratorHandler from './endpoints/content-generator'
 import { emailCronHandler } from './endpoints/email-cron'
 import { resendWebhookHandler } from './endpoints/email-webhook'
@@ -211,7 +216,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ScoutProfiles, MarketIntelligence, BrandAnalytics, BrandUsers],
   cors: [
     'https://www.theproductreport.org',
     'https://theproductreport.org',
@@ -697,6 +702,27 @@ export default buildConfig({
     // Business Analytics Dashboard
     businessAnalyticsEndpoint,
     businessAnalyticsExportEndpoint,
+    // Scout Profile Endpoints (Scout Program)
+    {
+      path: '/scout-profile/:slug',
+      method: 'get',
+      handler: getScoutProfileHandler,
+    },
+    {
+      path: '/my-scout-stats',
+      method: 'get',
+      handler: getMyScoutStatsHandler,
+    },
+    {
+      path: '/scout-profile/update',
+      method: 'post',
+      handler: updateScoutProfileHandler,
+    },
+    {
+      path: '/scout-profile/register-contribution',
+      method: 'post',
+      handler: registerScoutContributionHandler,
+    },
     // Content Generator
     {
       path: '/content/generate',
