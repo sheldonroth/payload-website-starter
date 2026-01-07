@@ -81,7 +81,7 @@ export const feedbackHandler: PayloadHandler = async (req: PayloadRequest) => {
             collection: 'feedback',
             data: {
                 message: trimmedMessage,
-                feedbackType: validatedFeedbackType,
+                feedbackType: validatedFeedbackType as 'general' | 'bug_report' | 'feature_request' | 'complaint' | 'praise' | 'product_question',
                 email: email || undefined,
                 user: parsedUserId || undefined,
                 product: parsedProductId || undefined,

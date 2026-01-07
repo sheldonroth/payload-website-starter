@@ -60,6 +60,7 @@ import * as migration_20260107_060000_fix_regulatory_changes_columns from './202
 import * as migration_20260107_070000_fix_users_email_preferences_columns from './20260107_070000_fix_users_email_preferences_columns';
 import * as migration_20260107_080000_add_pgvector_embeddings from './20260107_080000_add_pgvector_embeddings';
 import * as migration_20260107_090000_update_embedding_dimension from './20260107_090000_update_embedding_dimension';
+import * as migration_20260106_300000_enhance_feedback_user_attribution from './20260106_300000_enhance_feedback_user_attribution';
 
 export const migrations = [
   {
@@ -371,5 +372,10 @@ export const migrations = [
     up: migration_20260107_090000_update_embedding_dimension.up,
     down: migration_20260107_090000_update_embedding_dimension.down,
     name: '20260107_090000_update_embedding_dimension'
+  },
+  {
+    up: migration_20260106_300000_enhance_feedback_user_attribution.up,
+    down: migration_20260106_300000_enhance_feedback_user_attribution.down,
+    name: '20260106_300000_enhance_feedback_user_attribution'
   },
 ];
