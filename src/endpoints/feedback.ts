@@ -14,7 +14,10 @@ interface FeedbackPayload {
     message: string
     userId?: number | string  // Accept both string and number from clients
     email?: string
+    feedbackType?: 'general' | 'bug_report' | 'feature_request' | 'complaint' | 'praise' | 'product_question'
+    productId?: number | string  // Related product if feedback is about a specific product
     platform?: 'ios' | 'android' | 'web'
+    appVersion?: string
     source?: string
     metadata?: Record<string, unknown>
     submittedAt?: string
@@ -28,7 +31,7 @@ export const feedbackHandler: PayloadHandler = async (req: PayloadRequest) => {
             return Response.json({ error: 'Request body is required' }, { status: 400 })
         }
 
-        const { message, userId, email, platform, source, metadata } = body
+        const { message, userId, email, feedbackType, productId, platform, appVersion, source, metadata } = body
 
         // Validate required fields
         if (!message || typeof message !== 'string') {
@@ -60,14 +63,30 @@ export const feedbackHandler: PayloadHandler = async (req: PayloadRequest) => {
             }
         }
 
+        // Parse productId to number (mobile app may send as string)
+        let parsedProductId: number | undefined
+        if (productId !== undefined && productId !== null) {
+            parsedProductId = typeof productId === 'string' ? parseInt(productId, 10) : productId
+            if (isNaN(parsedProductId)) {
+                parsedProductId = undefined
+            }
+        }
+
+        // Validate feedbackType if provided
+        const validFeedbackTypes = ['general', 'bug_report', 'feature_request', 'complaint', 'praise', 'product_question']
+        const validatedFeedbackType = feedbackType && validFeedbackTypes.includes(feedbackType) ? feedbackType : 'general'
+
         // Create feedback entry
         const feedback = await req.payload.create({
             collection: 'feedback',
             data: {
                 message: trimmedMessage,
+                feedbackType: validatedFeedbackType,
                 email: email || undefined,
                 user: parsedUserId || undefined,
+                product: parsedProductId || undefined,
                 platform: platform || 'ios',
+                appVersion: appVersion || undefined,
                 source: source || 'mobile-app',
                 status: 'new',
                 metadata: metadata || {},

@@ -2750,12 +2750,18 @@ export interface PushToken {
   createdAt: string;
 }
 /**
+ * User feedback from mobile app and web. User attribution is automatic for logged-in users.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "feedback".
  */
 export interface Feedback {
   id: number;
   message: string;
+  /**
+   * Category of feedback
+   */
+  feedbackType?: ('general' | 'bug_report' | 'feature_request' | 'complaint' | 'praise' | 'product_question') | null;
   /**
    * User email if authenticated
    */
@@ -2764,7 +2770,15 @@ export interface Feedback {
    * Linked user account if authenticated
    */
   user?: (number | null) | User;
+  /**
+   * Related product (if feedback is about a specific product)
+   */
+  product?: (number | null) | Product;
   platform: 'ios' | 'android' | 'web';
+  /**
+   * App version at time of submission
+   */
+  appVersion?: string | null;
   source?: string | null;
   status?: ('new' | 'reviewed' | 'actioned' | 'archived') | null;
   /**
@@ -2772,7 +2786,11 @@ export interface Feedback {
    */
   adminNotes?: string | null;
   /**
-   * Additional data (app version, subscription status, etc.)
+   * Response to send back to user (if applicable)
+   */
+  adminResponse?: string | null;
+  /**
+   * Additional data (subscription status, device info, etc.)
    */
   metadata?:
     | {
@@ -5037,12 +5055,16 @@ export interface PushTokensSelect<T extends boolean = true> {
  */
 export interface FeedbackSelect<T extends boolean = true> {
   message?: T;
+  feedbackType?: T;
   email?: T;
   user?: T;
+  product?: T;
   platform?: T;
+  appVersion?: T;
   source?: T;
   status?: T;
   adminNotes?: T;
+  adminResponse?: T;
   metadata?: T;
   updatedAt?: T;
   createdAt?: T;

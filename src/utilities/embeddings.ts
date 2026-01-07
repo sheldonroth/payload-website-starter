@@ -1,8 +1,8 @@
 /**
  * Product Embedding Service
  *
- * Generates and manages OpenAI embeddings for semantic search.
- * Uses text-embedding-3-small (1536 dimensions) for efficiency.
+ * Generates and manages embeddings for semantic search.
+ * Uses Google Gemini text-embedding-004 (768 dimensions).
  *
  * Features:
  * - Generate embeddings from product text
@@ -11,16 +11,14 @@
  * - Similarity search using pgvector
  */
 
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { Payload } from 'payload'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Initialize Gemini client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
-const EMBEDDING_MODEL = 'text-embedding-3-small'
-const EMBEDDING_DIMENSIONS = 1536
+const EMBEDDING_MODEL = 'text-embedding-004'
+const EMBEDDING_DIMENSIONS = 768
 
 interface ProductTextInput {
   id: number
@@ -75,45 +73,49 @@ export function createProductText(product: ProductTextInput): string {
  * Generate embedding for a single text string
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is not set')
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY environment variable is not set')
   }
 
-  const response = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: text,
-    dimensions: EMBEDDING_DIMENSIONS,
-  })
+  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL })
+  const result = await model.embedContent(text)
 
-  return response.data[0].embedding
+  return result.embedding.values
 }
 
 /**
  * Generate embeddings for multiple texts (batch processing)
- * OpenAI allows up to 2048 inputs per request
+ * Gemini processes one at a time, but we batch for efficiency
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is not set')
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY environment variable is not set')
   }
 
   if (texts.length === 0) return []
 
-  // Process in batches of 100 for safety
-  const batchSize = 100
+  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL })
   const allEmbeddings: number[][] = []
+
+  // Process in parallel batches of 10 for rate limiting
+  const batchSize = 10
 
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize)
 
-    const response = await openai.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: batch,
-      dimensions: EMBEDDING_DIMENSIONS,
-    })
+    const results = await Promise.all(
+      batch.map(async (text) => {
+        const result = await model.embedContent(text)
+        return result.embedding.values
+      })
+    )
 
-    const batchEmbeddings = response.data.map((d) => d.embedding)
-    allEmbeddings.push(...batchEmbeddings)
+    allEmbeddings.push(...results)
+
+    // Small delay between batches to respect rate limits
+    if (i + batchSize < texts.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
   }
 
   return allEmbeddings

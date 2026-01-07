@@ -37,10 +37,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
+    // Check if Gemini API key is configured
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured' },
+        { error: 'GEMINI_API_KEY not configured' },
         { status: 503 }
       )
     }
@@ -109,10 +109,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
+    // Check if Gemini API key is configured
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured' },
+        { error: 'GEMINI_API_KEY not configured' },
         { status: 503 }
       )
     }

@@ -143,8 +143,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Semantic Search] Error:', error)
 
-    // Check if it's an OpenAI error
-    if (error instanceof Error && error.message.includes('OPENAI_API_KEY')) {
+    // Check if it's a Gemini API error
+    if (error instanceof Error && error.message.includes('GEMINI_API_KEY')) {
       return NextResponse.json(
         { error: 'Semantic search is not configured' },
         { status: 503 }
