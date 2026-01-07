@@ -130,9 +130,9 @@ const DataExportDashboard: React.FC = () => {
       {/* Error Alert */}
       {error && (
         <div style={styles.errorAlert}>
-          <span>\u{26A0}</span> {error}
+          <span>{'\u26A0'}</span> {error}
           <button onClick={() => setError(null)} style={styles.dismissButton}>
-            \u{2715}
+            {'\u2715'}
           </button>
         </div>
       )}
@@ -177,7 +177,7 @@ const DataExportDashboard: React.FC = () => {
                   cursor: isDownloading ? 'not-allowed' : 'pointer',
                 }}
               >
-                {isDownloading ? '\u{23F3} Downloading...' : '\u{2B07} Download'}
+                {isDownloading ? '\u23F3 Downloading...' : '\u2B07 Download'}
               </button>
             </div>
           )
@@ -187,10 +187,10 @@ const DataExportDashboard: React.FC = () => {
       {/* Info Footer */}
       <div style={styles.footer}>
         <p style={styles.footerText}>
-          \u{1F4A1} <strong>Tip:</strong> Store backups in a secure cloud location like Google Drive, Dropbox, or AWS S3.
+          {'\uD83D\uDCA1'} <strong>Tip:</strong> Store backups in a secure cloud location like Google Drive, Dropbox, or AWS S3.
         </p>
         <p style={styles.footerText}>
-          \u{1F512} All exports are admin-only and require authentication.
+          {'\uD83D\uDD12'} All exports are admin-only and require authentication.
         </p>
       </div>
     </div>

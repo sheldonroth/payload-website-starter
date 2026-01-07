@@ -123,6 +123,7 @@ import { statsigExperimentsHandler } from './endpoints/statsig-experiments'
 import { userAnalyticsHandler } from './endpoints/user-analytics'
 import { productEngagementAnalyticsHandler } from './endpoints/product-engagement-analytics'
 import { contentModerationHandler } from './endpoints/content-moderation'
+import { cacheStatusHandler } from './endpoints/cache-status'
 import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
@@ -214,6 +215,14 @@ export default buildConfig({
         'api-status': {
           Component: '@/components/ApiStatusDashboard',
           path: '/api-status',
+        },
+        'cache-status': {
+          Component: '@/components/CacheStatusDashboard',
+          path: '/cache-status',
+        },
+        'scout-leaderboard': {
+          Component: '@/components/ScoutLeaderboardDashboard',
+          path: '/scout-leaderboard',
         },
       },
       // Sidebar nav links
@@ -815,6 +824,17 @@ export default buildConfig({
       path: '/content-moderation',
       method: 'get',
       handler: contentModerationHandler,
+    },
+    // Cache Status (GET for stats, DELETE to clear)
+    {
+      path: '/cache-status',
+      method: 'get',
+      handler: cacheStatusHandler,
+    },
+    {
+      path: '/cache-status',
+      method: 'delete',
+      handler: cacheStatusHandler,
     },
     // Brand Portal Auth
     ...brandAuthEndpoints,
