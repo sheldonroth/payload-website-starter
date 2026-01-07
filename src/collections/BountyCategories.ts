@@ -1,7 +1,7 @@
 /**
  * BountyCategories Collection
  *
- * Admin-managed category boosts for the Scout Program.
+ * Admin-managed category boosts for My Cases.
  * When we want to focus testing on specific product categories,
  * we can boost their priority with multipliers.
  *
@@ -17,7 +17,7 @@ export const BountyCategories: CollectionConfig = {
         plural: 'Bounty Categories',
     },
     admin: {
-        group: 'Scout Program',
+        group: 'My Cases',
         useAsTitle: 'category',
         description: 'Category boosts - products in these categories get priority in the testing queue',
         defaultColumns: ['category', 'multiplier', 'isActive', 'startsAt', 'endsAt'],
@@ -124,7 +124,7 @@ export const BountyCategories: CollectionConfig = {
             type: 'number',
             defaultValue: 0,
             admin: {
-                description: 'Number of unique scouts who contributed to this category',
+                description: 'Number of unique contributors who helped with this category',
                 readOnly: true,
                 position: 'sidebar',
             },

@@ -1443,22 +1443,22 @@ export const Products: CollectionConfig = {
         },
 
         // ═══════════════════════════════════════════════════════════════
-        // SCOUT ATTRIBUTION
+        // CASE ATTRIBUTION
         // Who helped get this product tested? Recognition for the community.
         // ═══════════════════════════════════════════════════════════════
         {
             name: 'scoutAttribution',
             type: 'group',
             admin: {
-                description: 'Scouts who helped get this product tested',
+                description: 'Contributors who helped get this product tested',
             },
             fields: [
                 {
                     name: 'firstScout',
                     type: 'relationship',
-                    relationTo: 'scout-profiles',
+                    relationTo: 'contributor-profiles',
                     admin: {
-                        description: 'The first scout to document this product',
+                        description: 'The first contributor to open this case',
                         readOnly: true,
                     },
                 },
@@ -1466,7 +1466,7 @@ export const Products: CollectionConfig = {
                     name: 'firstScoutNumber',
                     type: 'number',
                     admin: {
-                        description: 'Scout number for display (e.g., "Scout #47")',
+                        description: 'Contributor number for display (e.g., "Contributor #47")',
                         readOnly: true,
                     },
                 },
@@ -1475,7 +1475,7 @@ export const Products: CollectionConfig = {
                     type: 'number',
                     defaultValue: 0,
                     admin: {
-                        description: 'Total scouts who documented this product',
+                        description: 'Total contributors who documented this product',
                         readOnly: true,
                     },
                 },
@@ -1484,7 +1484,7 @@ export const Products: CollectionConfig = {
                     type: 'json',
                     defaultValue: [],
                     admin: {
-                        description: 'All scouts who helped. Structure: [{ scoutId, scoutNumber, displayName }]',
+                        description: 'All contributors who helped. Structure: [{ scoutId, scoutNumber, displayName }]',
                     },
                 },
                 {

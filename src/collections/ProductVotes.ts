@@ -208,15 +208,15 @@ export const ProductVotes: CollectionConfig = {
             },
         },
 
-        // === SCOUT ATTRIBUTION ===
+        // === CASE ATTRIBUTION ===
         // Who documented this product first? Who else helped?
-        // This is the heart of the Scout Program recognition system.
+        // This is the heart of the My Cases recognition system.
         {
             name: 'firstScout',
             type: 'relationship',
-            relationTo: 'scout-profiles',
+            relationTo: 'contributor-profiles',
             admin: {
-                description: 'The first scout to document this product',
+                description: 'The first contributor to open this case',
                 readOnly: true,
             },
         },
@@ -224,7 +224,7 @@ export const ProductVotes: CollectionConfig = {
             name: 'firstScoutNumber',
             type: 'number',
             admin: {
-                description: 'Scout number of the first documenter (for display)',
+                description: 'Contributor number of the first documenter (for display)',
                 readOnly: true,
             },
         },
@@ -233,7 +233,7 @@ export const ProductVotes: CollectionConfig = {
             type: 'json',
             defaultValue: [],
             admin: {
-                description: 'All scouts who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]',
+                description: 'All contributors who documented this. Structure: [{ scoutId, scoutNumber, fingerprintHash, scoutPosition, contributedAt }]',
             },
         },
         {
@@ -241,7 +241,7 @@ export const ProductVotes: CollectionConfig = {
             type: 'number',
             defaultValue: 0,
             admin: {
-                description: 'Total number of scouts who documented this product',
+                description: 'Total number of contributors who documented this product',
                 readOnly: true,
             },
         },
@@ -267,7 +267,7 @@ export const ProductVotes: CollectionConfig = {
             },
         },
 
-        // === VELOCITY TRACKING (Scout Program) ===
+        // === VELOCITY TRACKING (My Cases) ===
         // Tracks scan momentum for prioritization - trending products get tested faster
         {
             name: 'scanTimestamps',

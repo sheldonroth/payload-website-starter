@@ -404,7 +404,7 @@ const AdminNavLinks: React.FC = () => {
                         COMMUNITY
                     </span>
                     <Link
-                        href="/admin/scout-leaderboard"
+                        href="/admin/contributor-leaderboard"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -417,7 +417,7 @@ const AdminNavLinks: React.FC = () => {
                             marginBottom: '4px',
                         }}
                     >
-                        Scout Leaderboard
+                        Contributor Leaderboard
                     </Link>
                 </div>
             </div>

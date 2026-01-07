@@ -2,38 +2,38 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 
-interface ScoutProfile {
+interface ContributorProfile {
     id: number
     displayName: string
-    scoutNumber: number
-    scoutLevel: 'new' | 'explorer' | 'pathfinder' | 'pioneer'
+    contributorNumber: number
+    contributorLevel: 'new' | 'builder' | 'veteran' | 'champion'
     avatar: string
     documentsSubmitted: number
     productsTestedFromSubmissions: number
     peopleHelped: number
-    firstDiscoveries: number
+    firstCases: number
     isPublic: boolean
     createdAt: string
 }
 
 interface LeaderboardStats {
-    totalScouts: number
+    totalContributors: number
     totalDocuments: number
     totalPeopleHelped: number
     levelBreakdown: Record<string, number>
 }
 
 const LEVEL_STYLES: Record<string, { bg: string; text: string; label: string; emoji: string }> = {
-    new: { bg: '#f3f4f6', text: '#374151', label: 'New Scout', emoji: '\uD83D\uDD0D' },
-    explorer: { bg: '#dbeafe', text: '#1e40af', label: 'Explorer', emoji: '\uD83E\uDDED' },
-    pathfinder: { bg: '#dcfce7', text: '#166534', label: 'Pathfinder', emoji: '\uD83D\uDDFA\uFE0F' },
-    pioneer: { bg: '#fef3c7', text: '#92400e', label: 'Pioneer', emoji: '\u2B50' },
+    new: { bg: '#f3f4f6', text: '#374151', label: 'New', emoji: '\uD83D\uDD2C' },
+    builder: { bg: '#dbeafe', text: '#1e40af', label: 'Builder', emoji: '\uD83E\uDDED' },
+    veteran: { bg: '#dcfce7', text: '#166534', label: 'Veteran', emoji: '\uD83D\uDDFA\uFE0F' },
+    champion: { bg: '#fef3c7', text: '#92400e', label: 'Champion', emoji: '\u2B50' },
 }
 
-type SortBy = 'documentsSubmitted' | 'peopleHelped' | 'firstDiscoveries' | 'productsTestedFromSubmissions'
+type SortBy = 'documentsSubmitted' | 'peopleHelped' | 'firstCases' | 'productsTestedFromSubmissions'
 
-const ScoutLeaderboardDashboard: React.FC = () => {
-    const [scouts, setScouts] = useState<ScoutProfile[]>([])
+const ContributorLeaderboard: React.FC = () => {
+    const [contributors, setContributors] = useState<ContributorProfile[]>([])
     const [stats, setStats] = useState<LeaderboardStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -43,31 +43,31 @@ const ScoutLeaderboardDashboard: React.FC = () => {
     const fetchData = useCallback(async () => {
         try {
             const response = await fetch(
-                `/api/scout-profiles?sort=-${sortBy}&limit=${limit}&depth=0`
+                `/api/contributor-profiles?sort=-${sortBy}&limit=${limit}&depth=0`
             )
-            if (!response.ok) throw new Error('Failed to fetch scouts')
+            if (!response.ok) throw new Error('Failed to fetch contributors')
             const data = await response.json()
-            setScouts(data.docs || [])
+            setContributors(data.docs || [])
 
             // Calculate stats
-            const allScouts = data.docs as ScoutProfile[]
+            const allContributors = data.docs as ContributorProfile[]
             const levelBreakdown: Record<string, number> = {
                 new: 0,
-                explorer: 0,
-                pathfinder: 0,
-                pioneer: 0,
+                builder: 0,
+                veteran: 0,
+                champion: 0,
             }
             let totalDocs = 0
             let totalHelped = 0
 
-            for (const scout of allScouts) {
-                levelBreakdown[scout.scoutLevel] = (levelBreakdown[scout.scoutLevel] || 0) + 1
-                totalDocs += scout.documentsSubmitted
-                totalHelped += scout.peopleHelped
+            for (const contributor of allContributors) {
+                levelBreakdown[contributor.contributorLevel] = (levelBreakdown[contributor.contributorLevel] || 0) + 1
+                totalDocs += contributor.documentsSubmitted
+                totalHelped += contributor.peopleHelped
             }
 
             setStats({
-                totalScouts: data.totalDocs || allScouts.length,
+                totalContributors: data.totalDocs || allContributors.length,
                 totalDocuments: totalDocs,
                 totalPeopleHelped: totalHelped,
                 levelBreakdown,
@@ -125,8 +125,8 @@ const ScoutLeaderboardDashboard: React.FC = () => {
             {/* Header */}
             <div style={styles.header}>
                 <div>
-                    <h1 style={styles.title}>Scout Leaderboard</h1>
-                    <p style={styles.subtitle}>Our community of product scouts helping test consumer products</p>
+                    <h1 style={styles.title}>Contributor Leaderboard</h1>
+                    <p style={styles.subtitle}>Our community of contributors helping test consumer products</p>
                 </div>
                 <button onClick={fetchData} style={styles.refreshButton}>
                     Refresh
@@ -137,11 +137,11 @@ const ScoutLeaderboardDashboard: React.FC = () => {
             {stats && (
                 <div style={styles.statsRow}>
                     <div style={styles.statCard}>
-                        <p style={styles.statLabel}>Total Scouts</p>
-                        <p style={styles.statValue}>{stats.totalScouts.toLocaleString()}</p>
+                        <p style={styles.statLabel}>Total Contributors</p>
+                        <p style={styles.statValue}>{stats.totalContributors.toLocaleString()}</p>
                     </div>
                     <div style={styles.statCard}>
-                        <p style={styles.statLabel}>Documents Submitted</p>
+                        <p style={styles.statLabel}>Cases Opened</p>
                         <p style={{ ...styles.statValue, color: '#3b82f6' }}>
                             {stats.totalDocuments.toLocaleString()}
                         </p>
@@ -158,12 +158,12 @@ const ScoutLeaderboardDashboard: React.FC = () => {
             {/* Level Distribution */}
             {stats && (
                 <div style={styles.section}>
-                    <h2 style={styles.sectionTitle}>Scout Level Distribution</h2>
+                    <h2 style={styles.sectionTitle}>Contributor Level Distribution</h2>
                     <div style={styles.levelGrid}>
                         {Object.entries(stats.levelBreakdown).map(([level, count]) => {
                             const levelStyle = LEVEL_STYLES[level]
-                            const percentage = stats.totalScouts > 0
-                                ? Math.round((count / stats.totalScouts) * 100)
+                            const percentage = stats.totalContributors > 0
+                                ? Math.round((count / stats.totalContributors) * 100)
                                 : 0
 
                             return (
@@ -207,9 +207,9 @@ const ScoutLeaderboardDashboard: React.FC = () => {
                         onChange={(e) => setSortBy(e.target.value as SortBy)}
                         style={styles.select}
                     >
-                        <option value="documentsSubmitted">Documents Submitted</option>
+                        <option value="documentsSubmitted">Cases Opened</option>
                         <option value="peopleHelped">People Helped</option>
-                        <option value="firstDiscoveries">First Discoveries</option>
+                        <option value="firstCases">First Discoveries</option>
                         <option value="productsTestedFromSubmissions">Products Tested</option>
                     </select>
                 </div>
@@ -231,12 +231,12 @@ const ScoutLeaderboardDashboard: React.FC = () => {
             {/* Leaderboard Table */}
             <div style={styles.section}>
                 <h2 style={styles.sectionTitle}>
-                    Top Scouts by{' '}
+                    Top Contributors by{' '}
                     {sortBy === 'documentsSubmitted'
-                        ? 'Documents'
+                        ? 'Cases Opened'
                         : sortBy === 'peopleHelped'
                           ? 'People Helped'
-                          : sortBy === 'firstDiscoveries'
+                          : sortBy === 'firstCases'
                             ? 'First Discoveries'
                             : 'Products Tested'}
                 </h2>
@@ -245,29 +245,29 @@ const ScoutLeaderboardDashboard: React.FC = () => {
                         <thead>
                             <tr>
                                 <th style={{ ...styles.th, width: '60px' }}>Rank</th>
-                                <th style={styles.th}>Scout</th>
+                                <th style={styles.th}>Contributor</th>
                                 <th style={{ ...styles.th, width: '100px' }}>Level</th>
-                                <th style={{ ...styles.th, textAlign: 'right' }}>Docs</th>
+                                <th style={{ ...styles.th, textAlign: 'right' }}>Cases</th>
                                 <th style={{ ...styles.th, textAlign: 'right' }}>Helped</th>
                                 <th style={{ ...styles.th, textAlign: 'right' }}>1st Disc.</th>
                                 <th style={{ ...styles.th, textAlign: 'right' }}>Tested</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {scouts.length === 0 ? (
+                            {contributors.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} style={{ ...styles.td, textAlign: 'center', color: '#9ca3af' }}>
-                                        No scouts found
+                                        No contributors found
                                     </td>
                                 </tr>
                             ) : (
-                                scouts.map((scout, index) => {
-                                    const levelStyle = LEVEL_STYLES[scout.scoutLevel]
+                                contributors.map((contributor, index) => {
+                                    const levelStyle = LEVEL_STYLES[contributor.contributorLevel]
                                     const isTop3 = index < 3
 
                                     return (
                                         <tr
-                                            key={scout.id}
+                                            key={contributor.id}
                                             style={{
                                                 ...styles.tr,
                                                 backgroundColor: isTop3 ? '#fefce8' : 'transparent',
@@ -277,12 +277,12 @@ const ScoutLeaderboardDashboard: React.FC = () => {
                                                 {getRankEmoji(index)}
                                             </td>
                                             <td style={styles.td}>
-                                                <div style={styles.scoutCell}>
-                                                    <span style={styles.avatar}>{scout.avatar}</span>
+                                                <div style={styles.contributorCell}>
+                                                    <span style={styles.avatar}>{contributor.avatar}</span>
                                                     <div>
-                                                        <div style={styles.scoutName}>{scout.displayName}</div>
-                                                        <div style={styles.scoutNumber}>
-                                                            Scout #{scout.scoutNumber}
+                                                        <div style={styles.contributorName}>{contributor.displayName}</div>
+                                                        <div style={styles.contributorNumber}>
+                                                            Contributor #{contributor.contributorNumber}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -299,16 +299,16 @@ const ScoutLeaderboardDashboard: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td style={{ ...styles.td, textAlign: 'right', fontWeight: 600 }}>
-                                                {scout.documentsSubmitted}
+                                                {contributor.documentsSubmitted}
                                             </td>
                                             <td style={{ ...styles.td, textAlign: 'right' }}>
-                                                {scout.peopleHelped.toLocaleString()}
+                                                {contributor.peopleHelped.toLocaleString()}
                                             </td>
                                             <td style={{ ...styles.td, textAlign: 'right' }}>
-                                                {scout.firstDiscoveries}
+                                                {contributor.firstCases}
                                             </td>
                                             <td style={{ ...styles.td, textAlign: 'right' }}>
-                                                {scout.productsTestedFromSubmissions}
+                                                {contributor.productsTestedFromSubmissions}
                                             </td>
                                         </tr>
                                     )
@@ -321,8 +321,8 @@ const ScoutLeaderboardDashboard: React.FC = () => {
 
             {/* View All Link */}
             <div style={styles.footer}>
-                <a href="/admin/collections/scout-profiles" style={styles.footerLink}>
-                    View all scout profiles {'\u2192'}
+                <a href="/admin/collections/contributor-profiles" style={styles.footerLink}>
+                    View all contributor profiles {'\u2192'}
                 </a>
             </div>
         </div>
@@ -511,7 +511,7 @@ const styles: Record<string, React.CSSProperties> = {
         fontSize: '14px',
         color: '#374151',
     },
-    scoutCell: {
+    contributorCell: {
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -526,11 +526,11 @@ const styles: Record<string, React.CSSProperties> = {
         background: '#f3f4f6',
         borderRadius: '8px',
     },
-    scoutName: {
+    contributorName: {
         fontWeight: 600,
         color: '#111827',
     },
-    scoutNumber: {
+    contributorNumber: {
         fontSize: '12px',
         color: '#9ca3af',
     },
@@ -552,4 +552,4 @@ const styles: Record<string, React.CSSProperties> = {
     },
 }
 
-export default ScoutLeaderboardDashboard
+export default ContributorLeaderboard

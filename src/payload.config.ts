@@ -37,7 +37,7 @@ import { GeneratedContent } from './collections/GeneratedContent'
 import { DailyDiscoveries } from './collections/DailyDiscoveries'
 import { EmailTemplates } from './collections/EmailTemplates'
 import { EmailSends } from './collections/EmailSends'
-import { ScoutProfiles } from './collections/ScoutProfiles'
+import { ContributorProfiles } from './collections/ContributorProfiles'
 import { MarketIntelligence } from './collections/MarketIntelligence'
 import { BrandAnalytics } from './collections/BrandAnalytics'
 import { BrandUsers } from './collections/BrandUsers'
@@ -105,7 +105,7 @@ import { revenuecatWebhookHandler } from './endpoints/revenuecat-webhook'
 import { referralEndpoints } from './endpoints/referral'
 import { businessAnalyticsEndpoint } from './endpoints/business-analytics'
 import { businessAnalyticsExportEndpoint } from './endpoints/business-analytics/export'
-import { getScoutProfileHandler, getMyScoutStatsHandler, updateScoutProfileHandler, registerScoutContributionHandler } from './endpoints/scout-profile'
+import { getContributorProfileHandler, getMyContributorStatsHandler, updateContributorProfileHandler, registerContributorContributionHandler } from './endpoints/contributor-profile'
 import contentGeneratorHandler from './endpoints/content-generator'
 import { emailCronHandler } from './endpoints/email-cron'
 import { resendWebhookHandler } from './endpoints/email-webhook'
@@ -132,6 +132,7 @@ import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
 import { apiDocsHandler } from './endpoints/api-docs'
+import { apiStatusEndpoint } from './endpoints/api-status'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -225,9 +226,9 @@ export default buildConfig({
           Component: '@/components/CacheStatusDashboard',
           path: '/cache-status',
         },
-        'scout-leaderboard': {
-          Component: '@/components/ScoutLeaderboardDashboard',
-          path: '/scout-leaderboard',
+        'contributor-leaderboard': {
+          Component: '@/components/ContributorLeaderboard',
+          path: '/contributor-leaderboard',
         },
         'seo-audit': {
           Component: '@/components/SEOAuditDashboard',
@@ -305,7 +306,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ScoutProfiles, MarketIntelligence, BrandAnalytics, BrandUsers],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers],
   cors: [
     // Main website
     'https://www.theproductreport.org',
@@ -712,9 +713,9 @@ export default buildConfig({
       method: 'get',
       handler: productVoteQueueHandler,
     },
-    // My Investigations (Scout Program)
+    // My Cases (Contributor Program)
     {
-      path: '/product-vote/my-investigations',
+      path: '/product-vote/my-cases',
       method: 'get',
       handler: myInvestigationsHandler,
     },
@@ -740,7 +741,7 @@ export default buildConfig({
       method: 'post',
       handler: pushTokenUnsubscribeHandler,
     },
-    // Scout Program Notifications (Admin-triggered)
+    // My Cases Notifications (Admin-triggered)
     {
       path: '/send-results-notification',
       method: 'post',
@@ -751,7 +752,7 @@ export default buildConfig({
       method: 'post',
       handler: sendTestingNotificationHandler,
     },
-    // Bounty Categories (Scout Program)
+    // Bounty Categories (My Cases)
     {
       path: '/bounty-categories/active',
       method: 'get',
@@ -797,26 +798,26 @@ export default buildConfig({
     // Business Analytics Dashboard
     businessAnalyticsEndpoint,
     businessAnalyticsExportEndpoint,
-    // Scout Profile Endpoints (Scout Program)
+    // Contributor Profile Endpoints (My Cases)
     {
-      path: '/scout-profile/:slug',
+      path: '/contributor-profile/:slug',
       method: 'get',
-      handler: getScoutProfileHandler,
+      handler: getContributorProfileHandler,
     },
     {
-      path: '/my-scout-stats',
+      path: '/my-contributor-stats',
       method: 'get',
-      handler: getMyScoutStatsHandler,
+      handler: getMyContributorStatsHandler,
     },
     {
-      path: '/scout-profile/update',
+      path: '/contributor-profile/update',
       method: 'post',
-      handler: updateScoutProfileHandler,
+      handler: updateContributorProfileHandler,
     },
     {
-      path: '/scout-profile/register-contribution',
+      path: '/contributor-profile/register-contribution',
       method: 'post',
-      handler: registerScoutContributionHandler,
+      handler: registerContributorContributionHandler,
     },
     // Content Generator
     {
@@ -906,6 +907,8 @@ export default buildConfig({
       method: 'get',
       handler: apiDocsHandler,
     },
+    // API Status
+    apiStatusEndpoint,
   ],
   plugins: [
     ...plugins,

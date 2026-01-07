@@ -40,6 +40,7 @@ import { default as default_86712f171ecea78dd5c08b610c485a95 } from '@/component
 import { default as default_df74f8fbbec6091d5eebbd136a4e7900 } from '@/components/AIBusinessAssistant'
 import { default as default_5590276bd4a5d7520aeb8b6d0ce78934 } from '@/components/ContentEngine'
 import { default as default_bd65cc96ffe5e56189e9e5b043d16e0c } from '@/components/EmailABDashboard'
+import { default as default_api_connections_dashboard } from '@/components/APIConnectionsDashboard'
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -83,5 +84,6 @@ export const importMap = {
   "@/components/BusinessAnalyticsDashboard#default": default_86712f171ecea78dd5c08b610c485a95,
   "@/components/AIBusinessAssistant#default": default_df74f8fbbec6091d5eebbd136a4e7900,
   "@/components/ContentEngine#default": default_5590276bd4a5d7520aeb8b6d0ce78934,
-  "@/components/EmailABDashboard#default": default_bd65cc96ffe5e56189e9e5b043d16e0c
+  "@/components/EmailABDashboard#default": default_bd65cc96ffe5e56189e9e5b043d16e0c,
+  "@/components/APIConnectionsDashboard#default": default_api_connections_dashboard
 }
