@@ -544,6 +544,138 @@ x-fingerprint: <fingerprint>
 - `trending_alert` - Product trending in your area
 - `weekly_digest` - Weekly summary
 
+## Product Voting System
+
+The voting system allows users to request testing for products not yet in our database. It uses a weighted system based on "Proof of Possession."
+
+### Vote Types and Weights
+
+| Vote Type | Weight | Description |
+|-----------|--------|-------------|
+| `search` | 1x | User searched for the product (curiosity signal) |
+| `scan` | 5x | User scanned the product barcode (proof of possession) |
+| `member_scan` | 20x | Premium member scanned (verified possession) |
+
+### Register a Vote
+
+```http
+POST /api/product-vote
+Content-Type: application/json
+x-fingerprint: <fingerprint>
+
+{
+  "barcode": "5000328657950",
+  "voteType": "scan",
+  "fingerprint": "<fingerprint-hash>",
+  "productInfo": {
+    "name": "Product Name",
+    "brand": "Brand Name",
+    "imageUrl": "https://..."
+  },
+  "notifyOnComplete": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "voteRegistered": true,
+  "totalVotes": 15,
+  "yourVoteRank": 8,
+  "fundingProgress": 45,
+  "fundingThreshold": 100,
+  "productInfo": {
+    "barcode": "5000328657950",
+    "name": "Product Name",
+    "brand": "Brand Name"
+  },
+  "message": "Vote registered! You're #8 in line."
+}
+```
+
+### Check Vote Status
+
+```http
+GET /api/product-vote/status?barcode=5000328657950&fingerprint=<fingerprint>
+```
+
+**Response:**
+```json
+{
+  "barcode": "5000328657950",
+  "hasVoted": true,
+  "yourVoteRank": 8,
+  "totalVotes": 15,
+  "fundingProgress": 45,
+  "status": "waiting",
+  "estimatedTestDate": null
+}
+```
+
+### My Cases (User Investigations)
+
+Get all products the user has voted for:
+
+```http
+GET /api/my-cases
+x-fingerprint: <fingerprint>
+```
+
+**Response:**
+```json
+{
+  "investigations": [
+    {
+      "barcode": "5000328657950",
+      "productName": "Product Name",
+      "brand": "Brand",
+      "imageUrl": "https://...",
+      "status": "waiting",
+      "queuePosition": 12,
+      "fundingProgress": 45,
+      "yourScoutNumber": 8,
+      "totalScouts": 15,
+      "isFirstScout": false,
+      "isTrending": true,
+      "velocityChange24h": 5
+    }
+  ],
+  "totalCases": 1
+}
+```
+
+## User Subscription Status
+
+Check if a user has premium access:
+
+```http
+GET /api/user-subscription?email=user@example.com
+x-api-key: <internal-api-key>
+```
+
+**Response:**
+```json
+{
+  "found": true,
+  "email": "user@example.com",
+  "userId": 123,
+  "name": "User Name",
+  "subscriptionStatus": "premium",
+  "memberState": "member",
+  "trialEndDate": null,
+  "isPremium": true,
+  "hasStripe": true,
+  "hasRevenueCat": false
+}
+```
+
+**Member States:**
+- `virgin` - Never subscribed
+- `trialist` - Active trial
+- `member` - Active paid subscription
+- `churned` - Previously subscribed, now cancelled
+
 ## Best Practices
 
 1. **Cache responses** - Product data rarely changes, cache for 1 hour
@@ -551,6 +683,113 @@ x-fingerprint: <fingerprint>
 3. **Handle offline** - Queue submissions when offline
 4. **Compress images** - Resize photos before uploading (max 1024px)
 5. **Retry with backoff** - Implement exponential backoff for failures
+6. **Use fingerprint consistently** - Always send the same fingerprint hash for a device
+7. **Handle 429 errors** - Respect `Retry-After` header for rate limiting
+8. **Validate barcodes locally** - Check barcode format before API calls
+
+## Error Handling Patterns
+
+### Swift (iOS)
+
+```swift
+enum TPRError: Error {
+    case invalidBarcode
+    case productNotFound
+    case rateLimited(retryAfter: Int)
+    case authRequired
+    case serverError(message: String)
+}
+
+func handleAPIError(_ response: HTTPURLResponse, data: Data) -> TPRError {
+    switch response.statusCode {
+    case 400:
+        return .invalidBarcode
+    case 404:
+        return .productNotFound
+    case 429:
+        let retryAfter = Int(response.value(forHTTPHeaderField: "Retry-After") ?? "60") ?? 60
+        return .rateLimited(retryAfter: retryAfter)
+    case 401:
+        return .authRequired
+    default:
+        let message = try? JSONDecoder().decode(ErrorResponse.self, from: data).message
+        return .serverError(message: message ?? "Unknown error")
+    }
+}
+```
+
+### Kotlin (Android)
+
+```kotlin
+sealed class TPRResult<out T> {
+    data class Success<T>(val data: T) : TPRResult<T>()
+    data class Error(val code: String, val message: String) : TPRResult<Nothing>()
+    object RateLimited : TPRResult<Nothing>()
+    object ProductNotFound : TPRResult<Nothing>()
+}
+
+suspend fun <T> safeApiCall(call: suspend () -> Response<T>): TPRResult<T> {
+    return try {
+        val response = call()
+        when (response.code()) {
+            200 -> TPRResult.Success(response.body()!!)
+            404 -> TPRResult.ProductNotFound
+            429 -> TPRResult.RateLimited
+            else -> {
+                val error = response.errorBody()?.string()
+                TPRResult.Error("HTTP_${response.code()}", error ?: "Unknown error")
+            }
+        }
+    } catch (e: Exception) {
+        TPRResult.Error("NETWORK", e.message ?: "Network error")
+    }
+}
+```
+
+## Webhooks for Server-Side Integration
+
+If your mobile app has a backend server, you can receive webhooks for:
+
+### Product Testing Complete
+
+Configure webhook URL in our dashboard:
+
+```http
+POST https://your-server.com/webhooks/tpr
+Content-Type: application/json
+X-TPR-Signature: sha256=...
+
+{
+  "event": "product.tested",
+  "barcode": "5000328657950",
+  "productId": 123,
+  "scores": {
+    "overall": 78,
+    "health": 82
+  },
+  "testedAt": "2024-01-15T12:00:00Z"
+}
+```
+
+### Subscription Events
+
+RevenueCat events are forwarded if you've configured webhook forwarding:
+
+```json
+{
+  "event": "subscription.started",
+  "userId": 123,
+  "productId": "tpr_premium_annual",
+  "purchasedAt": "2024-01-15T12:00:00Z"
+}
+```
+
+## API Documentation
+
+Full interactive API documentation is available at:
+
+- **Swagger UI**: https://cms.theproductreport.org/api/docs
+- **OpenAPI Spec**: https://cms.theproductreport.org/api/docs?format=json
 
 ## SDK (Coming Soon)
 

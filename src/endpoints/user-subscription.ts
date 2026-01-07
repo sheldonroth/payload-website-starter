@@ -4,7 +4,64 @@
  * Secure endpoint for frontend to check user subscription status by email.
  * Requires PAYLOAD_API_SECRET in x-api-key header for authentication.
  *
- * GET /api/user-subscription?email=user@example.com
+ * @openapi
+ * /user-subscription:
+ *   get:
+ *     summary: Get user subscription status
+ *     description: |
+ *       Check subscription status for a user by email address.
+ *       This is an internal endpoint that requires API key authentication.
+ *
+ *       **Use Cases:**
+ *       - Frontend checking premium status before showing gated content
+ *       - Mobile app verifying subscription after purchase
+ *     tags: [User, Subscription]
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: User email address
+ *         example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Subscription status retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserSubscription'
+ *       400:
+ *         description: Missing email parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Bad Request"
+ *                 message:
+ *                   type: string
+ *                   example: "email query parameter required"
+ *       401:
+ *         description: Invalid or missing API key
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Unauthorized"
+ *                 message:
+ *                   type: string
+ *                   example: "Valid x-api-key header required"
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
  */
 
 import type { PayloadHandler, PayloadRequest } from 'payload'

@@ -13,7 +13,65 @@ import type { PayloadRequest } from 'payload'
  * - 'internal': Only our data (rare edge case)
  * - null: Unknown product (triggers photo capture)
  *
- * GET /api/product-report/:barcode
+ * @openapi
+ * /product-report/{barcode}:
+ *   get:
+ *     summary: Get product health report by barcode
+ *     description: |
+ *       Returns comprehensive health analysis for a product identified by barcode.
+ *
+ *       **Response Sources:**
+ *       - `complete`: Full health report with lab analysis + Open Food Facts data
+ *       - `external`: Product found in Open Food Facts but no lab data (prompts vote)
+ *       - `internal`: Only local lab data available
+ *
+ *       **For unknown products (404):** The mobile app should prompt the user to
+ *       submit photos or vote for testing.
+ *     tags: [Product Report, Mobile]
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product barcode (UPC-A, EAN-13, etc.)
+ *         example: "5000328657950"
+ *     responses:
+ *       200:
+ *         description: Product report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductReport'
+ *       400:
+ *         description: Barcode is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Barcode is required"
+ *       404:
+ *         description: Product not found in any database
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 source:
+ *                   type: 'null'
+ *                 barcode:
+ *                   type: string
+ *                 error:
+ *                   type: string
+ *                   example: "Product not found"
+ *                 code:
+ *                   type: string
+ *                   example: "PRODUCT_NOT_FOUND"
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
  */
 
 // Open Food Facts product response

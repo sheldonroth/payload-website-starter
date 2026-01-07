@@ -12,6 +12,78 @@
  *
  * Webhook URL: https://cms.theproductreport.org/api/revenuecat-webhook
  * Configure in RevenueCat Dashboard → Integrations → Webhooks
+ *
+ * @openapi
+ * /revenuecat-webhook:
+ *   post:
+ *     summary: RevenueCat subscription webhook
+ *     description: |
+ *       Receives subscription lifecycle events from RevenueCat.
+ *
+ *       **Supported Events:**
+ *       - `INITIAL_PURCHASE` - New subscription started
+ *       - `RENEWAL` - Subscription renewed
+ *       - `CANCELLATION` - Subscription cancelled
+ *       - `UNCANCELLATION` - Cancellation reversed
+ *       - `EXPIRATION` - Subscription expired
+ *       - `BILLING_ISSUE` - Payment failed
+ *
+ *       **Referral Commission:**
+ *       - $25/year per active referred subscriber
+ *       - Commission accrues on subscription anniversary
+ *       - Paid out annually via PayPal
+ *
+ *       **Security:**
+ *       Requires Bearer token in Authorization header matching `REVENUECAT_WEBHOOK_SECRET`.
+ *
+ *       **Configure in RevenueCat:**
+ *       Dashboard > Integrations > Webhooks > Add Endpoint
+ *     tags: [Webhooks, Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               api_version:
+ *                 type: string
+ *               event:
+ *                 type: object
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     enum: [INITIAL_PURCHASE, RENEWAL, CANCELLATION, UNCANCELLATION, EXPIRATION, BILLING_ISSUE, PRODUCT_CHANGE]
+ *                   app_user_id:
+ *                     type: string
+ *                     description: RevenueCat subscriber ID
+ *                   product_id:
+ *                     type: string
+ *                   price:
+ *                     type: number
+ *                   currency:
+ *                     type: string
+ *                   event_timestamp_ms:
+ *                     type: integer
+ *     responses:
+ *       200:
+ *         description: Webhook processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Invalid webhook payload
+ *       401:
+ *         description: Invalid or missing authorization
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
  */
 
 import type { Endpoint } from 'payload'

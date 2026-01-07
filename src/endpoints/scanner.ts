@@ -153,10 +153,101 @@ export const scannerLookupHandler: PayloadHandler = async (req: PayloadRequest) 
 }
 
 /**
- * POST /api/scanner/submit
+ * @openapi
+ * /scanner/submit:
+ *   post:
+ *     summary: Submit product photos for OCR processing
+ *     description: |
+ *       Submit product photos (front and/or back) for OCR processing.
+ *       Creates a UserSubmission entry and optionally processes the back image
+ *       for ingredient extraction using Gemini Vision.
  *
- * Submit product photos (front + back) for OCR processing.
- * Creates a UserSubmission and queues for processing.
+ *       **Supported Formats:**
+ *       - `multipart/form-data` with file uploads
+ *       - `application/json` with pre-uploaded media IDs
+ *
+ *       **OCR Processing:**
+ *       The back image is processed using Gemini Vision AI to extract:
+ *       - Raw label text
+ *       - Normalized ingredient list
+ *       - Confidence score
+ *     tags: [Scanner, Mobile]
+ *     security:
+ *       - fingerprintAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [barcode]
+ *             properties:
+ *               barcode:
+ *                 type: string
+ *                 description: Product barcode
+ *               frontImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Front of product image
+ *               backImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Back of product (ingredients label)
+ *               fingerprintHash:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *                 description: Optional notes about the product
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [barcode]
+ *             properties:
+ *               barcode:
+ *                 type: string
+ *               frontImageId:
+ *                 type: integer
+ *                 description: Media ID of uploaded front image
+ *               backImageId:
+ *                 type: integer
+ *                 description: Media ID of uploaded back image
+ *               fingerprintHash:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Photos submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 submissionId:
+ *                   type: integer
+ *                 imagesUploaded:
+ *                   type: integer
+ *                 ocrResult:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                     ingredients:
+ *                       type: string
+ *                     rawText:
+ *                       type: string
+ *                     confidence:
+ *                       type: number
+ *                     error:
+ *                       type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Missing barcode or images
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
  */
 export const scannerSubmitHandler: PayloadHandler = async (req: PayloadRequest) => {
     try {

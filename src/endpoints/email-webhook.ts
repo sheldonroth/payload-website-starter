@@ -9,6 +9,69 @@
  * - email.complained
  *
  * Updates EmailSends collection and calculates A/B test results.
+ *
+ * @openapi
+ * /email-webhook:
+ *   post:
+ *     summary: Resend email event webhook
+ *     description: |
+ *       Receives webhook events from Resend for email tracking.
+ *
+ *       **Supported Events:**
+ *       - `email.delivered` - Email successfully delivered
+ *       - `email.opened` - Recipient opened the email
+ *       - `email.clicked` - Recipient clicked a link
+ *       - `email.bounced` - Email bounced (hard/soft)
+ *       - `email.complained` - Recipient marked as spam
+ *
+ *       **Security:**
+ *       Webhooks are verified using HMAC-SHA256 signature in the `resend-signature` header.
+ *       The signature is validated against `RESEND_WEBHOOK_SECRET`.
+ *
+ *       **Configure in Resend:**
+ *       Dashboard > Webhooks > Add Endpoint > `https://cms.theproductreport.org/api/email-webhook`
+ *     tags: [Webhooks, Email]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [email.delivered, email.opened, email.clicked, email.bounced, email.complained]
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   email_id:
+ *                     type: string
+ *                     description: Resend message ID
+ *                   to:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   link:
+ *                     type: string
+ *                     description: Clicked URL (for click events)
+ *     responses:
+ *       200:
+ *         description: Webhook processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 received:
+ *                   type: boolean
+ *                   example: true
+ *                 matched:
+ *                   type: boolean
+ *                   description: Whether email was found in database
+ *       401:
+ *         description: Invalid or missing webhook signature
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
  */
 
 import { Endpoint, Payload } from 'payload'

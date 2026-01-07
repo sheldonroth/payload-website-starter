@@ -255,4 +255,42 @@ started_at: "2026-01-07T06:42:49Z"
 | 24 | Product Requests Unit Tests | COMPLETE | 22 tests for list, create, vote endpoints |
 | 25 | Cron Jobs Dashboard | COMPLETE | Admin dashboard for 14 cron jobs with manual trigger |
 | 26 | Cron Retry Utilities | COMPLETE | withRetry, circuit breaker, batch processor (18 tests) |
+| 27 | Analytics Platform Config | PARTIAL | Parallel agent interference + OAuth expired |
+| 28 | Statsig Feature Gates | VERIFIED | 3 gates exist (enable_home_widget, enable_semantic_search, global_holdout) |
+
+---
+
+### PHASE 8: Analytics Platform Configuration (Priority: HIGH)
+
+**Status: BLOCKED - Browser OAuth tokens expired, manual configuration required**
+
+**8.1 Statsig Feature Gates** ✅ PARTIAL (Verified)
+- [x] enable_home_widget - Created ✅
+- [x] enable_semantic_search - Created ✅
+- [x] global_holdout - Pre-existing ✅
+- [ ] enable_quick_actions - Needs manual creation
+- [ ] enable_new_onboarding - Needs manual creation
+
+**8.2 Mixpanel Cohorts** ⚠️ INTERFERENCE ISSUE
+- [ ] Power Users - Created but with WRONG definition (should be: total_scans >= 20 AND subscription_status = subscribed)
+- [ ] High Churn Risk - Needs creation
+- [ ] Engaged Free Users - Needs creation
+- [ ] Value Realized - Needs creation
+- [ ] Silent Churners - Needs creation
+- [ ] First Lookup Failed - Needs creation
+- [ ] Trial Non-Converts - Needs creation
+
+**8.3 Mixpanel Funnels** ❌ NOT STARTED
+- [ ] Onboarding Funnel (4 steps, breakdown by variant)
+- [ ] Conversion Funnel (4 steps, 24h window)
+- [ ] Website Conversion Funnel (by platform)
+- [ ] Search to Purchase Funnel
+
+**8.4 Statsig Experiments** ❌ NOT STARTED
+- [ ] paywall_variant experiment
+- [ ] free_product_limit experiment
+- [ ] website_paywall_variant experiment
+- [ ] email_capture_position experiment
+
+**BLOCKING ISSUE**: Claude in Chrome OAuth expired, Chrome DevTools blocked by Google login, Playwright locked by agents. Manual browser configuration required for remaining items.
 
