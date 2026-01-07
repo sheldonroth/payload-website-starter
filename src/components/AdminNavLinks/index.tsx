@@ -63,6 +63,22 @@ const AdminNavLinks: React.FC = () => {
                     >
                         Activity Feed
                     </Link>
+                    <Link
+                        href="/admin/data-export"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        Data Export
+                    </Link>
                 </div>
             </div>
             <div style={{ padding: '0 12px', marginTop: '8px' }}>

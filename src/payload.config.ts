@@ -207,6 +207,10 @@ export default buildConfig({
           Component: '@/components/ActivityFeedDashboard',
           path: '/activity-feed',
         },
+        'data-export': {
+          Component: '@/components/DataExportDashboard',
+          path: '/data-export',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
