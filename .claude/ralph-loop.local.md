@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 2
+iteration: 3
 max_iterations: 200
 completion_promise: "ALL_TASKS_COMPLETE"
 started_at: "2026-01-07T06:42:49Z"
@@ -246,4 +246,9 @@ started_at: "2026-01-07T06:42:49Z"
 | 15 | Phase 5 Analytics & Monitoring | COMPLETE | 19 admin dashboards built, full event tracking |
 | 16 | Phase 6 Growth & Marketing | COMPLETE | JSON-LD, meta tags, email system with Resend |
 | 17 | Phase 7 Security & DevEx | COMPLETE | Security headers, GDPR export, account deletion, 44 unit tests |
+| 18 | iOS Quick Actions | COMPLETE | expo-quick-actions installed, 4 shortcuts (Scan, Search, History, Saved), useQuickActions hook |
+| 19 | iOS Home Screen Widget | DEFERRED | Requires native Swift/Kotlin code, expo-widgets or expo-apple-targets |
+| 20 | Semantic Search Unit Tests | COMPLETE | 27 new tests for /api/search/semantic endpoint |
+| 21 | OpenAPI Documentation | COMPLETE | @swagger JSDoc annotations added to semantic search endpoint |
+| 22 | Cron Job Documentation | COMPLETE | CRON_JOBS.md with all 14 scheduled jobs documented |
 

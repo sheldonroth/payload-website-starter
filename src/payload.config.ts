@@ -253,6 +253,10 @@ export default buildConfig({
           Component: '@/components/SearchAnalyticsDashboard',
           path: '/search-analytics',
         },
+        'push-campaigns': {
+          Component: '@/components/PushCampaignDashboard',
+          path: '/push-campaigns',
+        },
       },
       // Sidebar nav links
       afterNavLinks: ['@/components/AdminNavLinks'],
