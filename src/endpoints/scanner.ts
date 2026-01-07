@@ -14,10 +14,64 @@ import { createAuditLog } from '../collections/AuditLog'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 /**
- * POST /api/scanner/lookup
- *
- * Look up a product by barcode.
- * Returns product data if found, or voting info if not found.
+ * @openapi
+ * /scanner/lookup:
+ *   post:
+ *     summary: Look up product by barcode
+ *     description: |
+ *       Searches for a product using its barcode (UPC-A, EAN-13, etc.).
+ *       Returns product details if found, or voting statistics if not.
+ *     tags: [Scanner, Mobile]
+ *     security:
+ *       - fingerprintAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [barcode]
+ *             properties:
+ *               barcode:
+ *                 type: string
+ *                 description: Product barcode (8-14 digits)
+ *                 example: "5000328657950"
+ *               fingerprintHash:
+ *                 type: string
+ *                 description: Device fingerprint for tracking
+ *               saveIfFound:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Save external product to local database
+ *     responses:
+ *       200:
+ *         description: Product lookup result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     found:
+ *                       type: boolean
+ *                       example: true
+ *                     product:
+ *                       $ref: '#/components/schemas/Product'
+ *                 - type: object
+ *                   properties:
+ *                     found:
+ *                       type: boolean
+ *                       example: false
+ *                     barcode:
+ *                       type: string
+ *                     message:
+ *                       type: string
+ *                     voteStats:
+ *                       type: object
+ *       400:
+ *         description: Invalid barcode format
+ *       429:
+ *         $ref: '#/components/responses/RateLimited'
  */
 export const scannerLookupHandler: PayloadHandler = async (req: PayloadRequest) => {
     try {

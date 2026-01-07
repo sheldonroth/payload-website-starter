@@ -12,6 +12,29 @@ const AdminNavLinks: React.FC = () => {
         <>
             <div style={{ padding: '0 12px', marginTop: '8px' }}>
                 <div style={{ borderTop: '1px solid #3f3f46', paddingTop: '12px' }}>
+                    <Link
+                        href="/admin/home"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#fff',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            marginBottom: '12px',
+                            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                        }}
+                    >
+                        Dashboard Home
+                    </Link>
+                </div>
+            </div>
+            <div style={{ padding: '0 12px', marginTop: '8px' }}>
+                <div style={{ borderTop: '1px solid #3f3f46', paddingTop: '12px' }}>
                     <span style={{ fontSize: '11px', color: '#71717a', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>
                         MODERATION
                     </span>
@@ -325,6 +348,22 @@ const AdminNavLinks: React.FC = () => {
                     >
                         Product Engagement
                     </Link>
+                    <Link
+                        href="/admin/search-analytics"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        Search Analytics
+                    </Link>
                 </div>
             </div>
             <div style={{ padding: '0 12px', marginTop: '8px' }}>
@@ -402,6 +441,29 @@ const AdminNavLinks: React.FC = () => {
                         }}
                     >
                         Performance
+                    </Link>
+                </div>
+            </div>
+            <div style={{ padding: '0 12px', marginTop: '8px' }}>
+                <div style={{ borderTop: '1px solid #3f3f46', paddingTop: '12px' }}>
+                    <span style={{ fontSize: '11px', color: '#71717a', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>
+                        DEVELOPER
+                    </span>
+                    <Link
+                        href="/admin/api-docs"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            color: '#d4d4d8',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        API Documentation
                     </Link>
                 </div>
             </div>

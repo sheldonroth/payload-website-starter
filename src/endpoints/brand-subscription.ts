@@ -6,6 +6,46 @@
  * - Create Portal Session: Manage existing subscription
  * - Get Subscription Status: Current plan details
  * - Webhook Handler: Process Stripe events
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     CheckoutSession:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         checkoutUrl:
+ *           type: string
+ *           format: uri
+ *         sessionId:
+ *           type: string
+ *     PortalSession:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         portalUrl:
+ *           type: string
+ *           format: uri
+ *     SubscriptionStatus:
+ *       type: object
+ *       properties:
+ *         tier:
+ *           type: string
+ *           enum: [free, starter, pro, enterprise]
+ *         tierName:
+ *           type: string
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *         endDate:
+ *           type: string
+ *           format: date-time
+ *         canUpgrade:
+ *           type: boolean
+ *         canDowngrade:
+ *           type: boolean
  */
 
 import type { Endpoint } from 'payload'
@@ -41,10 +81,41 @@ const TIER_METADATA = {
 }
 
 /**
- * Create Checkout Session
- * POST /api/brand/subscription/create-checkout
- *
- * Creates a Stripe Checkout session for subscription purchase
+ * @openapi
+ * /brand/subscription/create-checkout:
+ *   post:
+ *     summary: Create Stripe Checkout session
+ *     description: Initiates a Stripe Checkout session for subscription purchase
+ *     tags: [Brand Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tier]
+ *             properties:
+ *               tier:
+ *                 type: string
+ *                 enum: [starter, pro, enterprise]
+ *                 description: Subscription tier to purchase
+ *               billingPeriod:
+ *                 type: string
+ *                 enum: [monthly, annual]
+ *                 default: monthly
+ *     responses:
+ *       200:
+ *         description: Checkout session created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CheckoutSession'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       400:
+ *         description: Invalid tier or billing period
  */
 export const brandCreateCheckoutHandler: Endpoint = {
     path: '/brand/subscription/create-checkout',
@@ -193,10 +264,23 @@ export const brandCreatePortalHandler: Endpoint = {
 }
 
 /**
- * Get Subscription Status
- * GET /api/brand/subscription/status
- *
- * Returns current subscription details
+ * @openapi
+ * /brand/subscription/status:
+ *   get:
+ *     summary: Get current subscription status
+ *     description: Returns detailed subscription information including Stripe status
+ *     tags: [Brand Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SubscriptionStatus'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  */
 export const brandSubscriptionStatusHandler: Endpoint = {
     path: '/brand/subscription/status',
@@ -265,10 +349,32 @@ export const brandSubscriptionStatusHandler: Endpoint = {
 }
 
 /**
- * Get Available Plans
- * GET /api/brand/subscription/plans
- *
- * Returns available subscription plans with pricing
+ * @openapi
+ * /brand/subscription/plans:
+ *   get:
+ *     summary: Get available subscription plans
+ *     description: Returns all available subscription tiers with features and pricing
+ *     tags: [Brand Subscription]
+ *     responses:
+ *       200:
+ *         description: Available plans
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plans:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SubscriptionPlan'
+ *                 currency:
+ *                   type: string
+ *                   example: USD
+ *                 billingPeriods:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: [monthly, annual]
  */
 export const brandSubscriptionPlansHandler: Endpoint = {
     path: '/brand/subscription/plans',

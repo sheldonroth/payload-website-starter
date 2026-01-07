@@ -7,6 +7,51 @@
  * - Verify Email: Confirm email address ownership
  * - Forgot Password: Password reset flow
  * - Refresh Token: Extend session
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     LoginRequest:
+ *       type: object
+ *       required: [email, password]
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         password:
+ *           type: string
+ *           format: password
+ *     LoginResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         token:
+ *           type: string
+ *         user:
+ *           $ref: '#/components/schemas/BrandUser'
+ *     SignupRequest:
+ *       type: object
+ *       required: [email, password, name, brandName]
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         password:
+ *           type: string
+ *           format: password
+ *           minLength: 8
+ *         name:
+ *           type: string
+ *         brandName:
+ *           type: string
+ *         companyWebsite:
+ *           type: string
+ *           format: uri
+ *         jobTitle:
+ *           type: string
+ *         phone:
+ *           type: string
  */
 
 import type { Endpoint } from 'payload'
@@ -33,8 +78,31 @@ function hashToken(token: string): string {
 }
 
 /**
- * Brand Login Endpoint
- * POST /api/brand-auth/login
+ * @openapi
+ * /brand-auth/login:
+ *   post:
+ *     summary: Brand user login
+ *     description: Authenticate a brand user with email and password
+ *     tags: [Brand Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       400:
+ *         description: Missing email or password
+ *       401:
+ *         description: Invalid credentials or unverified account
+ *       429:
+ *         $ref: '#/components/responses/RateLimited'
  */
 export const brandLoginHandler: Endpoint = {
     path: '/brand-auth/login',

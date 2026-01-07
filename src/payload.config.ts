@@ -131,6 +131,7 @@ import { mobileErrorsHandler } from './endpoints/mobile-errors'
 import { brandAuthEndpoints } from './endpoints/brand-auth'
 import { brandDashboardEndpoints } from './endpoints/brand-dashboard'
 import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
+import { apiDocsHandler } from './endpoints/api-docs'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -239,6 +240,18 @@ export default buildConfig({
         'performance': {
           Component: '@/components/PerformanceDashboard',
           path: '/performance',
+        },
+        'api-docs': {
+          Component: '@/components/ApiDocsDashboard',
+          path: '/api-docs',
+        },
+        'home': {
+          Component: '@/components/AdminHomeDashboard',
+          path: '/home',
+        },
+        'search-analytics': {
+          Component: '@/components/SearchAnalyticsDashboard',
+          path: '/search-analytics',
         },
       },
       // Sidebar nav links
@@ -879,6 +892,12 @@ export default buildConfig({
     ...brandDashboardEndpoints,
     // Brand Portal Subscription
     ...brandSubscriptionEndpoints,
+    // API Documentation
+    {
+      path: '/docs',
+      method: 'get',
+      handler: apiDocsHandler,
+    },
   ],
   plugins: [
     ...plugins,
