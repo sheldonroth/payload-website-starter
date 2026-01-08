@@ -1563,8 +1563,8 @@ export const products_cons = pgTable(
   ],
 )
 
-export const products_where_to_buy = pgTable(
-  'products_where_to_buy',
+export const products_purchase_links = pgTable(
+  'products_purchase_links',
   {
     _order: integer('_order').notNull(),
     _parentID: integer('_parent_id').notNull(),
@@ -1575,12 +1575,12 @@ export const products_where_to_buy = pgTable(
     isAffiliate: boolean('is_affiliate').default(true),
   },
   (columns) => [
-    index('products_where_to_buy_order_idx').on(columns._order),
-    index('products_where_to_buy_parent_id_idx').on(columns._parentID),
+    index('products_purchase_links_order_idx').on(columns._order),
+    index('products_purchase_links_parent_id_idx').on(columns._parentID),
     foreignKey({
       columns: [columns['_parentID']],
       foreignColumns: [products.id],
-      name: 'products_where_to_buy_parent_id_fk',
+      name: 'products_purchase_links_parent_id_fk',
     }).onDelete('cascade'),
   ],
 )
@@ -5516,11 +5516,11 @@ export const relations_products_cons = relations(products_cons, ({ one }) => ({
     relationName: 'cons',
   }),
 }))
-export const relations_products_where_to_buy = relations(products_where_to_buy, ({ one }) => ({
+export const relations_products_purchase_links = relations(products_purchase_links, ({ one }) => ({
   _parentID: one(products, {
-    fields: [products_where_to_buy._parentID],
+    fields: [products_purchase_links._parentID],
     references: [products.id],
-    relationName: 'whereToBuy',
+    relationName: 'purchaseLinks',
   }),
 }))
 export const relations_products_rels = relations(products_rels, ({ one }) => ({
@@ -5562,8 +5562,8 @@ export const relations_products = relations(products, ({ one, many }) => ({
   cons: many(products_cons, {
     relationName: 'cons',
   }),
-  whereToBuy: many(products_where_to_buy, {
-    relationName: 'whereToBuy',
+  purchaseLinks: many(products_purchase_links, {
+    relationName: 'purchaseLinks',
   }),
   scoutAttribution_firstScout: one(contributor_profiles, {
     fields: [products.scoutAttribution_firstScout],
@@ -6893,7 +6893,7 @@ type DatabaseSchema = {
   _posts_v_rels: typeof _posts_v_rels
   products_pros: typeof products_pros
   products_cons: typeof products_cons
-  products_where_to_buy: typeof products_where_to_buy
+  products_purchase_links: typeof products_purchase_links
   products: typeof products
   products_rels: typeof products_rels
   articles_tags: typeof articles_tags
@@ -7026,7 +7026,7 @@ type DatabaseSchema = {
   relations__posts_v: typeof relations__posts_v
   relations_products_pros: typeof relations_products_pros
   relations_products_cons: typeof relations_products_cons
-  relations_products_where_to_buy: typeof relations_products_where_to_buy
+  relations_products_purchase_links: typeof relations_products_purchase_links
   relations_products_rels: typeof relations_products_rels
   relations_products: typeof relations_products
   relations_articles_tags: typeof relations_articles_tags

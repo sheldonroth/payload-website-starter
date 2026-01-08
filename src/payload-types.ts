@@ -733,7 +733,7 @@ export interface Product {
     };
     [k: string]: unknown;
   } | null;
-  whereToBuy?:
+  purchaseLinks?:
     | {
         retailer: string;
         url: string;
@@ -4381,7 +4381,7 @@ export interface ProductsSelect<T extends boolean = true> {
       };
   summary?: T;
   fullReview?: T;
-  whereToBuy?:
+  purchaseLinks?:
     | T
     | {
         retailer?: T;

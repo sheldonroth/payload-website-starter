@@ -341,8 +341,8 @@ export const Products: CollectionConfig = {
                             : `https://www.amazon.com/s?k=${encodedQuery}`
                     }
 
-                    // Check if Amazon link already exists in whereToBuy
-                    const existingLinks = data.whereToBuy || []
+                    // Check if Amazon link already exists in purchaseLinks
+                    const existingLinks = data.purchaseLinks || []
                     const amazonLinkIndex = existingLinks.findIndex(
                         (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
                     )
@@ -365,7 +365,7 @@ export const Products: CollectionConfig = {
                         existingLinks.unshift(amazonLink) // Add to beginning
                     }
 
-                    data.whereToBuy = existingLinks
+                    data.purchaseLinks = existingLinks
                 } catch (error) {
                     console.error('Failed to process affiliate link:', error)
                 }
@@ -1238,7 +1238,7 @@ export const Products: CollectionConfig = {
         // === PURCHASE LINKS ===
         // NOTE: No access control - affiliate links must be visible to all users for monetization
         {
-            name: 'whereToBuy',
+            name: 'purchaseLinks',
             type: 'array',
             label: '🛒 Where to Buy',
             fields: [
