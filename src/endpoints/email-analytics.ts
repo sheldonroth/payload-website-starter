@@ -38,25 +38,37 @@ export const emailAnalyticsHandler: PayloadHandler = async (req) => {
   }
 
   try {
-    const url = new URL(req.url || '', `http://${req.headers.get('host') || 'localhost'}`)
-    const range = url.searchParams.get('range') || '30d'
+    // Parse URL safely
+    let range = '30d'
+    try {
+      const url = new URL(req.url || '', `http://${req.headers.get('host') || 'localhost'}`)
+      range = url.searchParams.get('range') || '30d'
+    } catch {
+      // Use default range if URL parsing fails
+    }
 
     // Calculate date range
     const now = new Date()
     const daysBack = range === '7d' ? 7 : range === '90d' ? 90 : 30
     const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000)
 
-    // Fetch all email sends in the range
-    const emailSends = await payload.find({
-      collection: 'email-sends',
-      where: {
-        sentAt: { greater_than: startDate.toISOString() },
-      },
-      limit: 10000,
-      depth: 1,
-    })
-
-    const sends = emailSends.docs
+    // Fetch all email sends in the range - handle empty gracefully
+    let sends: any[] = []
+    try {
+      const emailSends = await payload.find({
+        collection: 'email-sends',
+        where: {
+          sentAt: { greater_than: startDate.toISOString() },
+        },
+        limit: 10000,
+        depth: 1,
+      })
+      sends = emailSends.docs || []
+    } catch (queryError) {
+      console.error('[Email Analytics] Query error:', queryError)
+      // Return empty data if query fails
+      sends = []
+    }
 
     // Calculate overview metrics
     const overview = calculateMetrics(sends)
@@ -64,13 +76,13 @@ export const emailAnalyticsHandler: PayloadHandler = async (req) => {
     // Calculate 7-day metrics
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const last7Days = calculateMetrics(
-      sends.filter((s: any) => new Date(s.sentAt) >= sevenDaysAgo)
+      sends.filter((s: any) => s.sentAt && new Date(s.sentAt) >= sevenDaysAgo)
     )
 
     // Calculate 30-day metrics
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const last30Days = calculateMetrics(
-      sends.filter((s: any) => new Date(s.sentAt) >= thirtyDaysAgo)
+      sends.filter((s: any) => s.sentAt && new Date(s.sentAt) >= thirtyDaysAgo)
     )
 
     // Calculate template performance
@@ -209,8 +221,13 @@ function buildTimeSeries(sends: any[], days: number) {
     const dateStr = date.toISOString().split('T')[0]
 
     const daySends = sends.filter((s) => {
-      const sendDate = new Date(s.sentAt).toISOString().split('T')[0]
-      return sendDate === dateStr
+      if (!s.sentAt) return false
+      try {
+        const sendDate = new Date(s.sentAt).toISOString().split('T')[0]
+        return sendDate === dateStr
+      } catch {
+        return false
+      }
     })
 
     series.push({
