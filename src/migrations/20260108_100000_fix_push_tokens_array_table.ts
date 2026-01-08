@@ -15,6 +15,21 @@ import { sql, type MigrateUpArgs, type MigrateDownArgs } from '@payloadcms/db-ve
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   console.log('[Migration] Starting push_tokens array table fix...')
 
+  // Check if push_tokens table exists first (may not exist in all environments)
+  const pushTokensTableCheck = await db.execute(sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables
+      WHERE table_schema = 'public'
+      AND table_name = 'push_tokens'
+    ) as exists;
+  `)
+  const pushTokensExists = pushTokensTableCheck.rows?.[0]?.exists ?? false
+
+  if (!pushTokensExists) {
+    console.log('[Migration] push_tokens table does not exist, skipping migration')
+    return
+  }
+
   // Check if the new table already exists
   const tableCheckResult = await db.execute(sql`
     SELECT EXISTS (
