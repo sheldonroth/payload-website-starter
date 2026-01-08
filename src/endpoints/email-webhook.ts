@@ -359,33 +359,44 @@ interface ABTestResults {
 
 /**
  * Get A/B test results for a template
+ * Uses pagination to avoid loading too many records into memory
  */
 export async function getABTestResults(
     payload: Payload,
     templateId: string
 ): Promise<ABTestResults> {
-    // Get all sends for this template
-    const allSends = await payload.find({
-        collection: 'email-sends',
-        where: {
-            template: { equals: templateId },
-        },
-        limit: 10000,
-    });
-
     const variantA = { sent: 0, opened: 0, clicked: 0 };
     const variantB = { sent: 0, opened: 0, clicked: 0 };
 
-    for (const send of allSends.docs) {
-        const emailSend = send as EmailSend;
-        const variant = emailSend.abVariant === 'B' ? variantB : variantA;
-        variant.sent++;
-        if (emailSend.status === 'opened' || emailSend.status === 'clicked') {
-            variant.opened++;
+    // Process in batches to avoid memory issues
+    const PAGE_SIZE = 100;
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+        const result = await payload.find({
+            collection: 'email-sends',
+            where: {
+                template: { equals: templateId },
+            },
+            limit: PAGE_SIZE,
+            page,
+        });
+
+        for (const send of result.docs) {
+            const emailSend = send as EmailSend;
+            const variant = emailSend.abVariant === 'B' ? variantB : variantA;
+            variant.sent++;
+            if (emailSend.status === 'opened' || emailSend.status === 'clicked') {
+                variant.opened++;
+            }
+            if (emailSend.status === 'clicked') {
+                variant.clicked++;
+            }
         }
-        if (emailSend.status === 'clicked') {
-            variant.clicked++;
-        }
+
+        hasMore = result.hasNextPage ?? false;
+        page++;
     }
 
     const openRateA = variantA.sent > 0 ? variantA.opened / variantA.sent : 0;

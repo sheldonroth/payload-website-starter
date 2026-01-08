@@ -1,7 +1,12 @@
 /**
- * Simple in-memory rate limiter for AI endpoints
+ * Rate limiter with Redis persistence and in-memory fallback
  * Prevents abuse and manages API costs
+ *
+ * Uses Redis for persistence across server restarts and distributed deployments
+ * Falls back to in-memory when Redis is unavailable
  */
+
+import { cache } from './redis-cache'
 
 interface RateLimitEntry {
     count: number
@@ -14,7 +19,7 @@ interface RateLimitConfig {
     identifier?: string    // Custom identifier (defaults to IP/user)
 }
 
-// In-memory store (resets on server restart, which is fine for rate limiting)
+// In-memory fallback store (used when Redis is unavailable)
 const rateLimitStore: Map<string, RateLimitEntry> = new Map()
 
 // Cleanup old entries every 5 minutes
@@ -29,6 +34,75 @@ setInterval(() => {
 
 /**
  * Check if a request should be rate limited
+ * Uses Redis when available for persistence, falls back to in-memory
+ * @returns Object with allowed status and remaining requests
+ */
+export async function checkRateLimitAsync(
+    key: string,
+    config: RateLimitConfig
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+    const now = Date.now()
+    const windowSeconds = Math.ceil(config.windowMs / 1000)
+    const storeKey = `ratelimit:${key}:${config.identifier || 'default'}`
+    const resetAtKey = `${storeKey}:reset`
+
+    try {
+        // Try to get current count from Redis
+        const currentCount = await cache.get<number>(storeKey)
+        const storedResetAt = await cache.get<number>(resetAtKey)
+
+        // If we have a reset time and it's in the past, this is a new window
+        if (storedResetAt !== null && storedResetAt < now) {
+            // Window expired, reset
+            await cache.set(storeKey, 1, windowSeconds)
+            const newResetAt = now + config.windowMs
+            await cache.set(resetAtKey, newResetAt, windowSeconds)
+            return {
+                allowed: true,
+                remaining: config.maxRequests - 1,
+                resetAt: newResetAt,
+            }
+        }
+
+        const resetAt = storedResetAt || now + config.windowMs
+
+        if (currentCount === null) {
+            // First request in this window
+            await cache.set(storeKey, 1, windowSeconds)
+            await cache.set(resetAtKey, resetAt, windowSeconds)
+            return {
+                allowed: true,
+                remaining: config.maxRequests - 1,
+                resetAt,
+            }
+        }
+
+        // Check if limit exceeded
+        if (currentCount >= config.maxRequests) {
+            return {
+                allowed: false,
+                remaining: 0,
+                resetAt,
+            }
+        }
+
+        // Increment count
+        const newCount = await cache.incr(storeKey)
+        return {
+            allowed: true,
+            remaining: Math.max(0, config.maxRequests - newCount),
+            resetAt,
+        }
+    } catch (error) {
+        console.error('[RateLimiter] Redis error, falling back to in-memory:', error)
+        // Fall back to synchronous in-memory implementation
+        return checkRateLimit(key, config)
+    }
+}
+
+/**
+ * Synchronous rate limit check (in-memory only)
+ * Use checkRateLimitAsync for persistent rate limiting
  * @returns Object with allowed status and remaining requests
  */
 export function checkRateLimit(
@@ -221,8 +295,9 @@ export function getMobileRateLimitKey(req: Request): string {
 }
 
 /**
- * Apply rate limiting with standardized response
+ * Apply rate limiting with standardized response (in-memory, synchronous)
  * Returns null if allowed, Response if rate limited
+ * @deprecated Use applyRateLimitAsync for persistent rate limiting
  */
 export function applyRateLimit(
     req: Request,
@@ -231,6 +306,26 @@ export function applyRateLimit(
 ): Response | null {
     const key = identifier || getMobileRateLimitKey(req)
     const result = checkRateLimit(key, limitConfig)
+
+    if (!result.allowed) {
+        return rateLimitResponse(result.resetAt)
+    }
+
+    return null
+}
+
+/**
+ * Apply rate limiting with Redis persistence (async)
+ * Returns null if allowed, Response if rate limited
+ * Recommended for production use - persists across deployments
+ */
+export async function applyRateLimitAsync(
+    req: Request,
+    limitConfig: RateLimitConfig,
+    identifier?: string
+): Promise<Response | null> {
+    const key = identifier || getMobileRateLimitKey(req)
+    const result = await checkRateLimitAsync(key, limitConfig)
 
     if (!result.allowed) {
         return rateLimitResponse(result.resetAt)

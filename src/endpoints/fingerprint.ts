@@ -72,10 +72,28 @@ import { validationError, internalError } from '../utilities/api-response'
  *
  * @openapi
  * /fingerprint/check:
- *   get:
+ *   post:
  *     summary: Check fingerprint status
- *     description: Check device fingerprint status without updating last seen time
+ *     description: Check device fingerprint status without updating last seen time. POST is preferred over GET to avoid logging sensitive hashes in URLs.
  *     tags: [Fingerprint, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [hash]
+ *             properties:
+ *               hash:
+ *                 type: string
+ *                 description: Device fingerprint hash
+ *   get:
+ *     summary: Check fingerprint status (deprecated)
+ *     description: |
+ *       DEPRECATED: Use POST instead to avoid logging fingerprint hash in URLs.
+ *       Check device fingerprint status without updating last seen time.
+ *     tags: [Fingerprint, Mobile]
+ *     deprecated: true
  *     parameters:
  *       - in: query
  *         name: hash
@@ -269,17 +287,29 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
 }
 
 /**
- * GET /api/fingerprint/check
+ * GET/POST /api/fingerprint/check
  *
  * Check fingerprint status without updating.
+ * POST is preferred to avoid logging fingerprint hash in URLs/server logs.
+ * GET is deprecated but maintained for backward compatibility.
  */
 export const fingerprintCheckHandler: PayloadHandler = async (req) => {
     try {
-        const url = new URL(req.url || '', 'http://localhost')
-        const fingerprintHash = url.searchParams.get('hash')
+        let fingerprintHash: string | null = null
+
+        // Support both POST (preferred) and GET (deprecated)
+        const method = req.method?.toUpperCase()
+        if (method === 'POST') {
+            const body = await req.json?.() || {}
+            fingerprintHash = body.hash || null
+        } else {
+            // GET fallback (deprecated)
+            const url = new URL(req.url || '', 'http://localhost')
+            fingerprintHash = url.searchParams.get('hash')
+        }
 
         if (!fingerprintHash) {
-            return validationError('hash query parameter is required')
+            return validationError('hash is required (POST body or query parameter)')
         }
 
         const result = await req.payload.find({
