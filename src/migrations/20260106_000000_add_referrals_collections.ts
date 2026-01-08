@@ -78,6 +78,53 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
         CREATE UNIQUE INDEX IF NOT EXISTS "referrals_referred_device_id_unique_idx" ON "referrals" ("referred_device_id");
     `)
 
+    // Create enums for referral_payouts
+    await db.execute(sql`
+        DO $$ BEGIN
+            CREATE TYPE "enum_referral_payouts_status" AS ENUM ('pending', 'processing', 'paid', 'failed', 'cancelled');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    `)
+
+    await db.execute(sql`
+        DO $$ BEGIN
+            CREATE TYPE "enum_referral_payouts_payment_method" AS ENUM ('paypal', 'venmo', 'credit', 'check');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    `)
+
+    // Create referral_payouts table
+    await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS "referral_payouts" (
+            "id" serial PRIMARY KEY NOT NULL,
+            "referrer_id" varchar NOT NULL,
+            "referrer_email" varchar NOT NULL,
+            "amount" numeric NOT NULL,
+            "referral_count" integer NOT NULL,
+            "period" varchar NOT NULL,
+            "status" "enum_referral_payouts_status" DEFAULT 'pending' NOT NULL,
+            "payment_method" "enum_referral_payouts_payment_method" NOT NULL,
+            "payment_details" varchar,
+            "processed_at" timestamp(3) with time zone,
+            "transaction_id" varchar,
+            "w9_collected" boolean DEFAULT false,
+            "ytd_total" numeric DEFAULT 0,
+            "notes" varchar,
+            "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+            "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+        );
+    `)
+
+    // Create indexes for referral_payouts
+    await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS "referral_payouts_referrer_id_idx" ON "referral_payouts" ("referrer_id");
+    `)
+    await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS "referral_payouts_status_idx" ON "referral_payouts" ("status");
+    `)
+
     // Add missing columns to payload_locked_documents_rels
     await db.execute(sql`
         DO $$ BEGIN

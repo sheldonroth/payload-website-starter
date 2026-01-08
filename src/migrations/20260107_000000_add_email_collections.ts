@@ -205,7 +205,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     // ADD LOCKED DOCS RELS COLUMNS FOR EMAILS
     // ============================================
     await db.execute(sql`
-        ALTER TABLE "payload_locked_documents__rels"
+        ALTER TABLE "payload_locked_documents_rels"
         ADD COLUMN IF NOT EXISTS "email_templates_id" integer,
         ADD COLUMN IF NOT EXISTS "email_sends_id" integer;
     `)
@@ -213,8 +213,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     // Add foreign keys
     await db.execute(sql`
         DO $$ BEGIN
-            ALTER TABLE "payload_locked_documents__rels"
-            ADD CONSTRAINT "payload_locked_documents__rels_email_templates_fk"
+            ALTER TABLE "payload_locked_documents_rels"
+            ADD CONSTRAINT "payload_locked_documents_rels_email_templates_fk"
             FOREIGN KEY ("email_templates_id") REFERENCES "email_templates"("id") ON DELETE cascade ON UPDATE no action;
         EXCEPTION
             WHEN duplicate_object THEN null;
@@ -222,8 +222,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     `)
     await db.execute(sql`
         DO $$ BEGIN
-            ALTER TABLE "payload_locked_documents__rels"
-            ADD CONSTRAINT "payload_locked_documents__rels_email_sends_fk"
+            ALTER TABLE "payload_locked_documents_rels"
+            ADD CONSTRAINT "payload_locked_documents_rels_email_sends_fk"
             FOREIGN KEY ("email_sends_id") REFERENCES "email_sends"("id") ON DELETE cascade ON UPDATE no action;
         EXCEPTION
             WHEN duplicate_object THEN null;

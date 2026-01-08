@@ -23,9 +23,9 @@ import * as migration_20251231_205500_emergency_column_fix from './20251231_2055
 import * as migration_20251231_210000_create_brands_user_submissions from './20251231_210000_create_brands_user_submissions';
 import * as migration_20251231_220000_product_slug_unique from './20251231_220000_product_slug_unique';
 import * as migration_20251231_230000_add_pages_blocks_stats from './20251231_230000_add_pages_blocks_stats';
-import * as migration_20250101_000000_add_amazon_asin from './20250101_000000_add_amazon_asin';
-import * as migration_20250101_000100_add_voting_to_user_submissions from './20250101_000100_add_voting_to_user_submissions';
-import * as migration_20250101_000200_add_ingredient_watchlist from './20250101_000200_add_ingredient_watchlist';
+import * as migration_20251230_000000_add_amazon_asin from './20251230_000000_add_amazon_asin';
+import * as migration_20251231_215000_add_voting_to_user_submissions from './20251231_215000_add_voting_to_user_submissions';
+import * as migration_20251231_216000_add_ingredient_watchlist from './20251231_216000_add_ingredient_watchlist';
 import * as migration_20251231_240000_add_background_removed from './20251231_240000_add_background_removed';
 import * as migration_20260101_000000_add_product_badges from './20260101_000000_add_product_badges';
 import * as migration_20260101_000100_add_featured_product from './20260101_000100_add_featured_product';
@@ -63,8 +63,11 @@ import * as migration_20260107_090000_update_embedding_dimension from './2026010
 import * as migration_20260106_300000_enhance_feedback_user_attribution from './20260106_300000_enhance_feedback_user_attribution';
 import * as migration_20260107_100000_scout_program_collections from './20260107_100000_scout_program_collections';
 import * as migration_20260107_110000_add_performance_indexes from './20260107_110000_add_performance_indexes';
+import * as migration_20260107_115000_create_contributor_profiles from './20260107_115000_create_contributor_profiles';
 import * as migration_20260107_120000_rename_scout_to_contributor from './20260107_120000_rename_scout_to_contributor';
 import * as migration_20260107_130000_add_product_votes_notification_columns from './20260107_130000_add_product_votes_notification_columns';
+import * as migration_20260108_000000_add_search_queries from './20260108_000000_add_search_queries';
+import * as migration_20260108_100000_fix_push_tokens_array_table from './20260108_100000_fix_push_tokens_array_table';
 
 export const migrations = [
   {
@@ -193,19 +196,19 @@ export const migrations = [
     name: '20251231_230000_add_pages_blocks_stats'
   },
   {
-    up: migration_20250101_000000_add_amazon_asin.up,
-    down: migration_20250101_000000_add_amazon_asin.down,
-    name: '20250101_000000_add_amazon_asin'
+    up: migration_20251230_000000_add_amazon_asin.up,
+    down: migration_20251230_000000_add_amazon_asin.down,
+    name: '20251230_000000_add_amazon_asin'
   },
   {
-    up: migration_20250101_000100_add_voting_to_user_submissions.up,
-    down: migration_20250101_000100_add_voting_to_user_submissions.down,
-    name: '20250101_000100_add_voting_to_user_submissions'
+    up: migration_20251231_215000_add_voting_to_user_submissions.up,
+    down: migration_20251231_215000_add_voting_to_user_submissions.down,
+    name: '20251231_215000_add_voting_to_user_submissions'
   },
   {
-    up: migration_20250101_000200_add_ingredient_watchlist.up,
-    down: migration_20250101_000200_add_ingredient_watchlist.down,
-    name: '20250101_000200_add_ingredient_watchlist'
+    up: migration_20251231_216000_add_ingredient_watchlist.up,
+    down: migration_20251231_216000_add_ingredient_watchlist.down,
+    name: '20251231_216000_add_ingredient_watchlist'
   },
   {
     up: migration_20251231_240000_add_background_removed.up,
@@ -393,6 +396,11 @@ export const migrations = [
     name: '20260107_110000_add_performance_indexes'
   },
   {
+    up: migration_20260107_115000_create_contributor_profiles.up,
+    down: migration_20260107_115000_create_contributor_profiles.down,
+    name: '20260107_115000_create_contributor_profiles'
+  },
+  {
     up: migration_20260107_120000_rename_scout_to_contributor.up,
     down: migration_20260107_120000_rename_scout_to_contributor.down,
     name: '20260107_120000_rename_scout_to_contributor'
@@ -401,6 +409,16 @@ export const migrations = [
     up: migration_20260107_130000_add_product_votes_notification_columns.up,
     down: migration_20260107_130000_add_product_votes_notification_columns.down,
     name: '20260107_130000_add_product_votes_notification_columns'
+  },
+  {
+    up: migration_20260108_000000_add_search_queries.up,
+    down: migration_20260108_000000_add_search_queries.down,
+    name: '20260108_000000_add_search_queries'
+  },
+  {
+    up: migration_20260108_100000_fix_push_tokens_array_table.up,
+    down: migration_20260108_100000_fix_push_tokens_array_table.down,
+    name: '20260108_100000_fix_push_tokens_array_table'
   },
 ];
 

@@ -11,6 +11,23 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postg
  * This migration adds missing columns and migrates data from _rels to __rels.
  */
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
+  // Check if payload_locked_documents__rels table exists (double underscore)
+  // If it doesn't exist, skip this migration as it's for newer Payload versions
+  const tableCheckResult = await db.execute(sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables
+      WHERE table_schema = 'public'
+      AND table_name = 'payload_locked_documents__rels'
+    ) as exists;
+  `)
+
+  const tableExists = tableCheckResult.rows?.[0]?.exists ?? false
+
+  if (!tableExists) {
+    console.log('[Migration] payload_locked_documents__rels table does not exist, skipping migration')
+    return
+  }
+
   // Add missing columns to payload_locked_documents__rels
   const missingColumns = [
     'payload_folders_id',

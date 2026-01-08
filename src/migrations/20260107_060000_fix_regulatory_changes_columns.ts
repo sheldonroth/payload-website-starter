@@ -12,6 +12,22 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postg
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     console.log('[Migration] Fixing regulatory_changes columns...')
 
+    // Check if table exists
+    const tableCheckResult = await db.execute(sql`
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'regulatory_changes'
+        ) as exists;
+    `)
+
+    const tableExists = tableCheckResult.rows?.[0]?.exists ?? false
+
+    if (!tableExists) {
+        console.log('[Migration] regulatory_changes table does not exist, skipping migration')
+        return
+    }
+
     // Rename generated_article to generated_article_id
     await db.execute(sql`
         DO $$ BEGIN
