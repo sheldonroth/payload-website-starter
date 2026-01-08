@@ -69,6 +69,7 @@ import * as migration_20260107_130000_add_product_votes_notification_columns fro
 import * as migration_20260108_000000_add_search_queries from './20260108_000000_add_search_queries';
 import * as migration_20260108_100000_fix_push_tokens_array_table from './20260108_100000_fix_push_tokens_array_table';
 import * as migration_20260108_120000_fix_product_votes_contributor_fk from './20260108_120000_fix_product_votes_contributor_fk';
+import * as migration_20260108_140000_rename_purchase_links_to_where_to_buy from './20260108_140000_rename_purchase_links_to_where_to_buy';
 
 export const migrations = [
   {
@@ -425,6 +426,11 @@ export const migrations = [
     up: migration_20260108_120000_fix_product_votes_contributor_fk.up,
     down: migration_20260108_120000_fix_product_votes_contributor_fk.down,
     name: '20260108_120000_fix_product_votes_contributor_fk'
+  },
+  {
+    up: migration_20260108_140000_rename_purchase_links_to_where_to_buy.up,
+    down: migration_20260108_140000_rename_purchase_links_to_where_to_buy.down,
+    name: '20260108_140000_rename_purchase_links_to_where_to_buy'
   },
 ];
 

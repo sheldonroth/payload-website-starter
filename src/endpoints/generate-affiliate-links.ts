@@ -37,7 +37,7 @@ export const generateAffiliateLinksHandler = async (req: PayloadRequest): Promis
                 name: true,
                 brand: true,
                 amazonAsin: true,
-                purchaseLinks: true,
+                whereToBuy: true,
             },
         })
 
