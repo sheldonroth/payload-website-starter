@@ -293,16 +293,18 @@ export const Products: CollectionConfig = {
             // HOOK 8: AUTO-GENERATE AFFILIATE LINKS
             // ============================================
             async ({ data, req }) => {
-                // If amazonAsin exists, ensure there's an Amazon affiliate link
-                if (data?.amazonAsin) {
-                    try {
-                        // Get affiliate tag from SiteSettings
-                        const siteSettings = await req.payload.findGlobal({
-                            slug: 'site-settings' as any,
-                        })
-                        const affiliateTag = (siteSettings as { affiliateSettings?: { amazonAffiliateTag?: string } })
-                            ?.affiliateSettings?.amazonAffiliateTag
+                try {
+                    // Get site settings to check if affiliate links are enabled
+                    const siteSettings = await req.payload.findGlobal({
+                        slug: 'site-settings' as any,
+                    })
+                    const affiliateSettings = (siteSettings as { affiliateSettings?: { amazonAffiliateTag?: string; enableAffiliateLinks?: boolean } })
+                        ?.affiliateSettings
+                    const affiliateTag = affiliateSettings?.amazonAffiliateTag
+                    const enableAffiliateLinks = affiliateSettings?.enableAffiliateLinks !== false // Default to true
 
+                    // If amazonAsin exists and affiliate links are enabled, generate link
+                    if (data?.amazonAsin && enableAffiliateLinks) {
                         // Generate affiliate URL
                         const asin = data.amazonAsin.toUpperCase()
                         const affiliateUrl = affiliateTag
@@ -315,10 +317,13 @@ export const Products: CollectionConfig = {
                             (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
                         )
 
+                        // Safely get existing price if link exists
+                        const existingPrice = amazonLinkIndex >= 0 ? (existingLinks[amazonLinkIndex]?.price || '') : ''
+
                         const amazonLink = {
                             retailer: 'Amazon',
                             url: affiliateUrl,
-                            price: existingLinks[amazonLinkIndex]?.price || '', // Keep existing price if any
+                            price: existingPrice,
                             isAffiliate: !!affiliateTag,
                         }
 
@@ -331,9 +336,14 @@ export const Products: CollectionConfig = {
                         }
 
                         data.purchaseLinks = existingLinks
-                    } catch (error) {
-                        console.error('Failed to generate affiliate link:', error)
+                    } else if (!data?.amazonAsin && data?.purchaseLinks) {
+                        // ASIN removed - clean up stale Amazon links
+                        data.purchaseLinks = data.purchaseLinks.filter(
+                            (link: { retailer?: string }) => link.retailer?.toLowerCase() !== 'amazon'
+                        )
                     }
+                } catch (error) {
+                    console.error('Failed to process affiliate link:', error)
                 }
                 return data
             },
@@ -969,17 +979,17 @@ export const Products: CollectionConfig = {
                 condition: (data) => data?.amazonLinkStatus === 'invalid',
             },
         },
-        // TEMPORARILY DISABLED - causing product rendering issues
-        // {
-        //     name: 'amazonValidateButton',
-        //     type: 'ui',
-        //     admin: {
-        //         position: 'sidebar',
-        //         components: {
-        //             Field: '@/components/AmazonValidateButton',
-        //         },
-        //     },
-        // },
+        // Amazon link validation button in sidebar
+        {
+            name: 'amazonValidateButton',
+            type: 'ui',
+            admin: {
+                position: 'sidebar',
+                components: {
+                    Field: '@/components/AmazonValidateButton',
+                },
+            },
+        },
         // === SOURCE INFORMATION ===
         // Collapsible section grouping all source-related fields
         // NOTE: 'collapsible' type is UI-only - no database migration needed
@@ -1202,13 +1212,11 @@ export const Products: CollectionConfig = {
         },
 
         // === PURCHASE LINKS ===
+        // NOTE: No access control - affiliate links must be visible to all users for monetization
         {
             name: 'purchaseLinks',
             type: 'array',
             label: '🛒 Where to Buy',
-            access: {
-                read: premiumFieldAccess,
-            },
             fields: [
                 {
                     type: 'row',
