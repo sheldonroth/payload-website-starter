@@ -291,6 +291,9 @@ export const Products: CollectionConfig = {
 
             // ============================================
             // HOOK 8: AUTO-GENERATE AFFILIATE LINKS
+            // Generates Amazon links for ALL products:
+            // - Direct product link if ASIN is available
+            // - Search link using product name/brand otherwise
             // ============================================
             async ({ data, req }) => {
                 try {
@@ -303,45 +306,66 @@ export const Products: CollectionConfig = {
                     const affiliateTag = affiliateSettings?.amazonAffiliateTag
                     const enableAffiliateLinks = affiliateSettings?.enableAffiliateLinks !== false // Default to true
 
-                    // If amazonAsin exists and affiliate links are enabled, generate link
-                    if (data?.amazonAsin && enableAffiliateLinks) {
-                        // Generate affiliate URL
+                    // Skip if affiliate links are disabled
+                    if (!enableAffiliateLinks) {
+                        return data
+                    }
+
+                    // Get product name and brand for search link
+                    const productName = data?.name || ''
+                    const brandName = typeof data?.brand === 'object' ? data?.brand?.name : ''
+
+                    // Need at least a product name to generate any link
+                    if (!productName) {
+                        return data
+                    }
+
+                    let affiliateUrl: string
+                    let linkType: 'direct' | 'search' = 'search'
+
+                    if (data?.amazonAsin) {
+                        // Priority 1: Direct product link with ASIN
                         const asin = data.amazonAsin.toUpperCase()
-                        const affiliateUrl = affiliateTag
+                        affiliateUrl = affiliateTag
                             ? `https://www.amazon.com/dp/${asin}?tag=${affiliateTag}`
                             : `https://www.amazon.com/dp/${asin}`
-
-                        // Check if Amazon link already exists in purchaseLinks
-                        const existingLinks = data.purchaseLinks || []
-                        const amazonLinkIndex = existingLinks.findIndex(
-                            (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
-                        )
-
-                        // Safely get existing price if link exists
-                        const existingPrice = amazonLinkIndex >= 0 ? (existingLinks[amazonLinkIndex]?.price || '') : ''
-
-                        const amazonLink = {
-                            retailer: 'Amazon',
-                            url: affiliateUrl,
-                            price: existingPrice,
-                            isAffiliate: !!affiliateTag,
-                        }
-
-                        if (amazonLinkIndex >= 0) {
-                            // Update existing Amazon link
-                            existingLinks[amazonLinkIndex] = amazonLink
-                        } else {
-                            // Add new Amazon link
-                            existingLinks.unshift(amazonLink) // Add to beginning
-                        }
-
-                        data.purchaseLinks = existingLinks
-                    } else if (!data?.amazonAsin && data?.purchaseLinks) {
-                        // ASIN removed - clean up stale Amazon links
-                        data.purchaseLinks = data.purchaseLinks.filter(
-                            (link: { retailer?: string }) => link.retailer?.toLowerCase() !== 'amazon'
-                        )
+                        linkType = 'direct'
+                    } else {
+                        // Priority 2: Search link using product name + brand
+                        const searchQuery = brandName
+                            ? `${brandName} ${productName}`
+                            : productName
+                        const encodedQuery = encodeURIComponent(searchQuery)
+                        affiliateUrl = affiliateTag
+                            ? `https://www.amazon.com/s?k=${encodedQuery}&tag=${affiliateTag}`
+                            : `https://www.amazon.com/s?k=${encodedQuery}`
                     }
+
+                    // Check if Amazon link already exists in purchaseLinks
+                    const existingLinks = data.purchaseLinks || []
+                    const amazonLinkIndex = existingLinks.findIndex(
+                        (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
+                    )
+
+                    // Safely get existing price if link exists
+                    const existingPrice = amazonLinkIndex >= 0 ? (existingLinks[amazonLinkIndex]?.price || '') : ''
+
+                    const amazonLink = {
+                        retailer: 'Amazon',
+                        url: affiliateUrl,
+                        price: existingPrice,
+                        isAffiliate: !!affiliateTag,
+                    }
+
+                    if (amazonLinkIndex >= 0) {
+                        // Update existing Amazon link
+                        existingLinks[amazonLinkIndex] = amazonLink
+                    } else {
+                        // Add new Amazon link
+                        existingLinks.unshift(amazonLink) // Add to beginning
+                    }
+
+                    data.purchaseLinks = existingLinks
                 } catch (error) {
                     console.error('Failed to process affiliate link:', error)
                 }

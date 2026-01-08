@@ -99,6 +99,7 @@ import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHan
 import { productVoteEnrichHandler } from './endpoints/product-vote-enrich'
 import { productReportHandler } from './endpoints/product-report'
 import { productFeedHandler } from './endpoints/product-feed'
+import { generateAffiliateLinksHandler } from './endpoints/generate-affiliate-links'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
@@ -741,6 +742,12 @@ export default buildConfig({
       path: '/product-feed',
       method: 'get',
       handler: productFeedHandler,
+    },
+    // Bulk Generate Affiliate Links (admin only)
+    {
+      path: '/generate-affiliate-links',
+      method: 'post',
+      handler: generateAffiliateLinksHandler,
     },
     // Product Report (barcode lookup)
     {
