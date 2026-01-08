@@ -587,6 +587,8 @@ export const productVoteLeaderboardHandler = async (req: PayloadRequest): Promis
             collection: 'product-votes',
             where: {
                 status: { in: ['collecting_votes', 'threshold_reached'] },
+                // Only show products with names - hide "Unknown Product" entries
+                productName: { exists: true },
             },
             sort: '-totalWeightedVotes',
             limit: Math.min(limit, 50),

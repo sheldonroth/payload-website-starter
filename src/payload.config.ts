@@ -95,6 +95,7 @@ import { productPreviewHandler, productConfirmHandler } from './endpoints/produc
 import { appVersionHandler } from './endpoints/app-version'
 import { userSubscriptionHandler } from './endpoints/user-subscription'
 import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler, productVoteContributeHandler, productVoteQueueHandler, myInvestigationsHandler } from './endpoints/product-vote'
+import { productVoteEnrichHandler } from './endpoints/product-vote-enrich'
 import { productReportHandler } from './endpoints/product-report'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
@@ -725,6 +726,12 @@ export default buildConfig({
       path: '/product-vote/my-cases',
       method: 'get',
       handler: myInvestigationsHandler,
+    },
+    // Product Vote Enrichment (barcode lookup for missing product info)
+    {
+      path: '/product-vote/enrich',
+      method: 'post',
+      handler: productVoteEnrichHandler,
     },
     // Product Report (barcode lookup)
     {
