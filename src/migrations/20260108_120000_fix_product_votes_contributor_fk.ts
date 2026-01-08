@@ -32,6 +32,16 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     `)
     console.log('[Migration] Dropped dangling FK constraint to scout_profiles')
 
+    // Ensure the first_scout_id column exists (might be missing from previous migrations)
+    await db.execute(sql`
+        ALTER TABLE product_votes
+        ADD COLUMN IF NOT EXISTS first_scout_id integer,
+        ADD COLUMN IF NOT EXISTS first_scout_number integer,
+        ADD COLUMN IF NOT EXISTS scout_contributors jsonb DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS total_scouts integer DEFAULT 0;
+    `)
+    console.log('[Migration] Ensured scout-related columns exist')
+
     // Check if contributor_profiles table exists before adding FK
     const contributorTableCheck = await db.execute(sql`
         SELECT EXISTS (
