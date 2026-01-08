@@ -68,6 +68,7 @@ import * as migration_20260107_120000_rename_scout_to_contributor from './202601
 import * as migration_20260107_130000_add_product_votes_notification_columns from './20260107_130000_add_product_votes_notification_columns';
 import * as migration_20260108_000000_add_search_queries from './20260108_000000_add_search_queries';
 import * as migration_20260108_100000_fix_push_tokens_array_table from './20260108_100000_fix_push_tokens_array_table';
+import * as migration_20260108_120000_fix_product_votes_contributor_fk from './20260108_120000_fix_product_votes_contributor_fk';
 
 export const migrations = [
   {
@@ -419,6 +420,11 @@ export const migrations = [
     up: migration_20260108_100000_fix_push_tokens_array_table.up,
     down: migration_20260108_100000_fix_push_tokens_array_table.down,
     name: '20260108_100000_fix_push_tokens_array_table'
+  },
+  {
+    up: migration_20260108_120000_fix_product_votes_contributor_fk.up,
+    down: migration_20260108_120000_fix_product_votes_contributor_fk.down,
+    name: '20260108_120000_fix_product_votes_contributor_fk'
   },
 ];
 
