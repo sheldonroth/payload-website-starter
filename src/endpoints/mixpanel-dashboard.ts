@@ -138,19 +138,31 @@ export interface MixpanelDashboardResponse {
 
 /**
  * Get Mixpanel API credentials
+ * Supports both Service Account auth and API Secret auth
  */
 function getMixpanelAuth(): { projectId: string; auth: string } | null {
-  const serviceAccount = process.env.MIXPANEL_SERVICE_ACCOUNT
-  const secret = process.env.MIXPANEL_SECRET
   const projectId = process.env.MIXPANEL_PROJECT_ID || '3972542'
 
-  if (!serviceAccount || !secret) {
-    console.warn('[MixpanelDashboard] Missing MIXPANEL_SERVICE_ACCOUNT or MIXPANEL_SECRET')
-    return null
+  // Try Service Account authentication first (recommended for server-side)
+  const serviceAccount = process.env.MIXPANEL_SERVICE_ACCOUNT
+  const serviceSecret = process.env.MIXPANEL_SECRET
+
+  if (serviceAccount && serviceSecret) {
+    const auth = Buffer.from(`${serviceAccount}:${serviceSecret}`).toString('base64')
+    return { projectId, auth }
   }
 
-  const auth = Buffer.from(`${serviceAccount}:${secret}`).toString('base64')
-  return { projectId, auth }
+  // Fall back to API Secret authentication
+  const apiSecret = process.env.MIXPANEL_API_SECRET
+
+  if (apiSecret) {
+    // API Secret uses basic auth with secret as username, empty password
+    const auth = Buffer.from(`${apiSecret}:`).toString('base64')
+    return { projectId, auth }
+  }
+
+  console.warn('[MixpanelDashboard] Missing Mixpanel credentials. Set MIXPANEL_SERVICE_ACCOUNT + MIXPANEL_SECRET, or MIXPANEL_API_SECRET')
+  return null
 }
 
 /**
@@ -257,10 +269,10 @@ async function getEngagementMetrics(
       wauChange: Math.round(wauChange * 10) / 10,
       mau,
       mauChange: Math.round(mauChange * 10) / 10,
-      retentionRate: 35, // Placeholder - would need cohort analysis
-      retentionChange: 2.5,
-      avgSessionDuration: 180, // 3 minutes placeholder
-      sessionsPerUser: 2.3,
+      retentionRate: 0, // Requires cohort analysis - set up in Mixpanel
+      retentionChange: 0,
+      avgSessionDuration: 0, // Requires session tracking - configure in Mixpanel
+      sessionsPerUser: 0,
     }
   } catch (error) {
     console.error('[MixpanelDashboard] Error calculating engagement:', error)
@@ -434,13 +446,15 @@ async function getRevenueMetrics(
     const subscriptions = data[EVENTS.SUBSCRIPTION_STARTED]?.total || 0
     const conversionRate = trials > 0 ? (subscriptions / trials) * 100 : 0
 
+    // Note: MRR should come from RevenueCat, not Mixpanel
+    // These metrics are event-based approximations
     return {
-      mrr: subscriptions * 5, // $5/month estimate
-      mrrChange: 12.5, // Placeholder
+      mrr: 0, // Use RevenueCat dashboard for accurate MRR
+      mrrChange: 0,
       trialStarts: trials,
       trialConversionRate: Math.round(conversionRate * 10) / 10,
-      churnRate: 4.2, // Placeholder
-      ltv: 45, // Placeholder
+      churnRate: 0, // Requires subscription lifecycle analysis
+      ltv: 0, // Requires cohort revenue analysis
     }
   } catch (error) {
     console.error('[MixpanelDashboard] Error fetching revenue:', error)
@@ -477,19 +491,19 @@ async function getSurvivorshipBiasMetrics(
 }
 
 /**
- * Generate cohort data (simplified)
+ * Get cohort data from Mixpanel
+ * Note: Real cohort analysis requires Mixpanel's JQL or Cohorts API
+ * This returns empty data to indicate setup is needed
  */
-function generateCohortData(): CohortRow[] {
-  const weeks = ['Week of Jan 1', 'Week of Jan 8', 'Week of Jan 15', 'Week of Jan 22']
-
-  return weeks.map((week, i) => ({
-    cohort: week,
-    size: 100 - i * 15,
-    week1: 45 - i * 3,
-    week2: 32 - i * 2,
-    week3: 25 - i * 2,
-    week4: 20 - i * 1,
-  }))
+function getCohortData(): CohortRow[] {
+  // Real cohort analysis requires:
+  // 1. Setting up cohorts in Mixpanel dashboard
+  // 2. Using Mixpanel's JQL API or Cohorts API
+  // 3. Proper retention tracking events
+  //
+  // For now, return empty to indicate this needs configuration
+  // rather than showing fake data that could mislead decisions
+  return []
 }
 
 /**
@@ -593,7 +607,7 @@ export const mixpanelDashboardEndpoint: Endpoint = {
           retentionRate: 0, retentionChange: 0, avgSessionDuration: 0, sessionsPerUser: 0,
         },
         funnel,
-        cohorts: generateCohortData(),
+        cohorts: getCohortData(),
         topEvents,
         userGrowth,
         featureUsage,

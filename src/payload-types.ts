@@ -101,6 +101,7 @@ export interface Config {
     'market-intelligence': MarketIntelligence;
     'brand-analytics': BrandAnalytic;
     'brand-users': BrandUser;
+    'search-queries': SearchQuery;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -151,6 +152,7 @@ export interface Config {
     'market-intelligence': MarketIntelligenceSelect<false> | MarketIntelligenceSelect<true>;
     'brand-analytics': BrandAnalyticsSelect<false> | BrandAnalyticsSelect<true>;
     'brand-users': BrandUsersSelect<false> | BrandUsersSelect<true>;
+    'search-queries': SearchQueriesSelect<false> | SearchQueriesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -3700,6 +3702,49 @@ export interface BrandUser {
   password?: string | null;
 }
 /**
+ * Logged search queries for analytics
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-queries".
+ */
+export interface SearchQuery {
+  id: number;
+  /**
+   * The search query string
+   */
+  query: string;
+  /**
+   * Number of results returned
+   */
+  resultsCount?: number | null;
+  /**
+   * Where the search originated
+   */
+  source?: ('web' | 'mobile' | 'api') | null;
+  /**
+   * User ID if logged in (anonymous if not)
+   */
+  userId?: string | null;
+  /**
+   * Device fingerprint for anonymous tracking
+   */
+  deviceFingerprint?: string | null;
+  /**
+   * Session identifier
+   */
+  sessionId?: string | null;
+  /**
+   * Whether user clicked on a result
+   */
+  clickedResult?: boolean | null;
+  /**
+   * Product ID if user clicked a result
+   */
+  clickedProductId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -4020,6 +4065,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'brand-users';
         value: number | BrandUser;
+      } | null)
+    | ({
+        relationTo: 'search-queries';
+        value: number | SearchQuery;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -5451,6 +5500,22 @@ export interface BrandUsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-queries_select".
+ */
+export interface SearchQueriesSelect<T extends boolean = true> {
+  query?: T;
+  resultsCount?: T;
+  source?: T;
+  userId?: T;
+  deviceFingerprint?: T;
+  sessionId?: T;
+  clickedResult?: T;
+  clickedProductId?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

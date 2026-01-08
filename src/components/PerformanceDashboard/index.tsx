@@ -75,27 +75,23 @@ const PerformanceDashboard: React.FC = () => {
                 // Cache endpoint may not be available
             }
 
-            // Simulated metrics (in production, these would come from actual monitoring)
+            // Note: Real monitoring requires integration with Vercel Analytics, Datadog, or similar
+            // These show placeholder values - configure monitoring for real metrics
             setMetrics({
-                api: [
-                    { endpoint: '/api/scanner/lookup', avgResponseTime: 245, requestCount: 1520, errorRate: 0.5 },
-                    { endpoint: '/api/products', avgResponseTime: 120, requestCount: 3240, errorRate: 0.1 },
-                    { endpoint: '/api/smart-scan', avgResponseTime: 2100, requestCount: 450, errorRate: 1.2 },
-                    { endpoint: '/api/mobile/config', avgResponseTime: 45, requestCount: 5600, errorRate: 0 },
-                ],
+                api: [], // No API metrics available - requires monitoring setup (Vercel Analytics, Datadog, etc.)
                 database: {
-                    connectionStatus: 'connected',
-                    queryCount: 15420,
-                    avgQueryTime: 12,
+                    connectionStatus: 'connected', // Basic connectivity check
+                    queryCount: 0, // Requires query monitoring
+                    avgQueryTime: 0, // Requires query monitoring
                 },
                 cache: {
                     size: cacheSize,
-                    hitRate: 78,
+                    hitRate: 0, // Requires cache analytics
                 },
                 memory: {
-                    used: 256,
-                    total: 512,
-                    percentage: 50,
+                    used: 0, // Requires server monitoring
+                    total: 0,
+                    percentage: 0,
                 },
             })
 

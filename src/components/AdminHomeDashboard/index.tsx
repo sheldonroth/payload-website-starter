@@ -103,21 +103,21 @@ const AdminHomeDashboard: React.FC = () => {
         },
         users: {
           total: users.totalDocs || 0,
-          activeToday: Math.floor((users.totalDocs || 0) * 0.1), // Estimate
-          newThisWeek: Math.floor((users.totalDocs || 0) * 0.02), // Estimate
-          admins: 2, // Fixed for now
+          activeToday: 0, // Requires session/activity tracking
+          newThisWeek: 0, // Requires date-based user query
+          admins: 0, // Requires role-based query
         },
         engagement: {
-          scansToday: Math.floor(Math.random() * 500) + 100, // Simulated
+          scansToday: 0, // Requires barcode scan tracking
           feedbackPending: feedback.totalDocs || 0,
           submissionsToReview: submissions.totalDocs || 0,
           aiDrafts: 0, // Would need separate endpoint
         },
         system: {
-          cacheHitRate: cache.hitRate || 78,
+          cacheHitRate: cache.hitRate || 0,
           errorsToday: errors.totalDocs || 0,
-          uptime: '99.9%',
-          lastDeployment: new Date().toLocaleDateString(),
+          uptime: '-', // Requires uptime monitoring
+          lastDeployment: '-', // Requires deployment tracking
         },
       })
 

@@ -63,15 +63,9 @@ const PushCampaignDashboard: React.FC = () => {
       const android = androidRes.ok ? await (androidRes as Response).json() : { totalDocs: 0 }
       const active = activeRes.ok ? await (activeRes as Response).json() : { totalDocs: 0 }
 
-      // Generate mock daily registrations
-      const tokensByDay = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date()
-        date.setDate(date.getDate() - (6 - i))
-        return {
-          date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-          count: Math.floor(Math.random() * 50) + 10,
-        }
-      })
+      // Note: Daily registration chart requires date-based token queries
+      // For now, show empty - implement proper token registration tracking
+      const tokensByDay: { date: string; count: number }[] = []
 
       setStats({
         totalTokens: all.totalDocs || 0,
@@ -81,26 +75,9 @@ const PushCampaignDashboard: React.FC = () => {
         tokensByDay,
       })
 
-      // Mock campaigns (in production, fetch from a campaigns collection)
-      setCampaigns([
-        {
-          id: '1',
-          title: 'New Product Alert',
-          message: 'We just added 50 new products to our database!',
-          status: 'sent',
-          targetAudience: 'all',
-          sentAt: new Date(Date.now() - 86400000).toISOString(),
-          stats: { sent: 1245, delivered: 1198, opened: 456, failed: 47 },
-        },
-        {
-          id: '2',
-          title: 'Weekly Digest',
-          message: 'Check out this week\'s top rated products',
-          status: 'scheduled',
-          targetAudience: 'subscribers',
-          scheduledFor: new Date(Date.now() + 86400000).toISOString(),
-        },
-      ])
+      // Note: Campaign history requires a push-campaigns collection
+      // Currently empty - implement campaign persistence for history
+      setCampaigns([])
     } catch (err) {
       console.error('[PushCampaign] Error:', err)
     } finally {

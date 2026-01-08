@@ -41,6 +41,7 @@ import { ContributorProfiles } from './collections/ContributorProfiles'
 import { MarketIntelligence } from './collections/MarketIntelligence'
 import { BrandAnalytics } from './collections/BrandAnalytics'
 import { BrandUsers } from './collections/BrandUsers'
+import { SearchQueries } from './collections/SearchQueries'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -97,6 +98,7 @@ import { userSubscriptionHandler } from './endpoints/user-subscription'
 import { productVoteHandler, productVoteStatusHandler, productVoteLeaderboardHandler, productVoteContributeHandler, productVoteQueueHandler, myInvestigationsHandler } from './endpoints/product-vote'
 import { productVoteEnrichHandler } from './endpoints/product-vote-enrich'
 import { productReportHandler } from './endpoints/product-report'
+import { productFeedHandler } from './endpoints/product-feed'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
@@ -137,6 +139,7 @@ import { brandSubscriptionEndpoints } from './endpoints/brand-subscription'
 import { apiDocsHandler } from './endpoints/api-docs'
 import { apiStatusEndpoint } from './endpoints/api-status'
 import { searchAutocompleteHandler } from './endpoints/search-autocomplete'
+import { searchAnalyticsEndpoint, logSearchQueryEndpoint } from './endpoints/search-analytics'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -314,7 +317,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries],
   cors: [
     // Main website
     'https://www.theproductreport.org',
@@ -733,6 +736,12 @@ export default buildConfig({
       method: 'post',
       handler: productVoteEnrichHandler,
     },
+    // Product Feed (TikTok-style discovery)
+    {
+      path: '/product-feed',
+      method: 'get',
+      handler: productFeedHandler,
+    },
     // Product Report (barcode lookup)
     {
       path: '/product-report/:barcode',
@@ -937,6 +946,9 @@ export default buildConfig({
     },
     // API Status
     apiStatusEndpoint,
+    // Search Analytics
+    searchAnalyticsEndpoint,
+    logSearchQueryEndpoint,
   ],
   plugins: [
     ...plugins,

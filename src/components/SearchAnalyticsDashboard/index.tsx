@@ -34,48 +34,29 @@ const SearchAnalyticsDashboard: React.FC = () => {
   const fetchMetrics = useCallback(async () => {
     setLoading(true)
     try {
-      // In production, this would fetch from a search analytics endpoint
-      // For now, we'll simulate realistic search data
-
-      // Simulated top queries based on typical product search behavior
-      const topQueries: SearchQuery[] = [
-        { query: 'sunscreen', count: 1245, avgResults: 42, lastSearched: '2 min ago', trend: 'up' },
-        { query: 'moisturizer', count: 987, avgResults: 156, lastSearched: '5 min ago', trend: 'stable' },
-        { query: 'shampoo organic', count: 756, avgResults: 89, lastSearched: '8 min ago', trend: 'up' },
-        { query: 'clean beauty', count: 654, avgResults: 234, lastSearched: '12 min ago', trend: 'up' },
-        { query: 'vitamin c serum', count: 543, avgResults: 67, lastSearched: '15 min ago', trend: 'stable' },
-        { query: 'paraben free', count: 432, avgResults: 321, lastSearched: '20 min ago', trend: 'down' },
-        { query: 'baby lotion', count: 387, avgResults: 45, lastSearched: '25 min ago', trend: 'stable' },
-        { query: 'deodorant natural', count: 298, avgResults: 78, lastSearched: '30 min ago', trend: 'up' },
-      ]
-
-      const recentQueries: SearchQuery[] = [
-        { query: 'cerave cleanser', count: 1, avgResults: 12, lastSearched: '1 min ago', trend: 'stable' },
-        { query: 'olaplex shampoo', count: 1, avgResults: 8, lastSearched: '2 min ago', trend: 'stable' },
-        { query: 'drunk elephant', count: 1, avgResults: 34, lastSearched: '3 min ago', trend: 'stable' },
-        { query: 'elta md sunscreen', count: 1, avgResults: 6, lastSearched: '4 min ago', trend: 'stable' },
-        { query: 'the ordinary niacinamide', count: 1, avgResults: 3, lastSearched: '5 min ago', trend: 'stable' },
-      ]
-
-      const noResultQueries = [
-        'xyz brand sunblock',
-        'organic mascara vegan',
-        'sulfate free color safe',
-        'baby safe nail polish',
-        'biodegradable wipes',
-      ]
-
-      setMetrics({
-        totalSearches: timeRange === '24h' ? 2456 : timeRange === '7d' ? 15234 : 45678,
-        uniqueQueries: timeRange === '24h' ? 876 : timeRange === '7d' ? 4532 : 12345,
-        avgResultsPerSearch: 78.5,
-        zeroResultRate: 4.2,
-        topQueries,
-        recentQueries,
-        noResultQueries,
+      // Fetch real search analytics from the API
+      const response = await fetch(`/api/search-analytics?range=${timeRange}`, {
+        credentials: 'include',
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+      setMetrics(data)
     } catch (err) {
       console.error('[SearchAnalytics] Error:', err)
+      // Show empty state on error
+      setMetrics({
+        totalSearches: 0,
+        uniqueQueries: 0,
+        avgResultsPerSearch: 0,
+        zeroResultRate: 0,
+        topQueries: [],
+        recentQueries: [],
+        noResultQueries: [],
+      })
     } finally {
       setLoading(false)
     }
@@ -244,13 +225,15 @@ const SearchAnalyticsDashboard: React.FC = () => {
       </div>
 
       {/* Implementation Note */}
-      <div style={styles.noteSection}>
-        <h4 style={styles.noteTitle}>Implementation Note</h4>
-        <p style={styles.noteText}>
-          To enable real search tracking, add a search analytics collection and log queries in the search endpoint.
-          This dashboard currently shows simulated data for demonstration.
-        </p>
-      </div>
+      {metrics.totalSearches === 0 && (
+        <div style={styles.noteSection}>
+          <h4 style={styles.noteTitle}>Getting Started</h4>
+          <p style={styles.noteText}>
+            No search data yet. Search queries are automatically logged when users search on the website or mobile app.
+            Call POST /api/search-analytics/log from your search endpoint to start tracking.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

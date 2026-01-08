@@ -105,7 +105,7 @@ export const productVoteEnrichHandler = async (req: PayloadRequest): Promise<Res
                             productName: lookupResult.product.name,
                             brand: lookupResult.product.brand,
                             imageUrl: lookupResult.product.imageUrl,
-                            openFoodFactsData: lookupResult.product,
+                            openFoodFactsData: lookupResult.product as unknown as Record<string, unknown>,
                         },
                     })
 
