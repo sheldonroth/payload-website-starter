@@ -5,6 +5,9 @@ import React from 'react'
 import { ProductRequestList } from './ProductRequestList'
 import { ProductRequestForm } from './ProductRequestForm'
 
+// Force dynamic rendering to avoid build-time database queries
+export const dynamic = 'force-dynamic'
+
 export default async function RequestProductPage() {
     const payload = await getPayload({ config: configPromise })
 
