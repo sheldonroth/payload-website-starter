@@ -386,6 +386,13 @@ export const referralAttributeHandler: PayloadHandler = async (req: PayloadReque
         return Response.json({ error: 'Method not allowed' }, { status: 405 })
     }
 
+    // Security: Require API key for referral attribution
+    const apiKey = req.headers.get('x-api-key')
+    const expectedKey = process.env.PAYLOAD_API_SECRET
+    if (!apiKey || !expectedKey || apiKey !== expectedKey) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     try {
         const body = await req.json?.()
         const { referralCode, referredDeviceId, source } = body || {}
@@ -469,6 +476,17 @@ export const referralAttributeHandler: PayloadHandler = async (req: PayloadReque
 export const referralConvertHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (req.method !== 'POST') {
         return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    // Security: Require API key or webhook secret for conversion
+    const apiKey = req.headers.get('x-api-key')
+    const expectedKey = process.env.PAYLOAD_API_SECRET
+    const webhookSecret = req.headers.get('x-webhook-secret')
+    const expectedWebhook = process.env.REVENUECAT_WEBHOOK_SECRET
+    const isAuthorized = (apiKey && expectedKey && apiKey === expectedKey) ||
+                         (webhookSecret && expectedWebhook && webhookSecret === expectedWebhook)
+    if (!isAuthorized) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     try {
@@ -583,6 +601,13 @@ export const referralConvertHandler: PayloadHandler = async (req: PayloadRequest
 export const referralApplyRewardHandler: PayloadHandler = async (req: PayloadRequest) => {
     if (req.method !== 'POST') {
         return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    // Security: Require API key for reward application (admin/system only)
+    const apiKey = req.headers.get('x-api-key')
+    const expectedKey = process.env.PAYLOAD_API_SECRET
+    if (!apiKey || !expectedKey || apiKey !== expectedKey) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     try {

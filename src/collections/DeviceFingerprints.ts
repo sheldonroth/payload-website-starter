@@ -17,13 +17,23 @@ export const DeviceFingerprints: CollectionConfig = {
             const role = (req.user as { role?: string }).role
             return role === 'admin'
         },
-        // Allow system creates (from fingerprint endpoint)
-        create: () => true,
-        // Only system/admin can update
+        // Allow system creates (from fingerprint endpoint) - require API key
+        create: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
+        // Only system (via API key) or admin can update
         update: ({ req }) => {
-            if (!req.user) return true // System calls
-            const role = (req.user as { role?: string }).role
-            return role === 'admin'
+            // API key for system/backend calls
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            // Admin users
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
         },
         // Only admins can delete
         delete: ({ req }) => {

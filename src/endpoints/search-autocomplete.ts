@@ -65,6 +65,19 @@ export const searchAutocompleteHandler = async (req: PayloadRequest): Promise<Re
             })
         }
 
+        // Sanitize query: remove special characters that could cause issues
+        // Allow only alphanumeric, spaces, hyphens, and common punctuation
+        const sanitizedQuery = query
+            .replace(/[^\w\s\-'.,&]/g, '')
+            .substring(0, 100) // Limit length to prevent abuse
+
+        if (sanitizedQuery.length < 2) {
+            return successResponse({
+                suggestions: [],
+                message: 'Query contains invalid characters',
+            })
+        }
+
         // Search products by name with prefix matching
         const results = await req.payload.find({
             collection: 'products',
@@ -72,7 +85,7 @@ export const searchAutocompleteHandler = async (req: PayloadRequest): Promise<Re
                 and: [
                     {
                         name: {
-                            like: `%${query}%`,
+                            like: `%${sanitizedQuery}%`,
                         },
                     },
                     {

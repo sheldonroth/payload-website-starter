@@ -213,7 +213,11 @@ export async function sendEmail(
             },
         });
 
-        console.log(`[EmailSender] Sent to ${options.to}, messageId: ${data?.id}`);
+        // Log without full email for privacy
+        const maskedEmail = typeof options.to === 'string'
+            ? options.to.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+            : 'recipient';
+        console.log(`[EmailSender] Sent to ${maskedEmail}, messageId: ${data?.id}`);
         return { success: true, messageId: data?.id };
 
     } catch (error) {

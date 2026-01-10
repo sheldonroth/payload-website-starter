@@ -25,10 +25,25 @@ export const Referrals: CollectionConfig = {
         defaultColumns: ['referralCode', 'referredEmail', 'status', 'firstSubscriptionDate', 'totalCommissionPaid'],
     },
     access: {
-        read: () => true,
-        create: () => true,
-        update: ({ req: { user } }) => Boolean(user),
-        delete: ({ req: { user } }) => Boolean(user),
+        // Read: API key (for mobile app) or admin
+        read: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
+        // Create: API key (for mobile app) or admin
+        create: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
+        // Update/Delete: Admin only
+        update: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+        delete: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
     },
     hooks: {
         beforeChange: [

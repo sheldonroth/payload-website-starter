@@ -25,11 +25,35 @@ export const PushTokens: CollectionConfig = {
     defaultColumns: ['token', 'platform', 'fingerprintHash', 'createdAt'],
   },
   access: {
-    // Only backend can manage tokens
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: ({ req }) => !!req.user,
+    // Security: Restrict access to prevent token hijacking
+    // Read: Only admins or authenticated API calls with API key
+    read: ({ req }) => {
+      // Admin users can read all
+      if ((req.user as { role?: string })?.role === 'admin') return true
+      // API calls with secret key (for backend services)
+      const apiKey = req.headers.get('x-api-key')
+      const expectedKey = process.env.PAYLOAD_API_SECRET
+      if (apiKey && expectedKey && apiKey === expectedKey) return true
+      return false
+    },
+    // Create: Only via API key (mobile app backend)
+    create: ({ req }) => {
+      const apiKey = req.headers.get('x-api-key')
+      const expectedKey = process.env.PAYLOAD_API_SECRET
+      if (apiKey && expectedKey && apiKey === expectedKey) return true
+      // Admin can also create for testing
+      if ((req.user as { role?: string })?.role === 'admin') return true
+      return false
+    },
+    // Update: Only via API key or admin
+    update: ({ req }) => {
+      const apiKey = req.headers.get('x-api-key')
+      const expectedKey = process.env.PAYLOAD_API_SECRET
+      if (apiKey && expectedKey && apiKey === expectedKey) return true
+      if ((req.user as { role?: string })?.role === 'admin') return true
+      return false
+    },
+    delete: ({ req }) => (req.user as { role?: string })?.role === 'admin',
   },
   hooks: {
     beforeChange: [

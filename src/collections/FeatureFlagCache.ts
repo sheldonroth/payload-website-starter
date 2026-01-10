@@ -21,7 +21,14 @@ export const FeatureFlagCache: CollectionConfig = {
         description: 'Cached feature flags from Statsig (auto-synced every 5 minutes)',
     },
     access: {
-        read: () => true, // Readable by all (for client apps)
+        // Readable by API key (for client apps) or admin
+        read: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
         create: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
         update: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
         delete: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',

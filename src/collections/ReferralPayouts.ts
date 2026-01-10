@@ -21,10 +21,11 @@ export const ReferralPayouts: CollectionConfig = {
         defaultColumns: ['referrerId', 'amount', 'status', 'paymentMethod', 'createdAt'],
     },
     access: {
-        read: ({ req: { user } }) => Boolean(user),
-        create: ({ req: { user } }) => Boolean(user),
-        update: ({ req: { user } }) => Boolean(user),
-        delete: ({ req: { user } }) => Boolean(user),
+        // Payouts are sensitive financial data - admin only
+        read: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+        create: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+        update: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+        delete: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
     },
     hooks: {
         afterChange: [createAuditLogHook('referral-payouts')],

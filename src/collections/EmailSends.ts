@@ -26,8 +26,26 @@ export const EmailSends: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => !!user,
-    create: () => true, // System creates these
-    update: () => true, // Webhooks update these
+    // System/API creates these - require API key
+    create: ({ req }) => {
+      const apiKey = req.headers.get('x-api-key')
+      const expectedKey = process.env.PAYLOAD_API_SECRET
+      if (apiKey && expectedKey && apiKey === expectedKey) return true
+      if ((req.user as { role?: string })?.role === 'admin') return true
+      return false
+    },
+    // Webhooks update these - require API key or webhook secret
+    update: ({ req }) => {
+      const apiKey = req.headers.get('x-api-key')
+      const expectedKey = process.env.PAYLOAD_API_SECRET
+      if (apiKey && expectedKey && apiKey === expectedKey) return true
+      // Allow webhook updates via webhook secret header
+      const webhookSecret = req.headers.get('x-webhook-secret')
+      const expectedWebhook = process.env.RESEND_WEBHOOK_SECRET
+      if (webhookSecret && expectedWebhook && webhookSecret === expectedWebhook) return true
+      if ((req.user as { role?: string })?.role === 'admin') return true
+      return false
+    },
     delete: ({ req: { user } }) => !!user,
   },
   fields: [

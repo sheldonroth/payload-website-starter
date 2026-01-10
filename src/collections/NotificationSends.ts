@@ -20,8 +20,22 @@ export const NotificationSends: CollectionConfig = {
     },
     access: {
         read: ({ req: { user } }) => !!user,
-        create: () => true, // API creates these
-        update: () => true, // Webhooks update delivery status
+        // API creates these - require API key
+        create: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
+        // Webhooks update delivery status - require API key
+        update: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
         delete: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
     },
     fields: [

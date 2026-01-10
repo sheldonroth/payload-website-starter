@@ -181,7 +181,13 @@ Format as JSON:
         response_format: { type: 'json_object' },
     });
 
-    const content = JSON.parse(response.choices[0]?.message?.content || '{}');
+    let content: any = {};
+    try {
+        content = JSON.parse(response.choices[0]?.message?.content || '{}');
+    } catch (parseError) {
+        console.error('[ContentGenerator] Failed to parse AI response:', parseError);
+        // Return empty content on parse failure
+    }
 
     return {
         title: content.title,

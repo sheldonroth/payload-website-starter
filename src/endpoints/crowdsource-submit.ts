@@ -48,6 +48,51 @@ interface SubmissionResult {
 // Rate limiting for submissions
 const submissionRateLimits = new Map<string, { count: number; resetAt: number }>()
 
+// File type validation using magic bytes
+const ALLOWED_IMAGE_SIGNATURES: Record<string, number[]> = {
+    'image/jpeg': [0xFF, 0xD8, 0xFF],
+    'image/png': [0x89, 0x50, 0x4E, 0x47],
+    'image/gif': [0x47, 0x49, 0x46],
+    'image/webp': [0x52, 0x49, 0x46, 0x46], // RIFF header (WebP is RIFF-based)
+}
+
+function validateImageType(base64Data: string): { valid: boolean; detectedType?: string; error?: string } {
+    try {
+        // Remove data URL prefix if present
+        const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '')
+        const buffer = Buffer.from(cleanBase64, 'base64')
+
+        if (buffer.length < 12) {
+            return { valid: false, error: 'File too small to be a valid image' }
+        }
+
+        // Check magic bytes against known image signatures
+        for (const [mimeType, signature] of Object.entries(ALLOWED_IMAGE_SIGNATURES)) {
+            let matches = true
+            for (let i = 0; i < signature.length; i++) {
+                if (buffer[i] !== signature[i]) {
+                    matches = false
+                    break
+                }
+            }
+            if (matches) {
+                // Additional check for WebP: verify it has WEBP marker at bytes 8-11
+                if (mimeType === 'image/webp') {
+                    const webpMarker = buffer.slice(8, 12).toString('ascii')
+                    if (webpMarker !== 'WEBP') {
+                        continue // Not actually WebP, check other types
+                    }
+                }
+                return { valid: true, detectedType: mimeType }
+            }
+        }
+
+        return { valid: false, error: 'Invalid or unsupported image format. Allowed: JPEG, PNG, GIF, WebP' }
+    } catch (e) {
+        return { valid: false, error: 'Failed to decode image data' }
+    }
+}
+
 function checkSubmissionRateLimit(key: string): boolean {
     const now = Date.now()
     const limit = submissionRateLimits.get(key)
@@ -155,6 +200,17 @@ export const crowdsourceSubmitHandler: PayloadHandler = async (req: PayloadReque
         let aiConfidence = 0
 
         if (images && images.length > 0) {
+            // Validate all images before processing
+            for (let i = 0; i < images.length; i++) {
+                const validation = validateImageType(images[i].base64)
+                if (!validation.valid) {
+                    return Response.json({
+                        success: false,
+                        message: `Image ${i + 1}: ${validation.error}`,
+                    }, { status: 400 })
+                }
+            }
+
             // Try to extract from the first image
             const extracted = await extractProductFromImage(images[0].base64)
             if (extracted.confidence > 0.5) {

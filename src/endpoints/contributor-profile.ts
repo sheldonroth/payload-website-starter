@@ -544,11 +544,15 @@ export const getContributorProfileHandler = async (req: PayloadRequest): Promise
 
         // Get some of their documented products (top 5)
         // Note: scoutContributors is a JSON field, so we use 'like' to search for fingerprintHash
+        // Sanitize fingerprintHash to prevent injection - only allow alphanumeric and dashes
+        const sanitizedFingerprintHash = (profile.fingerprintHash || '')
+            .replace(/[^a-zA-Z0-9\-]/g, '')
+            .substring(0, 64);
         const contributions = await req.payload.find({
             collection: 'product-votes',
             where: {
                 'scoutContributors': {
-                    like: `%"fingerprintHash":"${profile.fingerprintHash}"%`,
+                    like: `%"fingerprintHash":"${sanitizedFingerprintHash}"%`,
                 },
             },
             limit: 5,

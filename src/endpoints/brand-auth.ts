@@ -178,7 +178,9 @@ export const brandLoginHandler: Endpoint = {
                 } : null
             }
 
-            console.log(`[BrandAuth] Login: ${email} (Brand: ${brandData?.name || 'Unknown'})`)
+            // Mask email for privacy in logs
+            const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+            console.log(`[BrandAuth] Login: ${maskedEmail} (Brand: ${brandData?.name || 'Unknown'})`)
 
             return Response.json({
                 success: true,
@@ -313,7 +315,9 @@ export const brandSignupHandler: Endpoint = {
                 console.error('[BrandAuth] Failed to send verification email:', emailError)
             }
 
-            console.log(`[BrandAuth] Signup: ${email} (User ID: ${newUser.id})`)
+            // Mask email for privacy in logs
+            const maskedSignupEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+            console.log(`[BrandAuth] Signup: ${maskedSignupEmail} (User ID: ${newUser.id})`)
 
             return Response.json({
                 success: true,
@@ -405,7 +409,9 @@ export const brandVerifyEmailHandler: Endpoint = {
                 },
             })
 
-            console.log(`[BrandAuth] Email verified: ${email}`)
+            // Mask email for privacy in logs
+            const maskedVerifyEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+            console.log(`[BrandAuth] Email verified: ${maskedVerifyEmail}`)
 
             return Response.json({
                 success: true,
@@ -479,7 +485,9 @@ export const brandForgotPasswordHandler: Endpoint = {
                 console.error('[BrandAuth] Failed to send reset email:', emailError)
             }
 
-            console.log(`[BrandAuth] Password reset requested: ${email}`)
+            // Mask email for privacy in logs
+            const maskedResetEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+            console.log(`[BrandAuth] Password reset requested: ${maskedResetEmail}`)
 
             return Response.json({
                 success: true,
