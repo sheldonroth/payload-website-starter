@@ -309,17 +309,19 @@ async function updateUserSubscription(
  * 4. Enable events you want to receive
  */
 export async function POST(request: Request) {
-  // Verify authorization header
-  if (REVENUECAT_WEBHOOK_SECRET) {
-    const authHeader = request.headers.get('authorization')
-    const expectedAuth = `Bearer ${REVENUECAT_WEBHOOK_SECRET}`
+  // SECURITY: Webhook secret must be configured - reject all requests if not set
+  if (!REVENUECAT_WEBHOOK_SECRET) {
+    console.error('[RevenueCat Webhook] REVENUECAT_WEBHOOK_SECRET not configured - rejecting request')
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+  }
 
-    if (authHeader !== expectedAuth) {
-      console.error('[RevenueCat Webhook] Invalid authorization header')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  } else {
-    console.warn('[RevenueCat Webhook] REVENUECAT_WEBHOOK_SECRET not configured - accepting all requests')
+  // Verify authorization header
+  const authHeader = request.headers.get('authorization')
+  const expectedAuth = `Bearer ${REVENUECAT_WEBHOOK_SECRET}`
+
+  if (!authHeader || authHeader !== expectedAuth) {
+    console.error('[RevenueCat Webhook] Invalid or missing authorization header')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   let webhookPayload: RevenueCatWebhookPayload

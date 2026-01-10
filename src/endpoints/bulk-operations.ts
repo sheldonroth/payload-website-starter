@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import { unauthorizedError, forbiddenError, validationError, internalError } from '../utilities/api-response'
 
 /**
@@ -44,7 +44,7 @@ export const bulkOperationsHandler: PayloadHandler = async (req) => {
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BATCH_OPERATIONS)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.BATCH_OPERATIONS)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

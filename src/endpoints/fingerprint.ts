@@ -1,6 +1,61 @@
 import { PayloadHandler } from 'payload'
-import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
 import { validationError, internalError } from '../utilities/api-response'
+import { applyRateLimitAsync, RateLimits, getRateLimitKey } from '../utilities/rate-limiter'
+
+// Maximum lengths for input validation
+const MAX_FINGERPRINT_HASH_LENGTH = 100
+const MAX_BROWSER_LENGTH = 200
+const MAX_OS_LENGTH = 100
+const VALID_DEVICE_TYPES = ['desktop', 'mobile', 'tablet'] as const
+
+/**
+ * Validate and sanitize fingerprint hash
+ * @returns sanitized hash or null if invalid
+ */
+function validateFingerprintHash(hash: unknown): string | null {
+    if (typeof hash !== 'string') return null
+    const trimmed = hash.trim()
+    if (trimmed.length === 0 || trimmed.length > MAX_FINGERPRINT_HASH_LENGTH) return null
+    // Only allow alphanumeric, underscores, and hyphens
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null
+    return trimmed
+}
+
+/**
+ * Validate and sanitize browser string
+ */
+function validateBrowser(browser: unknown): string | null {
+    if (browser === null || browser === undefined) return null
+    if (typeof browser !== 'string') return null
+    const trimmed = browser.trim().slice(0, MAX_BROWSER_LENGTH)
+    // Remove potentially harmful characters
+    return trimmed.replace(/[<>"'&]/g, '')
+}
+
+/**
+ * Validate and sanitize OS string
+ */
+function validateOS(os: unknown): string | null {
+    if (os === null || os === undefined) return null
+    if (typeof os !== 'string') return null
+    const trimmed = os.trim().slice(0, MAX_OS_LENGTH)
+    // Remove potentially harmful characters
+    return trimmed.replace(/[<>"'&]/g, '')
+}
+
+/**
+ * Validate device type
+ */
+function validateDeviceType(deviceType: unknown): typeof VALID_DEVICE_TYPES[number] | null {
+    if (deviceType === null || deviceType === undefined) return null
+    if (typeof deviceType !== 'string') return null
+    const lower = deviceType.toLowerCase().trim()
+    if (VALID_DEVICE_TYPES.includes(lower as typeof VALID_DEVICE_TYPES[number])) {
+        return lower as typeof VALID_DEVICE_TYPES[number]
+    }
+    return null
+}
 
 /**
  * @openapi
@@ -147,17 +202,30 @@ function generateReferralCode(): string {
  * Registers or updates a device fingerprint for the One-Shot Engine.
  * Used by FingerprintJS Pro on the frontend to track devices.
  *
- * PRIVACY: Respects Global Privacy Control (GPC) signals
+ * SECURITY:
+ * - Rate limited to prevent device spoofing/abuse
+ * - Input validation and sanitization
+ * - Respects Global Privacy Control (GPC) signals
  */
 export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
     try {
+        // Rate limit by IP to prevent abuse (10 registrations per hour per IP)
+        const rateLimitKey = getRateLimitKey(req as unknown as Request)
+        const rateLimitResponse = await applyRateLimitAsync(
+            req as unknown as Request,
+            RateLimits.FINGERPRINT_REGISTER,
+            `fingerprint:register:${rateLimitKey}`
+        )
+        if (rateLimitResponse) {
+            return rateLimitResponse
+        }
+
         const body = await req.json?.() || {}
-        const { fingerprintHash, browser, os, deviceType, gpcEnabled } = body
 
         // Check for Global Privacy Control signal from client
         // When GPC is enabled, we don't store fingerprints for tracking
         const secGpcHeader = req.headers.get('sec-gpc')
-        const isGpcEnabled = gpcEnabled === true || secGpcHeader === '1'
+        const isGpcEnabled = body.gpcEnabled === true || secGpcHeader === '1'
 
         if (isGpcEnabled) {
             // GPC enabled - don't persist fingerprint, just return anonymous response
@@ -171,9 +239,16 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
             })
         }
 
+        // Validate and sanitize fingerprint hash
+        const fingerprintHash = validateFingerprintHash(body.fingerprintHash)
         if (!fingerprintHash) {
-            return validationError('fingerprintHash is required')
+            return validationError('fingerprintHash is required and must be a valid alphanumeric string (max 100 characters)')
         }
+
+        // Validate and sanitize other fields
+        const browser = validateBrowser(body.browser)
+        const os = validateOS(body.os)
+        const deviceType = validateDeviceType(body.deviceType)
 
         // Check if fingerprint already exists
         const existingFingerprint = await req.payload.find({
@@ -197,15 +272,15 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
                 user?: { id: number } | number
             }
 
-            // Update last seen
+            // Update last seen with sanitized data
             await req.payload.update({
                 collection: 'device-fingerprints' as 'users',
                 id: existing.id,
                 data: {
                     lastSeenAt: now,
-                    browser: browser || undefined,
-                    os: os || undefined,
-                    deviceType: deviceType || undefined,
+                    ...(browser && { browser }),
+                    ...(os && { os }),
+                    ...(deviceType && { deviceType }),
                 } as unknown as Record<string, unknown>,
             })
 
@@ -240,14 +315,14 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
         // Generate unique referral code
         const referralCode = generateReferralCode()
 
-        // Create new fingerprint (collection types regenerated on deployment)
+        // Create new fingerprint with sanitized data
         const newFingerprint = await (req.payload.create as Function)({
             collection: 'device-fingerprints',
             data: {
                 fingerprintHash,
-                browser: browser || null,
-                os: os || null,
-                deviceType: deviceType || null,
+                browser,
+                os,
+                deviceType,
                 firstSeenAt: now,
                 lastSeenAt: now,
                 unlockCreditsUsed: 0,
@@ -292,24 +367,40 @@ export const fingerprintRegisterHandler: PayloadHandler = async (req) => {
  * Check fingerprint status without updating.
  * POST is preferred to avoid logging fingerprint hash in URLs/server logs.
  * GET is deprecated but maintained for backward compatibility.
+ *
+ * SECURITY:
+ * - Rate limited to prevent enumeration attacks
+ * - Input validation and sanitization
  */
 export const fingerprintCheckHandler: PayloadHandler = async (req) => {
     try {
-        let fingerprintHash: string | null = null
+        let rawHash: unknown = null
 
         // Support both POST (preferred) and GET (deprecated)
         const method = req.method?.toUpperCase()
         if (method === 'POST') {
             const body = await req.json?.() || {}
-            fingerprintHash = body.hash || null
+            rawHash = body.hash
         } else {
             // GET fallback (deprecated)
             const url = new URL(req.url || '', 'http://localhost')
-            fingerprintHash = url.searchParams.get('hash')
+            rawHash = url.searchParams.get('hash')
         }
 
+        // Validate and sanitize the hash
+        const fingerprintHash = validateFingerprintHash(rawHash)
         if (!fingerprintHash) {
-            return validationError('hash is required (POST body or query parameter)')
+            return validationError('hash is required and must be a valid alphanumeric string (max 100 characters)')
+        }
+
+        // Rate limit by fingerprint hash to prevent enumeration (30 checks per minute)
+        const rateLimitResponse = await applyRateLimitAsync(
+            req as unknown as Request,
+            RateLimits.FINGERPRINT_CHECK,
+            `fingerprint:check:${fingerprintHash}`
+        )
+        if (rateLimitResponse) {
+            return rateLimitResponse
         }
 
         const result = await req.payload.find({

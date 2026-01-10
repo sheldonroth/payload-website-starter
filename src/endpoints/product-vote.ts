@@ -6,6 +6,12 @@ import {
     internalError,
     successResponse,
 } from '../utilities/api-response'
+import { atomicWeightedVoteUpdate } from '../utilities/atomic-operations'
+import {
+    checkRateLimitAsync,
+    rateLimitResponse,
+    RateLimits,
+} from '../utilities/rate-limiter'
 
 /**
  * Product Vote API Endpoint
@@ -119,63 +125,51 @@ const VOTE_WEIGHTS = {
     bounty_contribution: 10, // Bonus for adding photos to someone else's request
 }
 
-// Rate limiting configuration
-const RATE_LIMIT = {
-    maxVotesPerMinute: 10, // Max votes per fingerprint per minute
-    maxVotesPerHour: 100, // Max votes per fingerprint per hour
-    cooldownSeconds: 5, // Minimum seconds between votes for same product
-}
-
-// In-memory rate limit storage (in production, use Redis)
-const rateLimitStore = new Map<string, { timestamps: number[]; lastVote: Map<string, number> }>()
-
 /**
- * Check and update rate limits for a fingerprint
- * Returns null if allowed, error message if rate limited
+ * Check rate limits for a fingerprint using Vercel KV
+ * Returns null if allowed, Response if rate limited
+ *
+ * Implements three-tier rate limiting:
+ * 1. Per-product cooldown (5 seconds between votes on same product)
+ * 2. Per-minute limit (10 votes per minute)
+ * 3. Per-hour limit (100 votes per hour)
  */
-function checkRateLimit(fingerprint: string, barcode: string): string | null {
+async function checkVoteRateLimit(
+    fingerprint: string,
+    barcode: string
+): Promise<Response | null> {
     if (!fingerprint) return null // Can't rate limit without fingerprint
 
-    const now = Date.now()
-    const oneMinuteAgo = now - 60 * 1000
-    const oneHourAgo = now - 60 * 60 * 1000
-
-    // Get or create rate limit entry
-    if (!rateLimitStore.has(fingerprint)) {
-        rateLimitStore.set(fingerprint, { timestamps: [], lastVote: new Map() })
+    // Check 1: Per-product cooldown (5 seconds)
+    const cooldownKey = `vote:cooldown:${fingerprint}:${barcode}`
+    const cooldownResult = await checkRateLimitAsync(cooldownKey, RateLimits.VOTE_COOLDOWN)
+    if (!cooldownResult.allowed) {
+        const waitSeconds = Math.ceil((cooldownResult.resetAt - Date.now()) / 1000)
+        return Response.json({
+            success: false,
+            error: `Please wait ${waitSeconds} seconds before voting for this product again`,
+            rateLimited: true,
+            retryAfter: waitSeconds,
+        }, { status: 429 })
     }
 
-    const entry = rateLimitStore.get(fingerprint)!
-
-    // Clean up old timestamps
-    entry.timestamps = entry.timestamps.filter((ts) => ts > oneHourAgo)
-
-    // Check per-product cooldown
-    const lastProductVote = entry.lastVote.get(barcode)
-    if (lastProductVote && now - lastProductVote < RATE_LIMIT.cooldownSeconds * 1000) {
-        const waitSeconds = Math.ceil((RATE_LIMIT.cooldownSeconds * 1000 - (now - lastProductVote)) / 1000)
-        return `Please wait ${waitSeconds} seconds before voting for this product again`
+    // Check 2: Per-minute rate limit (10 votes per minute)
+    const minuteKey = `vote:minute:${fingerprint}`
+    const minuteResult = await checkRateLimitAsync(minuteKey, RateLimits.VOTING)
+    if (!minuteResult.allowed) {
+        return rateLimitResponse(minuteResult.resetAt)
     }
 
-    // Check votes per minute
-    const votesLastMinute = entry.timestamps.filter((ts) => ts > oneMinuteAgo).length
-    if (votesLastMinute >= RATE_LIMIT.maxVotesPerMinute) {
-        return 'Too many votes. Please wait a moment before voting again.'
-    }
-
-    // Check votes per hour
-    if (entry.timestamps.length >= RATE_LIMIT.maxVotesPerHour) {
-        return 'Hourly vote limit reached. Please try again later.'
-    }
-
-    // Record this vote
-    entry.timestamps.push(now)
-    entry.lastVote.set(barcode, now)
-
-    // Limit the lastVote map size
-    if (entry.lastVote.size > 1000) {
-        const oldestKey = entry.lastVote.keys().next().value
-        if (oldestKey) entry.lastVote.delete(oldestKey)
+    // Check 3: Per-hour rate limit (100 votes per hour)
+    const hourKey = `vote:hour:${fingerprint}`
+    const hourResult = await checkRateLimitAsync(hourKey, RateLimits.VOTING_HOURLY)
+    if (!hourResult.allowed) {
+        return Response.json({
+            success: false,
+            error: 'Hourly vote limit reached. Please try again later.',
+            rateLimited: true,
+            retryAfter: Math.ceil((hourResult.resetAt - Date.now()) / 1000),
+        }, { status: 429 })
     }
 
     return null
@@ -191,6 +185,9 @@ interface FraudSignals {
 
 /**
  * Analyze voting patterns for potential fraud
+ * NOTE: Since rate limiting is now handled by Vercel KV, fraud detection
+ * is based on the vote record data (timestamps stored in DB) rather than
+ * in-memory state.
  */
 function detectFraudSignals(
     fingerprint: string | undefined,
@@ -213,10 +210,13 @@ function detectFraudSignals(
         riskScore += 30
     }
 
-    // Check for suspiciously high vote counts from single fingerprint
+    // Check for suspiciously high fingerprint occurrence in voter list
+    // (This could indicate vote manipulation if same fingerprint appears too often)
     if (fingerprint) {
-        const entry = rateLimitStore.get(fingerprint)
-        if (entry && entry.timestamps.length > 50) {
+        const fingerprintOccurrences = voteRecord.voterFingerprints.filter(
+            (fp) => fp === fingerprint
+        ).length
+        if (fingerprintOccurrences > 3) {
             flags.push('high_volume_voter')
             riskScore += 20
         }
@@ -359,184 +359,82 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
             return validationError('Invalid vote type')
         }
 
-        // Rate limiting check
+        // Rate limiting check using Vercel KV
         if (fingerprint) {
-            const rateLimitError = checkRateLimit(fingerprint, barcode)
-            if (rateLimitError) {
-                return Response.json({
-                    success: false,
-                    error: rateLimitError,
-                    rateLimited: true,
-                }, { status: 429 })
+            const rateLimitResponse = await checkVoteRateLimit(fingerprint, barcode)
+            if (rateLimitResponse) {
+                return rateLimitResponse
             }
         }
 
         const voteWeight = VOTE_WEIGHTS[voteType]
 
-        // Try to find existing vote record for this barcode
-        const existingVotes = await req.payload.find({
-            collection: 'product-votes',
-            where: { barcode: { equals: barcode } },
-            limit: 1,
-        })
+        // Calculate velocity metrics if tracking scans (My Cases)
+        // Only track scans for velocity (not searches) - proof of possession matters
+        const trackVelocity = voteType === 'scan' || voteType === 'member_scan'
 
-        let voteRecord: {
-            id: number
-            barcode: string
-            productName?: string
-            brand?: string
-            imageUrl?: string
-            totalWeightedVotes: number
-            searchCount: number
-            scanCount: number
-            memberScanCount: number
-            uniqueVoters: number
-            fundingProgress: number
-            fundingThreshold: number
-            status: string
-            voterFingerprints: string[]
-            notifyOnComplete: string[]
-            // Velocity tracking (My Cases)
-            scanTimestamps?: number[]
-            scansLast24h?: number
-            scansLast7d?: number
-            velocityScore?: number
-            urgencyFlag?: 'normal' | 'trending' | 'urgent'
-        }
-        let isNewVoter = true
-        let yourVoteRank = 1
+        // Get existing vote record for velocity calculation
+        let velocityData: {
+            scanTimestamps: number[]
+            scansLast24h: number
+            scansLast7d: number
+            velocityScore: number
+            urgencyFlag: 'normal' | 'trending' | 'urgent'
+        } | undefined
 
-        if (existingVotes.docs.length > 0) {
-            // Update existing record
-            const existing = existingVotes.docs[0] as typeof voteRecord
-
-            // Check if this fingerprint already voted (for unique voter tracking)
-            const existingFingerprints = existing.voterFingerprints || []
-            if (fingerprint && existingFingerprints.includes(fingerprint)) {
-                isNewVoter = false
-            }
-
-            // Calculate new vote counts
-            const newSearchCount = existing.searchCount + (voteType === 'search' ? 1 : 0)
-            const newScanCount = existing.scanCount + (voteType === 'scan' ? 1 : 0)
-            const newMemberScanCount = existing.memberScanCount + (voteType === 'member_scan' ? 1 : 0)
-            const newTotalVotes = existing.totalWeightedVotes + voteWeight
-            const newUniqueVoters = isNewVoter ? existing.uniqueVoters + 1 : existing.uniqueVoters
-
-            // Add fingerprint to tracking array if new
-            const newFingerprints = isNewVoter && fingerprint
-                ? [...existingFingerprints, fingerprint]
-                : existingFingerprints
-
-            // Add to notification list if requested
-            const notifyList = existing.notifyOnComplete || []
-            const notifyId = userId || fingerprint
-            if (notifyOnComplete && notifyId && !notifyList.includes(notifyId)) {
-                notifyList.push(notifyId)
-            }
-
-            // Update product info if provided and missing
-            const updatedProductName = existing.productName || productInfo?.name
-            const updatedBrand = existing.brand || productInfo?.brand
-            const updatedImageUrl = existing.imageUrl || productInfo?.imageUrl
-
-            // Calculate velocity metrics (My Cases)
-            // Only track scans for velocity (not searches) - proof of possession matters
-            const trackVelocity = voteType === 'scan' || voteType === 'member_scan'
-            const velocity = trackVelocity
-                ? calculateVelocity(existing.scanTimestamps || [], newTotalVotes)
-                : null
-
-            // Check if threshold was just reached
-            const threshold = existing.fundingThreshold
-            const wasUnderThreshold = existing.totalWeightedVotes < threshold
-            const nowOverThreshold = newTotalVotes >= threshold
-
-            const updateData: Record<string, unknown> = {
-                searchCount: newSearchCount,
-                scanCount: newScanCount,
-                memberScanCount: newMemberScanCount,
-                totalWeightedVotes: newTotalVotes,
-                uniqueVoters: newUniqueVoters,
-                voterFingerprints: newFingerprints,
-                notifyOnComplete: notifyList,
-                productName: updatedProductName,
-                brand: updatedBrand,
-                imageUrl: updatedImageUrl,
-                // Add velocity data if tracking scans
-                ...(velocity && {
-                    scanTimestamps: velocity.scanTimestamps,
-                    scansLast24h: velocity.scansLast24h,
-                    scansLast7d: velocity.scansLast7d,
-                    velocityScore: velocity.velocityScore,
-                    urgencyFlag: velocity.urgencyFlag,
-                }),
-            }
-
-            // Update status if threshold just reached
-            if (wasUnderThreshold && nowOverThreshold) {
-                updateData.status = 'threshold_reached'
-                updateData.thresholdReachedAt = new Date().toISOString()
-            }
-
-            const updated = await req.payload.update({
+        if (trackVelocity) {
+            // Fetch existing record to get current timestamps for velocity calculation
+            const existingVotes = await req.payload.find({
                 collection: 'product-votes',
-                id: existing.id,
-                data: updateData,
+                where: { barcode: { equals: barcode } },
+                limit: 1,
+                select: { scanTimestamps: true, totalWeightedVotes: true },
             })
 
-            voteRecord = updated as typeof voteRecord
-            yourVoteRank = newUniqueVoters
+            const existingTimestamps = existingVotes.docs.length > 0
+                ? ((existingVotes.docs[0] as any).scanTimestamps || [])
+                : []
+            const existingTotal = existingVotes.docs.length > 0
+                ? ((existingVotes.docs[0] as any).totalWeightedVotes || 0)
+                : 0
 
-            // Fraud detection - analyze patterns after update
+            velocityData = calculateVelocity(existingTimestamps, existingTotal + voteWeight)
+        }
+
+        // Use atomic operation to prevent race conditions
+        // This handles the read-modify-write cycle with retry logic
+        const atomicResult = await atomicWeightedVoteUpdate(
+            req.payload,
+            {
+                barcode,
+                voteType,
+                voteWeight,
+                fingerprint,
+                productInfo,
+                notifyId: userId || fingerprint,
+                notifyOnComplete,
+                velocityData,
+            },
+            req,
+        )
+
+        if (!atomicResult.success) {
+            console.error('[product-vote] Atomic update failed:', atomicResult.error)
+            return internalError('Failed to register vote due to concurrent update')
+        }
+
+        const voteRecord = atomicResult.voteRecord
+        const isNewVoter = atomicResult.isNewVoter
+        const yourVoteRank = atomicResult.yourVoteRank
+
+        // Fraud detection - analyze patterns after update
+        if (voteRecord) {
             const fraudSignals = detectFraudSignals(fingerprint, {
-                voterFingerprints: newFingerprints,
-                scanTimestamps: velocity?.scanTimestamps || existing.scanTimestamps || [],
-                totalWeightedVotes: newTotalVotes,
+                voterFingerprints: voteRecord.voterFingerprints || [],
+                scanTimestamps: voteRecord.scanTimestamps || [],
+                totalWeightedVotes: voteRecord.totalWeightedVotes || 0,
             })
             logFraudEvent(fingerprint, barcode, fraudSignals)
-
-        } else {
-            // Create new vote record
-            const notifyList: string[] = []
-            const notifyId = userId || fingerprint
-            if (notifyOnComplete && notifyId) {
-                notifyList.push(notifyId)
-            }
-
-            // Initialize velocity for scans (My Cases)
-            const trackVelocity = voteType === 'scan' || voteType === 'member_scan'
-            const initialVelocity = trackVelocity
-                ? calculateVelocity([], voteWeight)
-                : null
-
-            const created = await req.payload.create({
-                collection: 'product-votes',
-                data: {
-                    barcode,
-                    productName: productInfo?.name,
-                    brand: productInfo?.brand,
-                    imageUrl: productInfo?.imageUrl,
-                    totalWeightedVotes: voteWeight,
-                    searchCount: voteType === 'search' ? 1 : 0,
-                    scanCount: voteType === 'scan' ? 1 : 0,
-                    memberScanCount: voteType === 'member_scan' ? 1 : 0,
-                    uniqueVoters: 1,
-                    voterFingerprints: fingerprint ? [fingerprint] : [],
-                    notifyOnComplete: notifyList,
-                    status: 'collecting_votes',
-                    // Initialize velocity data if tracking scans
-                    ...(initialVelocity && {
-                        scanTimestamps: initialVelocity.scanTimestamps,
-                        scansLast24h: initialVelocity.scansLast24h,
-                        scansLast7d: initialVelocity.scansLast7d,
-                        velocityScore: initialVelocity.velocityScore,
-                        urgencyFlag: initialVelocity.urgencyFlag,
-                    }),
-                },
-            })
-
-            voteRecord = created as typeof voteRecord
         }
 
         // Calculate funding progress
@@ -1144,7 +1042,7 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
  *   get:
  *     summary: Get user's voted products (My Cases)
  *     description: |
- *       Returns all products the user has voted on, with status and queue position.
+ *       Returns paginated list of products the user has voted on, with status and queue position.
  *       Requires fingerprint header for device identification.
  *     tags: [Voting, Mobile, Scout]
  *     security:
@@ -1156,6 +1054,21 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
  *         schema:
  *           type: string
  *         description: Device fingerprint hash
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *           minimum: 1
+ *         description: Page number (1-indexed)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of items per page (max 100)
  *     responses:
  *       200:
  *         description: User investigations retrieved
@@ -1208,9 +1121,20 @@ export const productVoteQueueHandler = async (req: PayloadRequest): Promise<Resp
  *                         format: date-time
  *                 totalInvestigations:
  *                   type: integer
+ *                   description: Total number of investigations across all pages
  *                 resultsReady:
  *                   type: integer
- *                   description: Number of completed investigations
+ *                   description: Number of completed investigations on current page
+ *                 page:
+ *                   type: integer
+ *                   description: Current page number
+ *                 totalPages:
+ *                   type: integer
+ *                   description: Total number of pages
+ *                 hasNextPage:
+ *                   type: boolean
+ *                 hasPrevPage:
+ *                   type: boolean
  *       400:
  *         description: Missing fingerprint header
  */
@@ -1227,14 +1151,20 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
             return validationError('Fingerprint header required')
         }
 
-        // Find all products this user has voted on
+        // Parse pagination parameters
+        const url = new URL(req.url || '', 'http://localhost')
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10))
+        const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10)), 100)
+
+        // Find all products this user has voted on with pagination
         const userVotes = await req.payload.find({
             collection: 'product-votes',
             where: {
                 voterFingerprints: { contains: fingerprint },
             },
             sort: '-updatedAt',
-            limit: 100, // Max 100 investigations
+            page,
+            limit,
         })
 
         if (userVotes.docs.length === 0) {
@@ -1242,6 +1172,10 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
                 investigations: [],
                 totalInvestigations: 0,
                 resultsReady: 0,
+                page: 1,
+                totalPages: 0,
+                hasNextPage: false,
+                hasPrevPage: false,
             })
         }
 
@@ -1341,13 +1275,17 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
             }
         })
 
-        // Count results ready
+        // Count results ready (on current page)
         const resultsReady = investigations.filter((i) => i.status === 'complete').length
 
         return Response.json({
             investigations,
-            totalInvestigations: investigations.length,
+            totalInvestigations: userVotes.totalDocs,
             resultsReady,
+            page: userVotes.page || page,
+            totalPages: userVotes.totalPages || 1,
+            hasNextPage: userVotes.hasNextPage || false,
+            hasPrevPage: userVotes.hasPrevPage || false,
         })
 
     } catch (error) {

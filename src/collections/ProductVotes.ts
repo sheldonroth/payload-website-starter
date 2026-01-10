@@ -29,6 +29,119 @@ export const ProductVotes: CollectionConfig = {
         group: 'Community',
         description: 'Product testing votes from barcode scans (Proof of Possession)',
     },
+    hooks: {
+        beforeChange: [
+            async ({ data, originalDoc, operation }) => {
+                // Only process updates where status changed
+                if (operation !== 'update' || !originalDoc || !data) return data
+
+                const previousStatus = originalDoc.status
+                const newStatus = data.status
+
+                // If status changed, add to status history
+                if (newStatus && previousStatus !== newStatus) {
+                    const statusHistory = data.statusHistory || originalDoc.statusHistory || []
+                    statusHistory.push({
+                        status: newStatus,
+                        changedAt: new Date().toISOString(),
+                    })
+                    data.statusHistory = statusHistory
+
+                    // Set thresholdReachedAt if reaching threshold
+                    if (newStatus === 'threshold_reached' && !originalDoc.thresholdReachedAt) {
+                        data.thresholdReachedAt = new Date().toISOString()
+                    }
+                }
+
+                return data
+            },
+        ],
+        afterChange: [
+            async ({ doc, previousDoc, req, operation }) => {
+                // Only process updates where status changed to 'complete'
+                if (operation !== 'update' || !previousDoc) return doc
+
+                const previousStatus = previousDoc.status
+                const newStatus = doc.status
+
+                // Send completion notifications when status changes to complete
+                if (newStatus === 'complete' && previousStatus !== 'complete') {
+                    // Check if notification already sent
+                    if (doc.notificationsSent?.resultsReady) {
+                        return doc
+                    }
+
+                    try {
+                        // Find all push tokens subscribed to this barcode
+                        const { docs: tokens } = await req.payload.find({
+                            collection: 'push-tokens',
+                            where: {
+                                and: [
+                                    { isActive: { equals: true } },
+                                    { 'productSubscriptions.barcode': { equals: doc.barcode } },
+                                ],
+                            },
+                            limit: 1000,
+                        })
+
+                        if (tokens.length > 0) {
+                            console.log(`[ProductVotes] Sending completion notifications for ${doc.barcode} to ${tokens.length} subscribers`)
+
+                            // Import push library dynamically to avoid circular deps
+                            const { sendPushNotificationBatch, createResultsReadyNotification } = await import('../lib/push')
+
+                            // Get linked product score if available
+                            let score = 0
+                            if (doc.linkedProduct) {
+                                const linkedProductId = typeof doc.linkedProduct === 'object' ? doc.linkedProduct.id : doc.linkedProduct
+                                try {
+                                    const product = await req.payload.findByID({
+                                        collection: 'products',
+                                        id: linkedProductId,
+                                    })
+                                    score = (product as { overallScore?: number }).overallScore || 0
+                                } catch {
+                                    // Product not found, use 0
+                                }
+                            }
+
+                            // Build notification messages
+                            const messages = tokens.map((token) =>
+                                createResultsReadyNotification(
+                                    (token as { token: string }).token,
+                                    doc.productName || 'Your product',
+                                    score,
+                                    doc.barcode,
+                                    doc.linkedProduct ? String(typeof doc.linkedProduct === 'object' ? doc.linkedProduct.id : doc.linkedProduct) : undefined
+                                )
+                            )
+
+                            // Send notifications
+                            await sendPushNotificationBatch(messages)
+
+                            // Mark as notified
+                            await req.payload.update({
+                                collection: 'product-votes',
+                                id: doc.id,
+                                data: {
+                                    notificationsSent: {
+                                        ...doc.notificationsSent,
+                                        resultsReady: true,
+                                    },
+                                } as any,
+                            })
+
+                            console.log(`[ProductVotes] Sent ${messages.length} completion notifications for ${doc.barcode}`)
+                        }
+                    } catch (error) {
+                        console.error('[ProductVotes] Error sending completion notifications:', error)
+                    }
+                }
+
+                return doc
+            },
+        ],
+    },
     fields: [
         // === PRODUCT IDENTIFICATION ===
         {
@@ -146,7 +259,9 @@ export const ProductVotes: CollectionConfig = {
                 { label: 'Collecting Votes', value: 'collecting_votes' },
                 { label: 'Threshold Reached', value: 'threshold_reached' },
                 { label: 'Queued for Testing', value: 'queued' },
+                { label: 'Sourcing Product', value: 'sourcing' },
                 { label: 'In Lab Testing', value: 'testing' },
+                { label: 'Results Review', value: 'results_review' },
                 { label: 'Testing Complete', value: 'complete' },
             ],
             admin: {
@@ -160,6 +275,86 @@ export const ProductVotes: CollectionConfig = {
                 position: 'sidebar',
                 description: 'When the voting threshold was reached',
             },
+        },
+        {
+            name: 'queuePosition',
+            type: 'number',
+            admin: {
+                position: 'sidebar',
+                description: 'Position in the testing queue (1 = next up)',
+            },
+        },
+        {
+            name: 'estimatedCompletionDate',
+            type: 'date',
+            admin: {
+                position: 'sidebar',
+                description: 'Estimated date when testing will be complete',
+            },
+        },
+
+        // === STATUS TIMELINE ===
+        {
+            name: 'statusHistory',
+            type: 'array',
+            admin: {
+                description: 'History of status changes with timestamps',
+            },
+            fields: [
+                {
+                    name: 'status',
+                    type: 'select',
+                    required: true,
+                    options: [
+                        { label: 'Collecting Votes', value: 'collecting_votes' },
+                        { label: 'Threshold Reached', value: 'threshold_reached' },
+                        { label: 'Queued for Testing', value: 'queued' },
+                        { label: 'Sourcing Product', value: 'sourcing' },
+                        { label: 'In Lab Testing', value: 'testing' },
+                        { label: 'Results Review', value: 'results_review' },
+                        { label: 'Testing Complete', value: 'complete' },
+                    ],
+                },
+                {
+                    name: 'changedAt',
+                    type: 'date',
+                    required: true,
+                    defaultValue: () => new Date().toISOString(),
+                },
+                {
+                    name: 'notes',
+                    type: 'text',
+                    admin: {
+                        description: 'Optional notes about this status change',
+                    },
+                },
+            ],
+        },
+
+        // === NOTIFICATION TRACKING ===
+        {
+            name: 'notificationsSent',
+            type: 'group',
+            admin: {
+                description: 'Track which notifications have been sent',
+            },
+            fields: [
+                {
+                    name: 'thresholdReached',
+                    type: 'checkbox',
+                    defaultValue: false,
+                },
+                {
+                    name: 'testingStarted',
+                    type: 'checkbox',
+                    defaultValue: false,
+                },
+                {
+                    name: 'resultsReady',
+                    type: 'checkbox',
+                    defaultValue: false,
+                },
+            ],
         },
 
         // === LINKED PRODUCT (when testing complete) ===

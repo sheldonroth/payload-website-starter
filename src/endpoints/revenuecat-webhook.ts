@@ -87,7 +87,8 @@
  */
 
 import type { Endpoint } from 'payload'
-import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { atomicCommissionAccrual, atomicIncrement } from '../utilities/atomic-operations'
 
 // RevenueCat webhook event types
 type RevenueCatEventType =
@@ -286,6 +287,14 @@ async function handleNewSubscription(
 
 /**
  * Handle subscription renewal - accrue commission
+ *
+ * Race Condition Fix:
+ * - Multiple renewal webhooks can arrive simultaneously for different subscribers
+ *   referencing the same referrer
+ * - Previously: read totalCommissionPaid -> add COMMISSION_AMOUNT -> write
+ * - If two renewals interleaved, one commission would be lost
+ * - Now: uses atomicIncrement for totalCommissionPaid and atomicCommissionAccrual
+ *   for payout records with retry logic
  */
 async function handleRenewal(
     payload: any,
@@ -316,25 +325,60 @@ async function handleRenewal(
     const nextCommissionDate = referral.nextCommissionDate ? new Date(referral.nextCommissionDate) : null
 
     if (nextCommissionDate && now >= nextCommissionDate) {
-        // Accrue commission
-        const newTotalPaid = (referral.totalCommissionPaid || 0) + COMMISSION_AMOUNT
-        const newYearsActive = (referral.yearsActive || 0) + 1
+        // Use atomic increment for commission total to prevent race conditions
+        // This is critical when multiple renewals happen simultaneously
+        try {
+            const newTotalPaid = await atomicIncrement(
+                payload,
+                'referrals',
+                referral.id,
+                'totalCommissionPaid',
+                COMMISSION_AMOUNT
+            )
 
-        await payload.update({
-            collection: 'referrals',
-            id: referral.id,
-            data: {
-                lastRenewalDate: now.toISOString(),
-                nextCommissionDate: nextYear.toISOString(),
-                totalCommissionPaid: newTotalPaid,
-                yearsActive: newYearsActive,
-            },
-        })
+            // Also increment years active atomically
+            await atomicIncrement(
+                payload,
+                'referrals',
+                referral.id,
+                'yearsActive',
+                1
+            )
 
-        // Create pending payout entry
-        await accrueCommission(payload, referral, COMMISSION_AMOUNT)
+            // Update dates (these are less susceptible to race conditions
+            // since they're just setting to current time)
+            await payload.update({
+                collection: 'referrals',
+                id: referral.id,
+                data: {
+                    lastRenewalDate: now.toISOString(),
+                    nextCommissionDate: nextYear.toISOString(),
+                },
+            })
 
-        console.log(`[RevenueCat Webhook] Accrued $${COMMISSION_AMOUNT} commission for referral ${referral.id}`)
+            // Use atomic commission accrual for payout records
+            // This prevents duplicate entries and lost commissions
+            await atomicCommissionAccrual(
+                payload,
+                {
+                    referrerId: referral.referrerId,
+                    referrerEmail: referral.referrerEmail || 'pending@collection.com',
+                    amount: COMMISSION_AMOUNT,
+                    period: new Date().getFullYear().toString(),
+                    referralBreakdownEntry: {
+                        referralId: String(referral.id),
+                        referredEmail: referral.referredEmail,
+                        amount: COMMISSION_AMOUNT,
+                        anniversaryDate: now.toISOString(),
+                    },
+                }
+            )
+
+            console.log(`[RevenueCat Webhook] Accrued $${COMMISSION_AMOUNT} commission for referral ${referral.id} (total: $${newTotalPaid})`)
+        } catch (error) {
+            console.error(`[RevenueCat Webhook] Failed to accrue commission for referral ${referral.id}:`, error)
+            throw error
+        }
     } else {
         // Just update renewal date
         await payload.update({
@@ -416,71 +460,16 @@ async function handleReactivation(
 }
 
 /**
- * Accrue commission for a referrer
- * Creates or updates pending payout record
+ * Legacy accrueCommission function - DEPRECATED
+ *
+ * This function has been replaced by atomicCommissionAccrual from
+ * utilities/atomic-operations.ts which provides:
+ * - Retry logic for concurrent updates
+ * - Duplicate prevention for referral breakdown entries
+ * - Atomic read-modify-write cycle
+ *
+ * Keeping this comment for reference on the old implementation pattern
+ * that was susceptible to race conditions.
  */
-async function accrueCommission(
-    payload: any,
-    referral: any,
-    amount: number
-) {
-    const year = new Date().getFullYear().toString()
-
-    // Check for existing pending payout for this referrer in current year
-    const existingPayouts = await payload.find({
-        collection: 'referral-payouts',
-        where: {
-            referrerId: { equals: referral.referrerId },
-            period: { equals: year },
-            status: { equals: 'pending' },
-        },
-        limit: 1,
-    })
-
-    if (existingPayouts.docs.length > 0) {
-        // Update existing payout
-        const payout = existingPayouts.docs[0]
-        const newAmount = (payout.amount || 0) + amount
-        const newCount = (payout.referralCount || 0) + 1
-
-        const breakdown = payout.referralBreakdown || []
-        breakdown.push({
-            referralId: String(referral.id),
-            referredEmail: referral.referredEmail,
-            amount: amount,
-            anniversaryDate: new Date().toISOString(),
-        })
-
-        await payload.update({
-            collection: 'referral-payouts',
-            id: payout.id,
-            data: {
-                amount: newAmount,
-                referralCount: newCount,
-                referralBreakdown: breakdown,
-            },
-        })
-    } else {
-        // Create new payout record
-        await payload.create({
-            collection: 'referral-payouts',
-            data: {
-                referrerId: referral.referrerId,
-                referrerEmail: referral.referrerEmail || 'pending@collection.com',
-                amount: amount,
-                referralCount: 1,
-                period: year,
-                status: 'pending',
-                paymentMethod: 'paypal', // Default, can be changed
-                referralBreakdown: [{
-                    referralId: String(referral.id),
-                    referredEmail: referral.referredEmail,
-                    amount: amount,
-                    anniversaryDate: new Date().toISOString(),
-                }],
-            },
-        })
-    }
-}
 
 export default revenuecatWebhookHandler

@@ -62,6 +62,13 @@ export const emailAnalyticsHandler: PayloadHandler = async (req) => {
         },
         limit: 10000,
         depth: 1,
+        select: {
+          template: true,
+          status: true,
+          abVariant: true,
+          sentAt: true,
+          subject: true,
+        },
       })
       sends = emailSends.docs || []
     } catch (queryError) {

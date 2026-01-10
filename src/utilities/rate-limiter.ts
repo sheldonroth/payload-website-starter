@@ -1,12 +1,18 @@
 /**
- * Rate limiter with Redis persistence and in-memory fallback
+ * Rate limiter with Vercel KV persistence and in-memory fallback
  * Prevents abuse and manages API costs
  *
- * Uses Redis for persistence across server restarts and distributed deployments
- * Falls back to in-memory when Redis is unavailable
+ * Uses Vercel KV for persistence across serverless function instances
+ * Falls back to in-memory when KV is unavailable (local dev only)
+ *
+ * Why Vercel KV instead of standard Redis?
+ * - Standard Redis requires persistent TCP connections
+ * - Serverless functions are ephemeral - connections don't persist
+ * - In-memory rate limits don't work: each request may hit different instance
+ * - Vercel KV uses REST API - perfect for serverless
  */
 
-import { cache } from './redis-cache'
+import { kv } from '@vercel/kv'
 
 interface RateLimitEntry {
     count: number
@@ -19,22 +25,26 @@ interface RateLimitConfig {
     identifier?: string    // Custom identifier (defaults to IP/user)
 }
 
-// In-memory fallback store (used when Redis is unavailable)
+// In-memory fallback store (used when KV is unavailable)
+// NOTE: This only works for local development - on Vercel, each request
+// may hit a different serverless instance with its own memory
 const rateLimitStore: Map<string, RateLimitEntry> = new Map()
 
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now()
-    for (const [key, entry] of rateLimitStore.entries()) {
-        if (entry.resetAt < now) {
-            rateLimitStore.delete(key)
+// Cleanup old entries every 5 minutes (only works in long-running processes)
+if (typeof setInterval !== 'undefined' && process.env.NODE_ENV === 'development') {
+    setInterval(() => {
+        const now = Date.now()
+        for (const [key, entry] of rateLimitStore.entries()) {
+            if (entry.resetAt < now) {
+                rateLimitStore.delete(key)
+            }
         }
-    }
-}, 5 * 60 * 1000)
+    }, 5 * 60 * 1000)
+}
 
 /**
  * Check if a request should be rate limited
- * Uses Redis when available for persistence, falls back to in-memory
+ * Uses Vercel KV for persistence, falls back to in-memory
  * @returns Object with allowed status and remaining requests
  */
 export async function checkRateLimitAsync(
@@ -43,59 +53,31 @@ export async function checkRateLimitAsync(
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
     const now = Date.now()
     const windowSeconds = Math.ceil(config.windowMs / 1000)
-    const storeKey = `ratelimit:${key}:${config.identifier || 'default'}`
-    const resetAtKey = `${storeKey}:reset`
+    // Use window-based keys for automatic cleanup
+    const windowNumber = Math.floor(now / config.windowMs)
+    const storeKey = `ratelimit:${key}:${config.identifier || 'default'}:${windowNumber}`
 
     try {
-        // Try to get current count from Redis
-        const currentCount = await cache.get<number>(storeKey)
-        const storedResetAt = await cache.get<number>(resetAtKey)
+        // Increment counter atomically in Vercel KV
+        const count = await kv.incr(storeKey)
 
-        // If we have a reset time and it's in the past, this is a new window
-        if (storedResetAt !== null && storedResetAt < now) {
-            // Window expired, reset
-            await cache.set(storeKey, 1, windowSeconds)
-            const newResetAt = now + config.windowMs
-            await cache.set(resetAtKey, newResetAt, windowSeconds)
-            return {
-                allowed: true,
-                remaining: config.maxRequests - 1,
-                resetAt: newResetAt,
-            }
+        // Set expiry on first request in window
+        if (count === 1) {
+            await kv.expire(storeKey, windowSeconds + 1)
         }
 
-        const resetAt = storedResetAt || now + config.windowMs
+        const resetAt = (windowNumber + 1) * config.windowMs
+        const remaining = Math.max(0, config.maxRequests - count)
 
-        if (currentCount === null) {
-            // First request in this window
-            await cache.set(storeKey, 1, windowSeconds)
-            await cache.set(resetAtKey, resetAt, windowSeconds)
-            return {
-                allowed: true,
-                remaining: config.maxRequests - 1,
-                resetAt,
-            }
-        }
-
-        // Check if limit exceeded
-        if (currentCount >= config.maxRequests) {
-            return {
-                allowed: false,
-                remaining: 0,
-                resetAt,
-            }
-        }
-
-        // Increment count
-        const newCount = await cache.incr(storeKey)
         return {
-            allowed: true,
-            remaining: Math.max(0, config.maxRequests - newCount),
+            allowed: count <= config.maxRequests,
+            remaining,
             resetAt,
         }
     } catch (error) {
-        console.error('[RateLimiter] Redis error, falling back to in-memory:', error)
+        console.error('[RateLimiter] KV error, falling back to in-memory:', error instanceof Error ? error.message : error)
         // Fall back to synchronous in-memory implementation
+        // NOTE: This is only useful for local dev - won't work on serverless
         return checkRateLimit(key, config)
     }
 }
@@ -103,6 +85,12 @@ export async function checkRateLimitAsync(
 /**
  * Synchronous rate limit check (in-memory only)
  * Use checkRateLimitAsync for persistent rate limiting
+ *
+ * WARNING: This does NOT work on serverless platforms like Vercel!
+ * Each request may hit a different instance with its own memory.
+ * Only use for local development.
+ *
+ * @deprecated Use checkRateLimitAsync for production
  * @returns Object with allowed status and remaining requests
  */
 export function checkRateLimit(
@@ -260,6 +248,50 @@ export const RateLimits = {
         maxRequests: 5,
         windowMs: 60 * 1000, // 5 AI scans per minute
     },
+
+    // ═══════════════════════════════════════════════════════════════
+    // FINGERPRINT RATE LIMITS (Abuse Prevention)
+    // ═══════════════════════════════════════════════════════════════
+
+    // Fingerprint registration (per IP - prevent device spoofing)
+    FINGERPRINT_REGISTER: {
+        maxRequests: 10,
+        windowMs: 60 * 60 * 1000, // 10 registrations per hour per IP
+    },
+
+    // Fingerprint check (per fingerprint hash - prevent enumeration)
+    FINGERPRINT_CHECK: {
+        maxRequests: 30,
+        windowMs: 60 * 1000, // 30 checks per minute
+    },
+
+    // Behavior metrics update (per fingerprint hash)
+    FINGERPRINT_BEHAVIOR: {
+        maxRequests: 60,
+        windowMs: 60 * 1000, // 60 updates per minute
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // VOTING RATE LIMITS
+    // ═══════════════════════════════════════════════════════════════
+
+    // Product/poll voting (per fingerprint per minute)
+    VOTING: {
+        maxRequests: 10,
+        windowMs: 60 * 1000, // 10 votes per minute
+    },
+
+    // Voting hourly limit (anti-abuse)
+    VOTING_HOURLY: {
+        maxRequests: 100,
+        windowMs: 60 * 60 * 1000, // 100 votes per hour
+    },
+
+    // Per-product cooldown (prevent rapid voting on same product)
+    VOTE_COOLDOWN: {
+        maxRequests: 1,
+        windowMs: 5 * 1000, // 1 vote per 5 seconds per product
+    },
 }
 
 /**
@@ -315,9 +347,9 @@ export function applyRateLimit(
 }
 
 /**
- * Apply rate limiting with Redis persistence (async)
+ * Apply rate limiting with Vercel KV persistence (async)
  * Returns null if allowed, Response if rate limited
- * Recommended for production use - persists across deployments
+ * Recommended for production use - persists across serverless instances
  */
 export async function applyRateLimitAsync(
     req: Request,

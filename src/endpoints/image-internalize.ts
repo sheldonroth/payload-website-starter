@@ -1,6 +1,6 @@
 import type { Payload, PayloadHandler, PayloadRequest } from 'payload'
 import type { Product, Brand, Media } from '@/payload-types'
-import { checkRateLimit, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
+import { checkRateLimitAsync, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
 
 /**
  * Product with populated brand for image internalization
@@ -236,7 +236,7 @@ export const imageInternalizeHandler: PayloadHandler = async (req: PayloadReques
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BG_REMOVAL_BATCH)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.BG_REMOVAL_BATCH)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

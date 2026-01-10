@@ -1,5 +1,5 @@
 import { PayloadHandler } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import {
   validationError,
   unauthorizedError,
@@ -24,9 +24,9 @@ interface VoteRequest {
 }
 
 export const pollVoteHandler: PayloadHandler = async (req) => {
-  // Rate limiting - 20 votes per minute per IP/user
+  // Rate limiting - 20 votes per minute per IP/user (using Vercel KV)
   const rateLimitKey = getRateLimitKey(req as unknown as Request, (req.user as { id?: number })?.id)
-  const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+  const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.CONTENT_GENERATION)
   if (!rateLimit.allowed) {
     return rateLimitResponse(rateLimit.resetAt)
   }

@@ -123,6 +123,7 @@ export const searchAnalyticsEndpoint: Endpoint = {
       const { from, prevFrom, prevTo } = getDateRange(range)
 
       // Fetch all search queries in the date range
+      // Note: Using high limit for aggregation - consider streaming for very large datasets
       const currentQueries = await req.payload.find({
         collection: 'search-queries' as any,
         where: {
@@ -132,6 +133,11 @@ export const searchAnalyticsEndpoint: Endpoint = {
         },
         limit: 10000,
         depth: 0,
+        select: {
+          query: true,
+          resultsCount: true,
+          createdAt: true,
+        },
       })
 
       // Fetch previous period for trend comparison
@@ -145,6 +151,11 @@ export const searchAnalyticsEndpoint: Endpoint = {
         },
         limit: 10000,
         depth: 0,
+        select: {
+          query: true,
+          resultsCount: true,
+          createdAt: true,
+        },
       })
 
       // Aggregate current period data

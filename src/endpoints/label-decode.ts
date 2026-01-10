@@ -1,7 +1,7 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
 import { parseAndLinkIngredients } from '../utilities/smart-automation'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 /**
  * Label Decoder Endpoint
@@ -38,7 +38,7 @@ export const labelDecodeHandler: PayloadHandler = async (req: PayloadRequest) =>
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.AI_ANALYSIS)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

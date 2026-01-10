@@ -169,7 +169,8 @@ export const pushTokenRegisterHandler = async (req: PayloadRequest): Promise<Res
           platform,
           isActive: true,
           failureCount: 0,
-        },
+          lastActiveAt: new Date().toISOString(),
+        } as any, // lastActiveAt added to schema, types need regeneration
       })
 
       return Response.json({
@@ -189,7 +190,8 @@ export const pushTokenRegisterHandler = async (req: PayloadRequest): Promise<Res
         isActive: true,
         failureCount: 0,
         productSubscriptions: [],
-      },
+        lastActiveAt: new Date().toISOString(),
+      } as any, // lastActiveAt added to schema, types need regeneration
     })
 
     return Response.json({
@@ -328,5 +330,77 @@ export const pushTokenUnsubscribeHandler = async (req: PayloadRequest): Promise<
   } catch (error) {
     console.error('[PushTokens] Unsubscribe error:', error)
     return Response.json({ error: 'Failed to unsubscribe from notifications' }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/push-tokens/heartbeat
+ *
+ * Update last activity time for a push token (called on app foreground).
+ * Used for win-back notification targeting.
+ *
+ * @openapi
+ * /push-tokens/heartbeat:
+ *   post:
+ *     summary: Update push token activity timestamp
+ *     description: Call this when the app comes to foreground to track user activity for win-back campaigns
+ *     tags: [Push Notifications, Mobile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Expo push token
+ *     responses:
+ *       200:
+ *         description: Activity updated
+ *       400:
+ *         description: Missing token
+ *       404:
+ *         description: Push token not found
+ */
+export const pushTokenHeartbeatHandler = async (req: PayloadRequest): Promise<Response> => {
+  try {
+    const body = await req.json?.()
+
+    if (!body?.token) {
+      return Response.json({ error: 'Push token is required' }, { status: 400 })
+    }
+
+    const { token } = body
+
+    // Find the token
+    const existing = await req.payload.find({
+      collection: 'push-tokens',
+      where: { token: { equals: token } },
+      limit: 1,
+    })
+
+    if (existing.docs.length === 0) {
+      return Response.json({ error: 'Push token not found' }, { status: 404 })
+    }
+
+    // Update last activity time
+    await req.payload.update({
+      collection: 'push-tokens',
+      id: existing.docs[0].id,
+      data: {
+        lastActiveAt: new Date().toISOString(),
+        isActive: true, // Ensure token is active
+      } as any, // lastActiveAt added to schema, types need regeneration
+    })
+
+    return Response.json({
+      success: true,
+      message: 'Activity recorded',
+    })
+  } catch (error) {
+    console.error('[PushTokens] Heartbeat error:', error)
+    return Response.json({ error: 'Failed to update activity' }, { status: 500 })
   }
 }

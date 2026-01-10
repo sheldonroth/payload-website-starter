@@ -1,11 +1,14 @@
 /**
  * Unit tests for rate-limiter utility
  *
- * Tests the in-memory rate limiting functionality including:
+ * Tests the in-memory fallback rate limiting functionality including:
  * - Basic request counting
  * - Window expiration
  * - Different configs
  * - Request key extraction
+ *
+ * NOTE: These tests cover the synchronous in-memory fallback.
+ * The primary rate limiting now uses Vercel KV (async) for serverless.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -301,6 +304,9 @@ describe('rate-limiter', () => {
         'MOBILE_SEARCH',
         'MOBILE_FEEDBACK',
         'SMART_SCAN',
+        'VOTING',
+        'VOTING_HOURLY',
+        'VOTE_COOLDOWN',
       ]
 
       for (const config of expectedConfigs) {
@@ -308,6 +314,21 @@ describe('rate-limiter', () => {
         expect(RateLimits[config as keyof typeof RateLimits]).toHaveProperty('maxRequests')
         expect(RateLimits[config as keyof typeof RateLimits]).toHaveProperty('windowMs')
       }
+    })
+
+    it('defines VOTING config', () => {
+      expect(RateLimits.VOTING.maxRequests).toBe(10)
+      expect(RateLimits.VOTING.windowMs).toBe(60000)
+    })
+
+    it('defines VOTING_HOURLY config', () => {
+      expect(RateLimits.VOTING_HOURLY.maxRequests).toBe(100)
+      expect(RateLimits.VOTING_HOURLY.windowMs).toBe(3600000)
+    })
+
+    it('defines VOTE_COOLDOWN config', () => {
+      expect(RateLimits.VOTE_COOLDOWN.maxRequests).toBe(1)
+      expect(RateLimits.VOTE_COOLDOWN.windowMs).toBe(5000)
     })
   })
 })

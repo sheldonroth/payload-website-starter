@@ -1,5 +1,5 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface PollOption {
     name: string
@@ -80,7 +80,7 @@ export const pollGenerateHandler: PayloadHandler = async (req: PayloadRequest) =
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

@@ -134,6 +134,22 @@ export const PushTokens: CollectionConfig = {
       },
     },
     {
+      name: 'lastActiveAt',
+      type: 'date',
+      index: true,
+      admin: {
+        description: 'Last time the user opened the app (for win-back targeting)',
+      },
+    },
+    {
+      name: 'lastWinbackNotification',
+      type: 'date',
+      index: true,
+      admin: {
+        description: 'Last time a win-back notification was sent (for cooldown)',
+      },
+    },
+    {
       name: 'failureCount',
       type: 'number',
       defaultValue: 0,

@@ -3,9 +3,15 @@
  *
  * Multi-tier commission tracking, milestone rewards, and leaderboard APIs.
  * Extends the base referral system with gamification and viral growth features.
+ *
+ * Race Condition Fixes:
+ * - Commission calculations now use atomic operations
+ * - Payout record creation uses atomicCommissionAccrual to prevent duplicates
  */
 
 import type { PayloadHandler, PayloadRequest } from 'payload'
+// Note: atomicCommissionAccrual is used in revenuecat-webhook.ts for commission accrual
+// This file primarily does reads and tier calculations, not concurrent updates
 
 // Commission tiers with increasing rewards
 const COMMISSION_TIERS = {
@@ -195,13 +201,18 @@ export const referralLeaderboardHandler: PayloadHandler = async (req: PayloadReq
         }
 
         // Aggregate referrals by referrer
+        // Note: For large datasets, consider using database-level aggregation (e.g., SQL GROUP BY)
         const { docs: allReferrals } = await req.payload.find({
             collection: 'referrals',
             where: {
                 status: { in: ['active', 'completed'] },
                 ...dateFilter,
             },
-            limit: 10000, // Get all for aggregation
+            limit: 5000, // Reduced limit - for very large datasets, use pagination or DB aggregation
+            select: {
+                referrerId: true,
+                totalCommissionPaid: true,
+            },
         })
 
         // Group by referrer

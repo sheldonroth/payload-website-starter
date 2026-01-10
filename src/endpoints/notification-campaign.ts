@@ -515,6 +515,10 @@ export const campaignStatsHandler: PayloadHandler = async (req: PayloadRequest) 
             where: { campaign: { equals: campaign.id } },
             limit: 10000,
             depth: 0,
+            select: {
+                variant: true,
+                status: true,
+            },
         })
 
         for (const send of sends as unknown as Array<{ variant: string; status: string }>) {

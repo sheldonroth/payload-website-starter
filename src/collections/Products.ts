@@ -292,9 +292,8 @@ export const Products: CollectionConfig = {
 
             // ============================================
             // HOOK 8: AUTO-GENERATE AFFILIATE LINKS
-            // Generates Amazon links for ALL products:
-            // - Direct product link if ASIN is available
-            // - Search link using product name/brand otherwise
+            // Generates Amazon links when ASIN is available.
+            // Removes Amazon links when ASIN is cleared.
             // ============================================
             async ({ data, req }) => {
                 try {
@@ -312,81 +311,46 @@ export const Products: CollectionConfig = {
                         return data
                     }
 
-                    // Get product name and brand for search link
-                    const productName = data?.name || ''
-
-                    // Get brand name - it could be a populated object or just an ID
-                    let brandName = ''
-                    if (data?.brand) {
-                        if (typeof data.brand === 'object' && data.brand?.name) {
-                            // Brand is already populated
-                            brandName = data.brand.name
-                        } else if (typeof data.brand === 'string' || typeof data.brand === 'number') {
-                            // Brand is just an ID, need to fetch it
-                            try {
-                                const brand = await req.payload.findByID({
-                                    collection: 'brands',
-                                    id: data.brand,
-                                    depth: 0,
-                                })
-                                brandName = brand?.name || ''
-                            } catch (e) {
-                                console.log('[affiliate-links] Could not fetch brand:', e)
-                            }
-                        }
-                    }
-
-                    // Need at least a product name to generate any link
-                    if (!productName) {
-                        return data
-                    }
-
-                    let affiliateUrl: string
-                    let linkType: 'direct' | 'search' = 'search'
-
                     if (data?.amazonAsin) {
-                        // Priority 1: Direct product link with ASIN
+                        // Generate direct product link with ASIN
                         const asin = data.amazonAsin.toUpperCase()
-                        affiliateUrl = affiliateTag
+                        const affiliateUrl = affiliateTag
                             ? `https://www.amazon.com/dp/${asin}?tag=${affiliateTag}`
                             : `https://www.amazon.com/dp/${asin}`
-                        linkType = 'direct'
-                    } else {
-                        // Priority 2: Search link using product name + brand
-                        const searchQuery = brandName
-                            ? `${brandName} ${productName}`
-                            : productName
-                        const encodedQuery = encodeURIComponent(searchQuery)
-                        affiliateUrl = affiliateTag
-                            ? `https://www.amazon.com/s?k=${encodedQuery}&tag=${affiliateTag}`
-                            : `https://www.amazon.com/s?k=${encodedQuery}`
+
+                        // Check if Amazon link already exists in purchaseLinks
+                        const existingLinks = data.purchaseLinks || []
+                        const amazonLinkIndex = existingLinks.findIndex(
+                            (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
+                        )
+
+                        // Safely get existing price if link exists
+                        const existingPrice = amazonLinkIndex >= 0 && existingLinks[amazonLinkIndex]
+                            ? (existingLinks[amazonLinkIndex].price || '')
+                            : ''
+
+                        const amazonLink = {
+                            retailer: 'Amazon',
+                            url: affiliateUrl,
+                            price: existingPrice,
+                            isAffiliate: !!affiliateTag,
+                        }
+
+                        if (amazonLinkIndex >= 0) {
+                            // Update existing Amazon link
+                            existingLinks[amazonLinkIndex] = amazonLink
+                        } else {
+                            // Add new Amazon link
+                            existingLinks.unshift(amazonLink) // Add to beginning
+                        }
+
+                        data.purchaseLinks = existingLinks
+                    } else if (data?.purchaseLinks) {
+                        // ASIN was cleared - remove stale Amazon links
+                        data.purchaseLinks = data.purchaseLinks.filter(
+                            (link: { retailer?: string }) => link.retailer?.toLowerCase() !== 'amazon'
+                        )
                     }
-
-                    // Check if Amazon link already exists in purchaseLinks
-                    const existingLinks = data.purchaseLinks || []
-                    const amazonLinkIndex = existingLinks.findIndex(
-                        (link: { retailer?: string }) => link.retailer?.toLowerCase() === 'amazon'
-                    )
-
-                    // Safely get existing price if link exists
-                    const existingPrice = amazonLinkIndex >= 0 ? (existingLinks[amazonLinkIndex]?.price || '') : ''
-
-                    const amazonLink = {
-                        retailer: 'Amazon',
-                        url: affiliateUrl,
-                        price: existingPrice,
-                        isAffiliate: !!affiliateTag,
-                    }
-
-                    if (amazonLinkIndex >= 0) {
-                        // Update existing Amazon link
-                        existingLinks[amazonLinkIndex] = amazonLink
-                    } else {
-                        // Add new Amazon link
-                        existingLinks.unshift(amazonLink) // Add to beginning
-                    }
-
-                    data.purchaseLinks = existingLinks
                 } catch (error) {
                     console.error('Failed to process affiliate link:', error)
                 }
@@ -1495,6 +1459,253 @@ export const Products: CollectionConfig = {
                     name: 'trendingReason',
                     type: 'text',
                     admin: { readOnly: true },
+                },
+            ],
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // LEGAL DEFENSE: DETECTION RESULTS (Weather Report Doctrine)
+        // Transforms subjective claims into objective instrument readings
+        // ═══════════════════════════════════════════════════════════════
+        {
+            name: 'detectionResults',
+            type: 'group',
+            label: '🔬 Detection Results (Legal Shield)',
+            admin: {
+                description: 'Objective instrument readings - key to defamation defense',
+            },
+            fields: [
+                {
+                    name: 'detections',
+                    type: 'array',
+                    label: 'Detected Compounds',
+                    admin: {
+                        description: 'Each detection is an objective instrument reading',
+                    },
+                    fields: [
+                        {
+                            name: 'compound',
+                            type: 'text',
+                            required: true,
+                            admin: {
+                                description: 'Compound name (e.g., "Lead", "PFAS", "BPA")',
+                            },
+                        },
+                        {
+                            name: 'level',
+                            type: 'text',
+                            admin: {
+                                description: 'Detected level (e.g., "2.3 ppm", "45 ppb")',
+                            },
+                        },
+                        {
+                            name: 'threshold',
+                            type: 'text',
+                            admin: {
+                                description: 'Regulatory threshold if applicable (e.g., "FDA limit: 1.0 ppm")',
+                            },
+                        },
+                        {
+                            name: 'interpretation',
+                            type: 'select',
+                            options: [
+                                { label: 'Below threshold', value: 'below' },
+                                { label: 'At threshold', value: 'at' },
+                                { label: 'Above threshold', value: 'above' },
+                                { label: 'No regulatory threshold', value: 'none' },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    name: 'spectrographImageUrl',
+                    type: 'text',
+                    label: 'Spectrograph Image URL',
+                    admin: {
+                        description: 'URL to the mass spectrometry output image',
+                    },
+                },
+                {
+                    name: 'spectrographImage',
+                    type: 'upload',
+                    relationTo: 'media',
+                    label: 'Spectrograph Image',
+                },
+                {
+                    name: 'rawDataAvailable',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    label: 'Raw Data Available',
+                    admin: {
+                        description: 'Check if raw lab data is available for verification',
+                    },
+                },
+                {
+                    name: 'labName',
+                    type: 'text',
+                    label: 'Laboratory',
+                    admin: {
+                        description: 'Name of the testing laboratory',
+                    },
+                },
+                {
+                    name: 'testDate',
+                    type: 'date',
+                    label: 'Test Date',
+                },
+            ],
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // LEGAL DEFENSE: SAMPLE CHAIN OF CUSTODY
+        // Documents exact sample tested - crucial for authenticity defense
+        // ═══════════════════════════════════════════════════════════════
+        {
+            name: 'sampleInfo',
+            type: 'group',
+            label: '📦 Sample Information (Chain of Custody)',
+            admin: {
+                description: 'Documents the exact sample tested - required for legal defense',
+            },
+            fields: [
+                {
+                    name: 'sampleId',
+                    type: 'text',
+                    label: 'Sample ID',
+                    admin: {
+                        description: 'Unique identifier (e.g., TPR-2026-0001)',
+                    },
+                },
+                {
+                    name: 'purchaseDate',
+                    type: 'date',
+                    label: 'Purchase Date',
+                    admin: {
+                        date: { pickerAppearance: 'dayOnly' },
+                    },
+                },
+                {
+                    name: 'purchaseRetailer',
+                    type: 'text',
+                    label: 'Purchase Retailer',
+                    admin: {
+                        description: 'Where the sample was purchased (e.g., "Amazon", "Target")',
+                    },
+                },
+                {
+                    name: 'lotNumber',
+                    type: 'text',
+                    label: 'Lot/Batch Number',
+                    admin: {
+                        description: 'Product lot number from packaging',
+                    },
+                },
+                {
+                    name: 'expirationDate',
+                    type: 'date',
+                    label: 'Expiration Date',
+                    admin: {
+                        date: { pickerAppearance: 'dayOnly' },
+                        description: 'Best by / expiration date from packaging',
+                    },
+                },
+                {
+                    name: 'photoOfPurchase',
+                    type: 'upload',
+                    relationTo: 'media',
+                    label: 'Photo of Purchase Receipt',
+                },
+                {
+                    name: 'photoOfProduct',
+                    type: 'upload',
+                    relationTo: 'media',
+                    label: 'Photo of Product Tested',
+                },
+            ],
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // LEGAL DEFENSE: MANUFACTURER RIGHT OF REPLY
+        // Documents that we offered manufacturers chance to respond
+        // ═══════════════════════════════════════════════════════════════
+        {
+            name: 'manufacturerResponse',
+            type: 'group',
+            label: '🏭 Manufacturer Response (Right of Reply)',
+            admin: {
+                description: 'Documents manufacturer engagement - key to fair comment defense',
+            },
+            fields: [
+                {
+                    name: 'disputeReceived',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    label: 'Dispute Received',
+                    admin: {
+                        description: 'Has the manufacturer disputed our findings?',
+                    },
+                },
+                {
+                    name: 'disputeDate',
+                    type: 'date',
+                    label: 'Dispute Date',
+                    admin: {
+                        condition: (_, siblingData) => siblingData?.disputeReceived,
+                    },
+                },
+                {
+                    name: 'disputeReference',
+                    type: 'text',
+                    label: 'Dispute Reference #',
+                    admin: {
+                        description: 'Link to ManufacturerDisputes collection',
+                        condition: (_, siblingData) => siblingData?.disputeReceived,
+                    },
+                },
+                {
+                    name: 'disputeSummary',
+                    type: 'textarea',
+                    label: 'Dispute Summary',
+                    admin: {
+                        description: 'Brief summary of manufacturer claims',
+                        condition: (_, siblingData) => siblingData?.disputeReceived,
+                    },
+                },
+                {
+                    name: 'ourResponse',
+                    type: 'textarea',
+                    label: 'Our Response',
+                    admin: {
+                        description: 'Our response to the manufacturer dispute',
+                        condition: (_, siblingData) => siblingData?.disputeReceived,
+                    },
+                },
+                {
+                    name: 'dataUpdated',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    label: 'Data Updated After Review',
+                    admin: {
+                        description: 'Did we update our findings after manufacturer review?',
+                        condition: (_, siblingData) => siblingData?.disputeReceived,
+                    },
+                },
+                {
+                    name: 'updateDate',
+                    type: 'date',
+                    label: 'Update Date',
+                    admin: {
+                        condition: (_, siblingData) => siblingData?.dataUpdated,
+                    },
+                },
+                {
+                    name: 'updateDescription',
+                    type: 'textarea',
+                    label: 'What Was Updated',
+                    admin: {
+                        description: 'Description of changes made after manufacturer feedback',
+                        condition: (_, siblingData) => siblingData?.dataUpdated,
+                    },
                 },
             ],
         },

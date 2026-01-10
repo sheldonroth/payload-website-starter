@@ -16,7 +16,7 @@ import {
     buildInsightGenerationPrompt,
     PROMPT_TEMPLATES,
 } from './prompt-builder'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey } from '../../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey } from '../../utilities/rate-limiter'
 import { sanitizeForPrompt } from '../../utilities/prompt-sanitizer'
 
 // Rate limit config for AI assistant (more restrictive due to expensive model)
@@ -56,10 +56,10 @@ export const aiAssistantEndpoint: Endpoint = {
             )
         }
 
-        // Rate limiting
+        // Rate limiting (using Vercel KV for serverless)
         const userId = (req.user as { id?: number }).id
         const rateLimitKey = getRateLimitKey(req as unknown as Request, userId ? String(userId) : undefined)
-        const rateCheck = checkRateLimit(rateLimitKey, {
+        const rateCheck = await checkRateLimitAsync(rateLimitKey, {
             ...AI_ASSISTANT_RATE_LIMIT,
             identifier: 'ai-assistant',
         })

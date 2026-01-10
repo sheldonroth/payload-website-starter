@@ -1,6 +1,6 @@
 import type { PayloadHandler, PayloadRequest, Where } from 'payload'
 import type { User, UserSubmission } from '../payload-types'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import {
     successResponse,
     internalError,
@@ -131,7 +131,7 @@ export const productRequestsCreateHandler: PayloadHandler = async (req: PayloadR
     // Rate limiting - 20 requests per minute
     const user = req.user as AuthenticatedUser | undefined
     const rateLimitKey = getRateLimitKey(req as unknown as Request, user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }
@@ -218,7 +218,7 @@ export const productRequestVoteHandler: PayloadHandler = async (req: PayloadRequ
     // Rate limiting - 20 votes per minute
     const user = req.user as AuthenticatedUser | undefined
     const rateLimitKey = getRateLimitKey(req as unknown as Request, user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

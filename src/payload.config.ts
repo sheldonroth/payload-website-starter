@@ -49,6 +49,7 @@ import { UserSegments } from './collections/UserSegments'
 import { NotificationCampaigns } from './collections/NotificationCampaigns'
 import { NotificationSends } from './collections/NotificationSends'
 import { FeatureFlagCache } from './collections/FeatureFlagCache'
+import { ManufacturerDisputes } from './collections/ManufacturerDisputes'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -108,7 +109,7 @@ import { productReportHandler } from './endpoints/product-report'
 import { productFeedHandler } from './endpoints/product-feed'
 import { generateAffiliateLinksHandler } from './endpoints/generate-affiliate-links'
 import { amazonLookupHandler } from './endpoints/amazon-lookup'
-import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
+import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler, pushTokenHeartbeatHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
 import { feedbackHandler } from './endpoints/feedback'
@@ -334,7 +335,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments, FeatureFlagCache],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments, FeatureFlagCache, ManufacturerDisputes],
   cors: [
     // Main website
     'https://www.theproductreport.org',
@@ -839,6 +840,11 @@ export default buildConfig({
       path: '/push-tokens/unsubscribe',
       method: 'post',
       handler: pushTokenUnsubscribeHandler,
+    },
+    {
+      path: '/push-tokens/heartbeat',
+      method: 'post',
+      handler: pushTokenHeartbeatHandler,
     },
     // My Cases Notifications (Admin-triggered)
     {

@@ -1,5 +1,5 @@
 import type { PayloadHandler, PayloadRequest, Payload } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface ProductInfo {
     mediaId: number | null
@@ -283,7 +283,7 @@ export const productEnrichHandler: PayloadHandler = async (req: PayloadRequest) 
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.AI_ANALYSIS)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

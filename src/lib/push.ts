@@ -195,3 +195,45 @@ export function createTrendingNotification(
         },
     }
 }
+
+// Win-back notification variants for A/B testing
+const WINBACK_VARIANTS = [
+    {
+        title: '🔍 New products to check',
+        body: "We've tested some products you might want to know about.",
+    },
+    {
+        title: '👀 Miss anything?',
+        body: "Popular products are getting tested. Don't miss the results.",
+    },
+    {
+        title: '🛒 Your next shopping trip',
+        body: "Check products before you buy - we've added new results.",
+    },
+]
+
+/**
+ * Win-back notification
+ * Sent to re-engage users who haven't opened the app recently
+ */
+export function createWinbackNotification(
+    token: string,
+    variantIndex?: number
+): ExpoPushMessage {
+    // Select variant (either specified or random)
+    const idx = variantIndex !== undefined
+        ? variantIndex % WINBACK_VARIANTS.length
+        : Math.floor(Math.random() * WINBACK_VARIANTS.length)
+    const variant = WINBACK_VARIANTS[idx]
+
+    return {
+        to: token,
+        title: variant.title,
+        body: variant.body,
+        sound: 'default',
+        data: {
+            type: 'winback',
+            variant: idx,
+        },
+    }
+}

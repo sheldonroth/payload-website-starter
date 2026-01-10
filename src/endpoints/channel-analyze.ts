@@ -1,6 +1,6 @@
 import { YoutubeTranscript } from 'youtube-transcript'
 import type { PayloadHandler, PayloadRequest } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 import { sanitizeCategoryList, sanitizeTranscript, wrapUserContent } from '../utilities/prompt-sanitizer'
 import { type AIExtractedProductData, createProductData } from './ai-product-types'
 
@@ -178,7 +178,7 @@ export const channelAnalyzeHandler: PayloadHandler = async (req: PayloadRequest)
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.AI_ANALYSIS)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.AI_ANALYSIS)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

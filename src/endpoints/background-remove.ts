@@ -1,5 +1,5 @@
 import type { Payload, PayloadHandler, PayloadRequest } from 'payload'
-import { checkRateLimit, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
+import { checkRateLimitAsync, getRateLimitKey, rateLimitResponse, RateLimits } from '@/utilities/rate-limiter'
 import { getServerSideURL } from '@/utilities/getURL'
 
 /**
@@ -415,7 +415,7 @@ export const backgroundRemoveHandler: PayloadHandler = async (req: PayloadReques
 
     // Rate limiting
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BG_REMOVAL)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.BG_REMOVAL)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }
@@ -474,7 +474,7 @@ export const backgroundBatchHandler: PayloadHandler = async (req: PayloadRequest
 
     // Rate limiting for batch operations
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.BG_REMOVAL_BATCH)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.BG_REMOVAL_BATCH)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

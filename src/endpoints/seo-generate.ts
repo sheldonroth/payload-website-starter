@@ -1,5 +1,5 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
-import { checkRateLimit, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
+import { checkRateLimitAsync, rateLimitResponse, getRateLimitKey, RateLimits } from '../utilities/rate-limiter'
 
 interface SEOOutput {
     metaTitle: string
@@ -70,9 +70,9 @@ export const seoGenerateHandler: PayloadHandler = async (req: PayloadRequest) =>
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Rate limiting
+    // Rate limiting (using Vercel KV for serverless)
     const rateLimitKey = getRateLimitKey(req as unknown as Request, req.user?.id)
-    const rateLimit = checkRateLimit(rateLimitKey, RateLimits.CONTENT_GENERATION)
+    const rateLimit = await checkRateLimitAsync(rateLimitKey, RateLimits.CONTENT_GENERATION)
     if (!rateLimit.allowed) {
         return rateLimitResponse(rateLimit.resetAt)
     }

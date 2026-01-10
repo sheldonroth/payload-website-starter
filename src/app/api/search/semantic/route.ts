@@ -2,29 +2,14 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { searchSimilarProducts, generateEmbedding, getEmbeddingStats } from '../../../../utilities/embeddings'
+import { checkRateLimitAsync, rateLimitResponse, RateLimits } from '../../../../utilities/rate-limiter'
 
 export const dynamic = 'force-dynamic'
 
-// Rate limiting: Simple in-memory store (use Redis in production)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
-const RATE_LIMIT = 30 // requests per minute
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const record = rateLimitStore.get(ip)
-
-  if (!record || now > record.resetTime) {
-    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
-    return true
-  }
-
-  if (record.count >= RATE_LIMIT) {
-    return false
-  }
-
-  record.count++
-  return true
+// Rate limit config for semantic search
+const SEMANTIC_SEARCH_RATE_LIMIT = {
+  maxRequests: 30,
+  windowMs: 60 * 1000, // 30 requests per minute
 }
 
 /**
@@ -128,16 +113,14 @@ function checkRateLimit(ip: string): boolean {
  */
 export async function POST(request: Request) {
   try {
-    // Rate limiting
-    const ip = request.headers.get('x-forwarded-for') ||
+    // Rate limiting using Vercel KV
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown'
 
-    if (!checkRateLimit(ip)) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again later.' },
-        { status: 429 }
-      )
+    const rateLimit = await checkRateLimitAsync(`semantic-search:${ip}`, SEMANTIC_SEARCH_RATE_LIMIT)
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.resetAt)
     }
 
     // Parse request body

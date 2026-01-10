@@ -340,6 +340,7 @@ export const Users: CollectionConfig = {
     {
       name: 'revenuecatUserId',
       type: 'text',
+      index: true, // Added for RevenueCat webhook lookup performance
       admin: {
         position: 'sidebar',
         readOnly: true,
@@ -351,6 +352,7 @@ export const Users: CollectionConfig = {
     {
       name: 'googleId',
       type: 'text',
+      index: true, // Added for OAuth lookup performance
       admin: {
         position: 'sidebar',
         readOnly: true,
@@ -360,6 +362,7 @@ export const Users: CollectionConfig = {
     {
       name: 'appleId',
       type: 'text',
+      index: true, // Added for OAuth lookup performance
       admin: {
         position: 'sidebar',
         readOnly: true,

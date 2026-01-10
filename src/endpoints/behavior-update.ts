@@ -1,4 +1,50 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
+import { applyRateLimitAsync, RateLimits } from '../utilities/rate-limiter'
+import { validationError, internalError } from '../utilities/api-response'
+
+// Maximum length for fingerprint hash
+const MAX_FINGERPRINT_HASH_LENGTH = 100
+
+/**
+ * Validate and sanitize fingerprint hash
+ */
+function validateFingerprintHash(hash: unknown): string | null {
+    if (typeof hash !== 'string') return null
+    const trimmed = hash.trim()
+    if (trimmed.length === 0 || trimmed.length > MAX_FINGERPRINT_HASH_LENGTH) return null
+    // Only allow alphanumeric, underscores, and hyphens
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null
+    return trimmed
+}
+
+/**
+ * Validate behavior metrics - ensure all values are safe numbers
+ */
+function validateBehaviorMetrics(metrics: unknown): Record<string, number> | null {
+    if (!metrics || typeof metrics !== 'object') return null
+
+    const rawMetrics = metrics as Record<string, unknown>
+    const validated: Record<string, number> = {}
+
+    // List of allowed metric fields
+    const allowedFields = [
+        'totalScans', 'avoidHits', 'sessionCount', 'searchCount',
+        'voteCount', 'paywallsShown', 'paywallsDismissed'
+    ]
+
+    for (const field of allowedFields) {
+        if (field in rawMetrics) {
+            const value = rawMetrics[field]
+            // Ensure it's a finite number and not negative
+            if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+                // Cap at reasonable maximum to prevent abuse
+                validated[field] = Math.min(Math.floor(value), 1000000)
+            }
+        }
+    }
+
+    return Object.keys(validated).length > 0 ? validated : null
+}
 
 /**
  * Behavior Metrics Update Endpoint
@@ -8,20 +54,35 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
  *
  * POST /api/device-fingerprints/behavior
  * Body: { fingerprintHash: string, behaviorMetrics: Partial<BehaviorMetrics> }
+ *
+ * SECURITY:
+ * - Rate limited to prevent abuse
+ * - Input validation and sanitization
  */
 export const behaviorUpdateHandler: PayloadHandler = async (req: PayloadRequest) => {
     try {
-        const body = await req.json?.() as { fingerprintHash?: string; behaviorMetrics?: Record<string, unknown> } | undefined
+        const body = await req.json?.() as { fingerprintHash?: unknown; behaviorMetrics?: unknown } | undefined
 
-        const fingerprintHash = body?.fingerprintHash
-        const behaviorMetrics = body?.behaviorMetrics
-
+        // Validate and sanitize fingerprint hash
+        const fingerprintHash = validateFingerprintHash(body?.fingerprintHash)
         if (!fingerprintHash) {
-            return Response.json({ error: 'Missing fingerprintHash' }, { status: 400 })
+            return validationError('fingerprintHash is required and must be a valid alphanumeric string (max 100 characters)')
         }
 
-        if (!behaviorMetrics || typeof behaviorMetrics !== 'object') {
-            return Response.json({ error: 'Missing or invalid behaviorMetrics' }, { status: 400 })
+        // Rate limit by fingerprint hash (60 updates per minute)
+        const rateLimitResponse = await applyRateLimitAsync(
+            req as unknown as Request,
+            RateLimits.FINGERPRINT_BEHAVIOR,
+            `fingerprint:behavior:${fingerprintHash}`
+        )
+        if (rateLimitResponse) {
+            return rateLimitResponse
+        }
+
+        // Validate behavior metrics
+        const behaviorMetrics = validateBehaviorMetrics(body?.behaviorMetrics)
+        if (!behaviorMetrics) {
+            return validationError('behaviorMetrics must be an object with valid numeric values')
         }
 
         // Find existing fingerprint
@@ -87,7 +148,7 @@ export const behaviorUpdateHandler: PayloadHandler = async (req: PayloadRequest)
         return Response.json({ success: true, metrics: updatedMetrics }, { status: 200 })
     } catch (error) {
         console.error('[BehaviorUpdate] Failed:', error)
-        return Response.json({ error: 'Internal server error' }, { status: 500 })
+        return internalError('Failed to update behavior metrics')
     }
 }
 
