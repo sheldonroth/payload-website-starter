@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * Check if a YouTube video is a Short by testing the /shorts/ URL
@@ -36,6 +37,8 @@ export const Videos: CollectionConfig = {
                 return data
             },
         ],
+        afterChange: [createAuditLogHook('videos')],
+        afterDelete: [createAuditDeleteHook('videos')],
         afterRead: [
             ({ doc }) => {
                 // Compute YouTube URL from video ID (no database storage needed)

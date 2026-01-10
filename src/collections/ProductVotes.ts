@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * ProductVotes Collection
@@ -57,6 +58,7 @@ export const ProductVotes: CollectionConfig = {
             },
         ],
         afterChange: [
+            createAuditLogHook('product-votes'),
             async ({ doc, previousDoc, req, operation }) => {
                 // Only process updates where status changed to 'complete'
                 if (operation !== 'update' || !previousDoc) return doc

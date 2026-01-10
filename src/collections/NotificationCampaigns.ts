@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * Notification Campaigns Collection
@@ -16,6 +17,10 @@ export const NotificationCampaigns: CollectionConfig = {
     labels: {
         singular: 'Notification Campaign',
         plural: 'Notification Campaigns',
+    },
+    hooks: {
+        afterChange: [createAuditLogHook('notification-campaigns')],
+        afterDelete: [createAuditDeleteHook('notification-campaigns')],
     },
     admin: {
         useAsTitle: 'name',

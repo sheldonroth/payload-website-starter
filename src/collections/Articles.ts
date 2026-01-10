@@ -2,9 +2,14 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone } from '../access/anyone'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 export const Articles: CollectionConfig = {
     slug: 'articles',
+    hooks: {
+        afterChange: [createAuditLogHook('articles')],
+        afterDelete: [createAuditDeleteHook('articles')],
+    },
     access: {
         // SECURITY: Only admins/editors can create articles
         create: isEditorOrAdmin,

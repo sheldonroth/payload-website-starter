@@ -79,6 +79,7 @@ export interface Config {
     'sponsored-test-requests': SponsoredTestRequest;
     'verdict-rules': VerdictRule;
     'audit-log': AuditLog;
+    'admin-audit-logs': AdminAuditLog;
     users: User;
     'price-history': PriceHistory;
     brands: Brand;
@@ -97,11 +98,18 @@ export interface Config {
     'daily-discoveries': DailyDiscovery;
     'email-templates': EmailTemplate;
     'email-sends': EmailSend;
+    'notification-templates': NotificationTemplate;
+    'notification-campaigns': NotificationCampaign;
+    'notification-sends': NotificationSend;
     'contributor-profiles': ContributorProfile;
     'market-intelligence': MarketIntelligence;
     'brand-analytics': BrandAnalytic;
     'brand-users': BrandUser;
     'search-queries': SearchQuery;
+    'paywall-variants': PaywallVariant;
+    'user-segments': UserSegment;
+    'feature-flag-cache': FeatureFlagCache;
+    'manufacturer-disputes': ManufacturerDispute;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -130,6 +138,7 @@ export interface Config {
     'sponsored-test-requests': SponsoredTestRequestsSelect<false> | SponsoredTestRequestsSelect<true>;
     'verdict-rules': VerdictRulesSelect<false> | VerdictRulesSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
+    'admin-audit-logs': AdminAuditLogsSelect<false> | AdminAuditLogsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
@@ -148,11 +157,18 @@ export interface Config {
     'daily-discoveries': DailyDiscoveriesSelect<false> | DailyDiscoveriesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     'email-sends': EmailSendsSelect<false> | EmailSendsSelect<true>;
+    'notification-templates': NotificationTemplatesSelect<false> | NotificationTemplatesSelect<true>;
+    'notification-campaigns': NotificationCampaignsSelect<false> | NotificationCampaignsSelect<true>;
+    'notification-sends': NotificationSendsSelect<false> | NotificationSendsSelect<true>;
     'contributor-profiles': ContributorProfilesSelect<false> | ContributorProfilesSelect<true>;
     'market-intelligence': MarketIntelligenceSelect<false> | MarketIntelligenceSelect<true>;
     'brand-analytics': BrandAnalyticsSelect<false> | BrandAnalyticsSelect<true>;
     'brand-users': BrandUsersSelect<false> | BrandUsersSelect<true>;
     'search-queries': SearchQueriesSelect<false> | SearchQueriesSelect<true>;
+    'paywall-variants': PaywallVariantsSelect<false> | PaywallVariantsSelect<true>;
+    'user-segments': UserSegmentsSelect<false> | UserSegmentsSelect<true>;
+    'feature-flag-cache': FeatureFlagCacheSelect<false> | FeatureFlagCacheSelect<true>;
+    'manufacturer-disputes': ManufacturerDisputesSelect<false> | ManufacturerDisputesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -172,12 +188,14 @@ export interface Config {
     footer: Footer;
     'youtube-settings': YoutubeSetting;
     'site-settings': SiteSetting;
+    'paywall-settings': PaywallSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     'youtube-settings': YoutubeSettingsSelect<false> | YoutubeSettingsSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'paywall-settings': PaywallSettingsSelect<false> | PaywallSettingsSelect<true>;
   };
   locale: null;
   user:
@@ -806,6 +824,101 @@ export interface Product {
     trendingReason?: string | null;
   };
   /**
+   * Objective instrument readings - key to defamation defense
+   */
+  detectionResults?: {
+    /**
+     * Each detection is an objective instrument reading
+     */
+    detections?:
+      | {
+          /**
+           * Compound name (e.g., "Lead", "PFAS", "BPA")
+           */
+          compound: string;
+          /**
+           * Detected level (e.g., "2.3 ppm", "45 ppb")
+           */
+          level?: string | null;
+          /**
+           * Regulatory threshold if applicable (e.g., "FDA limit: 1.0 ppm")
+           */
+          threshold?: string | null;
+          interpretation?: ('below' | 'at' | 'above' | 'none') | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * URL to the mass spectrometry output image
+     */
+    spectrographImageUrl?: string | null;
+    spectrographImage?: (number | null) | Media;
+    /**
+     * Check if raw lab data is available for verification
+     */
+    rawDataAvailable?: boolean | null;
+    /**
+     * Name of the testing laboratory
+     */
+    labName?: string | null;
+    testDate?: string | null;
+  };
+  /**
+   * Documents the exact sample tested - required for legal defense
+   */
+  sampleInfo?: {
+    /**
+     * Unique identifier (e.g., TPR-2026-0001)
+     */
+    sampleId?: string | null;
+    purchaseDate?: string | null;
+    /**
+     * Where the sample was purchased (e.g., "Amazon", "Target")
+     */
+    purchaseRetailer?: string | null;
+    /**
+     * Product lot number from packaging
+     */
+    lotNumber?: string | null;
+    /**
+     * Best by / expiration date from packaging
+     */
+    expirationDate?: string | null;
+    photoOfPurchase?: (number | null) | Media;
+    photoOfProduct?: (number | null) | Media;
+  };
+  /**
+   * Documents manufacturer engagement - key to fair comment defense
+   */
+  manufacturerResponse?: {
+    /**
+     * Has the manufacturer disputed our findings?
+     */
+    disputeReceived?: boolean | null;
+    disputeDate?: string | null;
+    /**
+     * Link to ManufacturerDisputes collection
+     */
+    disputeReference?: string | null;
+    /**
+     * Brief summary of manufacturer claims
+     */
+    disputeSummary?: string | null;
+    /**
+     * Our response to the manufacturer dispute
+     */
+    ourResponse?: string | null;
+    /**
+     * Did we update our findings after manufacturer review?
+     */
+    dataUpdated?: boolean | null;
+    updateDate?: string | null;
+    /**
+     * Description of changes made after manufacturer feedback
+     */
+    updateDescription?: string | null;
+  };
+  /**
    * Contributors who helped get this product tested
    */
   scoutAttribution?: {
@@ -1377,11 +1490,48 @@ export interface ProductVote {
    * Percentage progress toward testing threshold (0-100)
    */
   fundingProgress?: number | null;
-  status: 'collecting_votes' | 'threshold_reached' | 'queued' | 'testing' | 'complete';
+  status: 'collecting_votes' | 'threshold_reached' | 'queued' | 'sourcing' | 'testing' | 'results_review' | 'complete';
   /**
    * When the voting threshold was reached
    */
   thresholdReachedAt?: string | null;
+  /**
+   * Position in the testing queue (1 = next up)
+   */
+  queuePosition?: number | null;
+  /**
+   * Estimated date when testing will be complete
+   */
+  estimatedCompletionDate?: string | null;
+  /**
+   * History of status changes with timestamps
+   */
+  statusHistory?:
+    | {
+        status:
+          | 'collecting_votes'
+          | 'threshold_reached'
+          | 'queued'
+          | 'sourcing'
+          | 'testing'
+          | 'results_review'
+          | 'complete';
+        changedAt: string;
+        /**
+         * Optional notes about this status change
+         */
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Track which notifications have been sent
+   */
+  notificationsSent?: {
+    thresholdReached?: boolean | null;
+    testingStarted?: boolean | null;
+    resultsReady?: boolean | null;
+  };
   /**
    * The tested product (set when testing is complete)
    */
@@ -1989,7 +2139,48 @@ export interface SponsoredTestRequest {
   /**
    * Current status of the test request
    */
-  status: 'pending' | 'testing' | 'complete' | 'refunded';
+  status: 'pending' | 'queued' | 'testing' | 'complete' | 'refunded';
+  /**
+   * Position in the testing queue (1 = next to be tested)
+   */
+  queuePosition?: number | null;
+  /**
+   * Estimated date when testing will be complete
+   */
+  estimatedCompletionDate?: string | null;
+  /**
+   * History of status changes
+   */
+  statusHistory?:
+    | {
+        status: 'pending' | 'queued' | 'testing' | 'complete' | 'refunded';
+        changedAt: string;
+        /**
+         * Notes about this status change
+         */
+        notes?: string | null;
+        /**
+         * Who made this change (email or system)
+         */
+        changedBy?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Link to the created product after testing is complete
+   */
+  resultProductId?: (number | null) | Product;
+  /**
+   * Notifications sent to the customer
+   */
+  notificationsSent?:
+    | {
+        type: 'confirmation' | 'queued' | 'testing_started' | 'testing_complete' | 'report_ready';
+        sentAt: string;
+        success?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
   /**
    * Internal notes about this request
    */
@@ -2180,6 +2371,69 @@ export interface AuditLog {
    * When this error was resolved
    */
   resolvedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track all admin actions for security and compliance
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "admin-audit-logs".
+ */
+export interface AdminAuditLog {
+  id: number;
+  /**
+   * Type of action performed
+   */
+  action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'settings_change' | 'bulk_operation';
+  /**
+   * Collection or global that was affected
+   */
+  collection: string;
+  /**
+   * ID of the document that was affected
+   */
+  documentId?: string | null;
+  /**
+   * Title/name of the document for easy identification
+   */
+  documentTitle?: string | null;
+  /**
+   * User who performed the action
+   */
+  adminUser?: (number | null) | User;
+  /**
+   * Email of the admin who performed the action
+   */
+  adminEmail: string;
+  /**
+   * Array of field changes: [{ field, oldValue, newValue }]
+   */
+  changes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Human-readable summary of changes
+   */
+  summary?: string | null;
+  /**
+   * IP address of the request
+   */
+  ipAddress?: string | null;
+  /**
+   * Browser/client user agent
+   */
+  userAgent?: string | null;
+  /**
+   * When the action occurred
+   */
+  timestamp: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -2731,6 +2985,14 @@ export interface PushToken {
    * Last time a notification was sent to this token
    */
   lastUsed?: string | null;
+  /**
+   * Last time the user opened the app (for win-back targeting)
+   */
+  lastActiveAt?: string | null;
+  /**
+   * Last time a win-back notification was sent (for cooldown)
+   */
+  lastWinbackNotification?: string | null;
   /**
    * Number of consecutive failed notification attempts
    */
@@ -3306,6 +3568,558 @@ export interface EmailSend {
   createdAt: string;
 }
 /**
+ * Push notification templates with A/B testing support
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-templates".
+ */
+export interface NotificationTemplate {
+  id: number;
+  /**
+   * Internal name for this template
+   */
+  name: string;
+  /**
+   * Type determines when this notification is sent
+   */
+  type:
+    | 'daily_discovery'
+    | 'streak_reminder'
+    | 'badge_unlock'
+    | 'product_ready'
+    | 'weekly_digest'
+    | 'milestone'
+    | 'promotional'
+    | 're_engagement'
+    | 'feature_announcement';
+  /**
+   * Notes about this template (internal only)
+   */
+  description?: string | null;
+  /**
+   * Only active templates are used by the app
+   */
+  isActive?: boolean | null;
+  /**
+   * Content variants for A/B testing. At least one required.
+   */
+  variants: {
+    /**
+     * Variant ID (e.g., "control", "variant_a", "emoji_test")
+     */
+    variantId: string;
+    /**
+     * Notification title. Supports {{variables}} like {{userName}}, {{streakCount}}
+     */
+    title: string;
+    /**
+     * Notification body. Supports {{variables}}
+     */
+    body: string;
+    /**
+     * Emoji to prepend to title (e.g., 🔥, 🏆)
+     */
+    emoji?: string | null;
+    /**
+     * Weight for random selection (higher = more likely). Used when no Statsig experiment.
+     */
+    weight?: number | null;
+    /**
+     * Deep link action (e.g., "open_discovery", "view_badge", "open_product")
+     */
+    action?: string | null;
+    /**
+     * Additional data for the action (e.g., {"productId": "123"})
+     */
+    actionData?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    id?: string | null;
+  }[];
+  /**
+   * Statsig experiment name (e.g., "notification_daily_discovery_v2"). Leave empty for weighted random selection.
+   */
+  experimentName?: string | null;
+  /**
+   * When this notification should be sent
+   */
+  schedule?: {
+    /**
+     * Enable scheduled sending
+     */
+    enabled?: boolean | null;
+    /**
+     * Hour to send (0-23, user's local time)
+     */
+    hour?: number | null;
+    /**
+     * Minute to send (0-59)
+     */
+    minute?: number | null;
+    /**
+     * Days to send on. Leave empty for all days.
+     */
+    daysOfWeek?: ('0' | '1' | '2' | '3' | '4' | '5' | '6')[] | null;
+    /**
+     * Timezone for scheduled time
+     */
+    timezone?: ('user_local' | 'UTC' | 'America/New_York' | 'America/Los_Angeles' | 'America/Chicago') | null;
+    /**
+     * Repeat this notification on schedule
+     */
+    repeats?: boolean | null;
+    /**
+     * Minimum hours between sends to same user (prevents spam)
+     */
+    cooldownHours?: number | null;
+  };
+  /**
+   * Who should receive this notification
+   */
+  targeting?: {
+    /**
+     * Minimum days since app install
+     */
+    minDaysSinceInstall?: number | null;
+    /**
+     * Maximum days since app install
+     */
+    maxDaysSinceInstall?: number | null;
+    /**
+     * Minimum product scans required
+     */
+    minScans?: number | null;
+    /**
+     * Maximum product scans (for targeting new users)
+     */
+    maxScans?: number | null;
+    /**
+     * Minimum streak days required
+     */
+    minStreakDays?: number | null;
+    /**
+     * User must have an active streak
+     */
+    requiresStreak?: boolean | null;
+    /**
+     * User must be a subscriber
+     */
+    requiresSubscription?: boolean | null;
+    /**
+     * Exclude subscribers (for upgrade prompts)
+     */
+    excludeSubscribers?: boolean | null;
+    /**
+     * Target specific user segments
+     */
+    segments?:
+      | (
+          | 'new_users'
+          | 'power_users'
+          | 'churning'
+          | 'subscribers'
+          | 'free_users'
+          | 'streak_holders'
+          | 'badge_collectors'
+        )[]
+      | null;
+    /**
+     * Target specific platforms. Leave empty for all.
+     */
+    platforms?: ('ios' | 'android')[] | null;
+  };
+  /**
+   * Tracking and analytics configuration
+   */
+  analytics?: {
+    /**
+     * Analytics tracking ID for this notification
+     */
+    trackingId?: string | null;
+    /**
+     * Analytics category (e.g., "engagement", "retention")
+     */
+    category?: string | null;
+  };
+  /**
+   * Auto-incremented on save for cache invalidation
+   */
+  version?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Push notification campaigns with scheduling and targeting
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-campaigns".
+ */
+export interface NotificationCampaign {
+  id: number;
+  /**
+   * Internal name for this campaign
+   */
+  name: string;
+  /**
+   * Notes about this campaign
+   */
+  description?: string | null;
+  /**
+   * Notification template to use for this campaign
+   */
+  template: number | NotificationTemplate;
+  /**
+   * How this campaign is triggered
+   */
+  type: 'scheduled' | 'triggered' | 'recurring';
+  /**
+   * Current status of this campaign
+   */
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled';
+  /**
+   * When to send this campaign (for scheduled campaigns)
+   */
+  scheduledFor?: string | null;
+  /**
+   * Recurring schedule settings
+   */
+  recurringSchedule?: {
+    /**
+     * How often to send
+     */
+    frequency?: ('daily' | 'weekly' | 'biweekly' | 'monthly') | null;
+    /**
+     * Days to send on (for weekly)
+     */
+    daysOfWeek?: ('0' | '1' | '2' | '3' | '4' | '5' | '6')[] | null;
+    /**
+     * Hour to send (0-23)
+     */
+    hour?: number | null;
+    /**
+     * Minute to send (0-59)
+     */
+    minute?: number | null;
+    /**
+     * Timezone for scheduled time
+     */
+    timezone?: ('user_local' | 'UTC' | 'America/New_York' | 'America/Los_Angeles' | 'America/Chicago') | null;
+    /**
+     * When to stop recurring sends (optional)
+     */
+    endDate?: string | null;
+  };
+  /**
+   * Event trigger settings
+   */
+  triggerConfig?: {
+    /**
+     * Event that triggers this campaign
+     */
+    triggerEvent?:
+      | ('product_tested' | 'badge_unlocked' | 'streak_milestone' | 'new_user' | 'churning_user' | 'api')
+      | null;
+    /**
+     * Minutes to wait after trigger before sending
+     */
+    triggerDelay?: number | null;
+  };
+  /**
+   * Who should receive this campaign
+   */
+  targeting?: {
+    /**
+     * Send to all users (ignores segments)
+     */
+    targetAll?: boolean | null;
+    /**
+     * Target specific user segments
+     */
+    segments?: (number | UserSegment)[] | null;
+    /**
+     * How to combine multiple segments
+     */
+    segmentLogic?: ('any' | 'all') | null;
+    /**
+     * Exclude users in these segments
+     */
+    excludeSegments?: (number | UserSegment)[] | null;
+    /**
+     * Target specific platforms (empty = all)
+     */
+    platforms?: ('ios' | 'android')[] | null;
+  };
+  /**
+   * Control send rate and frequency caps
+   */
+  rateLimiting?: {
+    /**
+     * Maximum sends per hour (0 = no limit)
+     */
+    maxPerHour?: number | null;
+    /**
+     * Minimum hours between sends to same user
+     */
+    cooldownHours?: number | null;
+    /**
+     * Don't send during quiet hours (10pm-8am user time)
+     */
+    respectQuietHours?: boolean | null;
+  };
+  /**
+   * A/B testing configuration (overrides template settings)
+   */
+  abTesting?: {
+    /**
+     * Enable A/B testing for this campaign
+     */
+    enabled?: boolean | null;
+    /**
+     * Statsig experiment name for variant selection
+     */
+    statsigExperiment?: string | null;
+    /**
+     * Override variant weights: {"variant_a": 50, "variant_b": 50}
+     */
+    variantWeights?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * Total notifications sent
+   */
+  sentCount?: number | null;
+  /**
+   * Confirmed deliveries
+   */
+  deliveredCount?: number | null;
+  /**
+   * Notification opens
+   */
+  openedCount?: number | null;
+  /**
+   * Failed deliveries
+   */
+  failedCount?: number | null;
+  /**
+   * Last send time
+   */
+  lastSentAt?: string | null;
+  /**
+   * Next scheduled send time (for recurring)
+   */
+  nextScheduledAt?: string | null;
+  /**
+   * Analytics tag for tracking (e.g., "retention_Q1_2025")
+   */
+  analyticsTag?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Define user segments for targeting and analytics
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-segments".
+ */
+export interface UserSegment {
+  id: number;
+  /**
+   * Display name for this segment (e.g., "Power Users")
+   */
+  name: string;
+  /**
+   * Unique identifier (e.g., "power_users")
+   */
+  slug: string;
+  /**
+   * Description of who belongs in this segment
+   */
+  description?: string | null;
+  /**
+   * Rules that define segment membership. All rules must match (AND logic).
+   */
+  rules: {
+    /**
+     * User attribute to evaluate
+     */
+    field:
+      | 'scan_count'
+      | 'days_since_install'
+      | 'subscription_status'
+      | 'last_active_days'
+      | 'streak_days'
+      | 'badge_count'
+      | 'referral_count'
+      | 'platform'
+      | 'app_version'
+      | 'products_viewed'
+      | 'votes_cast';
+    /**
+     * Comparison operator
+     */
+    operator: 'gt' | 'lt' | 'eq' | 'gte' | 'lte' | 'neq' | 'contains';
+    /**
+     * Value to compare against (number or string)
+     */
+    value: string;
+    id?: string | null;
+  }[];
+  /**
+   * How to combine multiple rules
+   */
+  ruleLogic?: ('all' | 'any') | null;
+  /**
+   * Sync this segment to Statsig as a user property
+   */
+  syncToStatsig?: boolean | null;
+  /**
+   * Statsig feature gate name to associate (optional)
+   */
+  statsigGateName?: string | null;
+  /**
+   * Custom Statsig user property name (defaults to segment slug)
+   */
+  statsigPropertyName?: string | null;
+  /**
+   * Sync this segment to RevenueCat as a subscriber attribute
+   */
+  syncToRevenueCat?: boolean | null;
+  /**
+   * RevenueCat attribute name (e.g., "$segment_power_user")
+   */
+  revenueCatAttribute?: string | null;
+  /**
+   * Only active segments are evaluated
+   */
+  isActive?: boolean | null;
+  /**
+   * Higher priority segments are evaluated first
+   */
+  priority?: number | null;
+  /**
+   * Estimated number of users in this segment (auto-updated)
+   */
+  estimatedSize?: number | null;
+  /**
+   * Last time this segment was synced to external services
+   */
+  lastSyncedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Push notification send history and delivery tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-sends".
+ */
+export interface NotificationSend {
+  id: number;
+  /**
+   * Campaign this notification was sent from (if any)
+   */
+  campaign?: (number | null) | NotificationCampaign;
+  /**
+   * Template used for this notification
+   */
+  template?: (number | null) | NotificationTemplate;
+  /**
+   * Push token that received this notification
+   */
+  pushToken: number | PushToken;
+  /**
+   * Device fingerprint hash (for querying user history)
+   */
+  fingerprintHash?: string | null;
+  /**
+   * Variant ID used (for A/B testing)
+   */
+  variant?: string | null;
+  /**
+   * Actual title sent (after variable substitution)
+   */
+  title?: string | null;
+  /**
+   * Actual body sent (after variable substitution)
+   */
+  body?: string | null;
+  /**
+   * Data payload sent with notification
+   */
+  data?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Current delivery status
+   */
+  status: 'pending' | 'sent' | 'delivered' | 'opened' | 'failed' | 'invalid_token';
+  /**
+   * Expo push ticket ID (for receipt checking)
+   */
+  expoTicketId?: string | null;
+  /**
+   * Expo receipt status (ok/error)
+   */
+  expoReceiptStatus?: string | null;
+  /**
+   * Error message if failed
+   */
+  errorMessage?: string | null;
+  /**
+   * Error code (e.g., DeviceNotRegistered)
+   */
+  errorCode?: string | null;
+  /**
+   * When notification was sent to Expo
+   */
+  sentAt?: string | null;
+  /**
+   * When delivery was confirmed
+   */
+  deliveredAt?: string | null;
+  /**
+   * When user opened the notification
+   */
+  openedAt?: string | null;
+  /**
+   * Segments the user matched at send time
+   */
+  matchedSegments?: string[] | null;
+  /**
+   * Platform notification was sent to
+   */
+  platform?: ('ios' | 'android') | null;
+  /**
+   * Analytics tag for tracking
+   */
+  analyticsTag?: string | null;
+  /**
+   * Statsig experiment (if using Statsig for variant selection)
+   */
+  statsigExperiment?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Trending products detected from external sources (Amazon, TikTok, etc.)
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3745,6 +4559,412 @@ export interface SearchQuery {
   createdAt: string;
 }
 /**
+ * Paywall copy variants for A/B testing subscription screens
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paywall-variants".
+ */
+export interface PaywallVariant {
+  id: number;
+  /**
+   * Unique identifier for this variant (e.g., "control", "urgency_v1", "social_proof")
+   */
+  variantId: string;
+  /**
+   * Internal name for this variant
+   */
+  name: string;
+  /**
+   * Notes about this variant (internal only)
+   */
+  description?: string | null;
+  /**
+   * Main headline (e.g., "Unlock Premium Features")
+   */
+  headline: string;
+  /**
+   * Supporting text below headline
+   */
+  subheadline?: string | null;
+  /**
+   * Primary button text
+   */
+  ctaText: string;
+  /**
+   * Text below CTA button (e.g., "Cancel anytime")
+   */
+  ctaSubtext?: string | null;
+  /**
+   * List of value propositions shown on paywall
+   */
+  valueProps?:
+    | {
+        /**
+         * Value prop text (e.g., "Unlimited product scans")
+         */
+        text: string;
+        /**
+         * Icon name from your icon set (e.g., "check", "star", "shield")
+         */
+        icon?: string | null;
+        /**
+         * Emoji to display (e.g., "✓", "⭐", "🔒")
+         */
+        emoji?: string | null;
+        /**
+         * Lottie animation key if using animations
+         */
+        lottieKey?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * How prominently to display trial information
+   */
+  trialEmphasis?: ('prominent' | 'subtle' | 'in_cta' | 'hidden') | null;
+  /**
+   * Show social proof section
+   */
+  showSocialProof?: boolean | null;
+  /**
+   * Social proof text (e.g., "Join 50,000+ members")
+   */
+  socialProofText?: string | null;
+  /**
+   * Rating display (e.g., "4.9★ App Store")
+   */
+  socialProofRating?: string | null;
+  /**
+   * Background color override (hex, e.g., "#1a1a2e")
+   */
+  backgroundColor?: string | null;
+  /**
+   * Accent/CTA button color (hex)
+   */
+  accentColor?: string | null;
+  /**
+   * Optional hero image for this variant
+   */
+  heroImage?: (number | null) | Media;
+  /**
+   * Only active variants are used
+   */
+  isActive?: boolean | null;
+  /**
+   * Weight for random selection (higher = more likely). Only used in CMS A/B mode.
+   */
+  weight?: number | null;
+  /**
+   * Tag for analytics tracking
+   */
+  analyticsTag?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Feature flags from Statsig. Toggle isEnabled or change rollout % to update in Statsig.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feature-flag-cache".
+ */
+export interface FeatureFlagCache {
+  id: number;
+  /**
+   * Statsig gate/experiment ID
+   */
+  statsigId: string;
+  /**
+   * Type of Statsig entity
+   */
+  type: 'gate' | 'experiment' | 'config';
+  /**
+   * Human-readable name
+   */
+  name: string;
+  /**
+   * Description from Statsig
+   */
+  description?: string | null;
+  /**
+   * Toggle to enable/disable this flag (syncs to Statsig)
+   */
+  isEnabled?: boolean | null;
+  /**
+   * Percentage of users who see this flag enabled (0-100). Changes sync to Statsig.
+   */
+  rolloutPercentage?: number | null;
+  /**
+   * Experiment variants/groups with weights (for experiments)
+   */
+  variants?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Experiment status (for experiments)
+   */
+  experimentStatus?: ('active' | 'paused' | 'completed' | 'not_started') | null;
+  /**
+   * Targeting rules from Statsig
+   */
+  rules?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Default value when rules don't match
+   */
+  defaultValue?: boolean | null;
+  /**
+   * Tags from Statsig for categorization
+   */
+  tags?: string[] | null;
+  /**
+   * Last time this flag was synced from Statsig
+   */
+  lastSyncedAt?: string | null;
+  /**
+   * Error message if last sync failed
+   */
+  syncError?: string | null;
+  /**
+   * Last modified time in Statsig
+   */
+  statsigLastModified?: string | null;
+  /**
+   * Usage metric: checks per hour from Statsig
+   */
+  checksPerHour?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Manufacturer disputes submitted through the Right of Reply portal. LEGAL RECORD - Do not delete.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "manufacturer-disputes".
+ */
+export interface ManufacturerDispute {
+  id: number;
+  /**
+   * Unique dispute reference (e.g., DIS-2026-ABC123)
+   */
+  referenceNumber: string;
+  status:
+    | 'pending'
+    | 'investigating'
+    | 'awaiting_lab'
+    | 'awaiting_manufacturer'
+    | 'resolved_updated'
+    | 'resolved_no_change'
+    | 'resolved_retested'
+    | 'closed_insufficient'
+    | 'closed_no_response';
+  priority?: ('low' | 'normal' | 'high' | 'urgent') | null;
+  /**
+   * Legal company name
+   */
+  companyName: string;
+  /**
+   * Name of person submitting dispute
+   */
+  contactName: string;
+  /**
+   * Job title
+   */
+  contactTitle?: string | null;
+  /**
+   * Corporate email address
+   */
+  contactEmail: string;
+  /**
+   * Phone number
+   */
+  contactPhone: string;
+  /**
+   * Has the corporate email domain been verified?
+   */
+  emailDomainVerified?: boolean | null;
+  /**
+   * Related product (if identifiable)
+   */
+  product?: (number | null) | Product;
+  /**
+   * Product name or URL provided by manufacturer
+   */
+  productReference?: string | null;
+  /**
+   * Sample ID from our report (e.g., TPR-2026-0001)
+   */
+  sampleId?: string | null;
+  /**
+   * Category of dispute
+   */
+  disputeType: 'methodology' | 'sample' | 'accuracy' | 'reformulation' | 'label' | 'other';
+  /**
+   * Detailed description provided by manufacturer
+   */
+  description: string;
+  /**
+   * Files uploaded by manufacturer
+   */
+  supportingDocuments?:
+    | {
+        document?: (number | null) | Media;
+        documentDescription?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Staff member handling this dispute
+   */
+  assignedTo?: (number | null) | User;
+  /**
+   * Internal notes about investigation (not shared with manufacturer)
+   */
+  internalNotes?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Summary of investigation results
+   */
+  investigationFindings?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Has lab re-verification been requested?
+   */
+  labReviewRequested?: boolean | null;
+  /**
+   * Date lab review was completed
+   */
+  labReviewDate?: string | null;
+  /**
+   * Was the published report updated as a result?
+   */
+  reportUpdated?: boolean | null;
+  /**
+   * What was changed in the report?
+   */
+  updateDescription?: string | null;
+  /**
+   * Our official response to the manufacturer
+   */
+  responseToManufacturer?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Date response was sent
+   */
+  responseDate?: string | null;
+  /**
+   * Staff member who sent the response
+   */
+  responseSentBy?: (number | null) | User;
+  /**
+   * Any follow-up communication from manufacturer
+   */
+  manufacturerFollowUp?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Final summary of how the dispute was resolved
+   */
+  resolutionSummary?: string | null;
+  /**
+   * Date dispute was marked resolved
+   */
+  resolvedDate?: string | null;
+  /**
+   * Original submission timestamp
+   */
+  submittedAt: string;
+  /**
+   * IP address of submitter
+   */
+  ipAddress?: string | null;
+  /**
+   * Browser/device info
+   */
+  userAgent?: string | null;
+  /**
+   * Did manufacturer check the authorization checkbox?
+   */
+  verificationCheckbox?: boolean | null;
+  /**
+   * Chronological log of all actions taken
+   */
+  auditLog?:
+    | {
+        timestamp?: string | null;
+        action?: string | null;
+        performedBy?: (number | null) | User;
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -3979,6 +5199,10 @@ export interface PayloadLockedDocument {
         value: number | AuditLog;
       } | null)
     | ({
+        relationTo: 'admin-audit-logs';
+        value: number | AdminAuditLog;
+      } | null)
+    | ({
         relationTo: 'users';
         value: number | User;
       } | null)
@@ -4051,6 +5275,18 @@ export interface PayloadLockedDocument {
         value: number | EmailSend;
       } | null)
     | ({
+        relationTo: 'notification-templates';
+        value: number | NotificationTemplate;
+      } | null)
+    | ({
+        relationTo: 'notification-campaigns';
+        value: number | NotificationCampaign;
+      } | null)
+    | ({
+        relationTo: 'notification-sends';
+        value: number | NotificationSend;
+      } | null)
+    | ({
         relationTo: 'contributor-profiles';
         value: number | ContributorProfile;
       } | null)
@@ -4069,6 +5305,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'search-queries';
         value: number | SearchQuery;
+      } | null)
+    | ({
+        relationTo: 'paywall-variants';
+        value: number | PaywallVariant;
+      } | null)
+    | ({
+        relationTo: 'user-segments';
+        value: number | UserSegment;
+      } | null)
+    | ({
+        relationTo: 'feature-flag-cache';
+        value: number | FeatureFlagCache;
+      } | null)
+    | ({
+        relationTo: 'manufacturer-disputes';
+        value: number | ManufacturerDispute;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -4420,6 +5672,47 @@ export interface ProductsSelect<T extends boolean = true> {
         trendingSentiment?: T;
         trendingReason?: T;
       };
+  detectionResults?:
+    | T
+    | {
+        detections?:
+          | T
+          | {
+              compound?: T;
+              level?: T;
+              threshold?: T;
+              interpretation?: T;
+              id?: T;
+            };
+        spectrographImageUrl?: T;
+        spectrographImage?: T;
+        rawDataAvailable?: T;
+        labName?: T;
+        testDate?: T;
+      };
+  sampleInfo?:
+    | T
+    | {
+        sampleId?: T;
+        purchaseDate?: T;
+        purchaseRetailer?: T;
+        lotNumber?: T;
+        expirationDate?: T;
+        photoOfPurchase?: T;
+        photoOfProduct?: T;
+      };
+  manufacturerResponse?:
+    | T
+    | {
+        disputeReceived?: T;
+        disputeDate?: T;
+        disputeReference?: T;
+        disputeSummary?: T;
+        ourResponse?: T;
+        dataUpdated?: T;
+        updateDate?: T;
+        updateDescription?: T;
+      };
   scoutAttribution?:
     | T
     | {
@@ -4666,6 +5959,26 @@ export interface SponsoredTestRequestsSelect<T extends boolean = true> {
   email?: T;
   stripePaymentId?: T;
   status?: T;
+  queuePosition?: T;
+  estimatedCompletionDate?: T;
+  statusHistory?:
+    | T
+    | {
+        status?: T;
+        changedAt?: T;
+        notes?: T;
+        changedBy?: T;
+        id?: T;
+      };
+  resultProductId?: T;
+  notificationsSent?:
+    | T
+    | {
+        type?: T;
+        sentAt?: T;
+        success?: T;
+        id?: T;
+      };
   notes?: T;
   reportUrl?: T;
   updatedAt?: T;
@@ -4714,6 +6027,25 @@ export interface AuditLogSelect<T extends boolean = true> {
   retryPayload?: T;
   retryCount?: T;
   resolvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "admin-audit-logs_select".
+ */
+export interface AdminAuditLogsSelect<T extends boolean = true> {
+  action?: T;
+  collection?: T;
+  documentId?: T;
+  documentTitle?: T;
+  adminUser?: T;
+  adminEmail?: T;
+  changes?: T;
+  summary?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  timestamp?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -5032,6 +6364,23 @@ export interface ProductVotesSelect<T extends boolean = true> {
   fundingProgress?: T;
   status?: T;
   thresholdReachedAt?: T;
+  queuePosition?: T;
+  estimatedCompletionDate?: T;
+  statusHistory?:
+    | T
+    | {
+        status?: T;
+        changedAt?: T;
+        notes?: T;
+        id?: T;
+      };
+  notificationsSent?:
+    | T
+    | {
+        thresholdReached?: T;
+        testingStarted?: T;
+        resultsReady?: T;
+      };
   linkedProduct?: T;
   voterFingerprints?: T;
   photoContributors?: T;
@@ -5087,6 +6436,8 @@ export interface PushTokensSelect<T extends boolean = true> {
   platform?: T;
   isActive?: T;
   lastUsed?: T;
+  lastActiveAt?: T;
+  lastWinbackNotification?: T;
   failureCount?: T;
   productSubscriptions?:
     | T
@@ -5346,6 +6697,151 @@ export interface EmailSendsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-templates_select".
+ */
+export interface NotificationTemplatesSelect<T extends boolean = true> {
+  name?: T;
+  type?: T;
+  description?: T;
+  isActive?: T;
+  variants?:
+    | T
+    | {
+        variantId?: T;
+        title?: T;
+        body?: T;
+        emoji?: T;
+        weight?: T;
+        action?: T;
+        actionData?: T;
+        id?: T;
+      };
+  experimentName?: T;
+  schedule?:
+    | T
+    | {
+        enabled?: T;
+        hour?: T;
+        minute?: T;
+        daysOfWeek?: T;
+        timezone?: T;
+        repeats?: T;
+        cooldownHours?: T;
+      };
+  targeting?:
+    | T
+    | {
+        minDaysSinceInstall?: T;
+        maxDaysSinceInstall?: T;
+        minScans?: T;
+        maxScans?: T;
+        minStreakDays?: T;
+        requiresStreak?: T;
+        requiresSubscription?: T;
+        excludeSubscribers?: T;
+        segments?: T;
+        platforms?: T;
+      };
+  analytics?:
+    | T
+    | {
+        trackingId?: T;
+        category?: T;
+      };
+  version?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-campaigns_select".
+ */
+export interface NotificationCampaignsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  template?: T;
+  type?: T;
+  status?: T;
+  scheduledFor?: T;
+  recurringSchedule?:
+    | T
+    | {
+        frequency?: T;
+        daysOfWeek?: T;
+        hour?: T;
+        minute?: T;
+        timezone?: T;
+        endDate?: T;
+      };
+  triggerConfig?:
+    | T
+    | {
+        triggerEvent?: T;
+        triggerDelay?: T;
+      };
+  targeting?:
+    | T
+    | {
+        targetAll?: T;
+        segments?: T;
+        segmentLogic?: T;
+        excludeSegments?: T;
+        platforms?: T;
+      };
+  rateLimiting?:
+    | T
+    | {
+        maxPerHour?: T;
+        cooldownHours?: T;
+        respectQuietHours?: T;
+      };
+  abTesting?:
+    | T
+    | {
+        enabled?: T;
+        statsigExperiment?: T;
+        variantWeights?: T;
+      };
+  sentCount?: T;
+  deliveredCount?: T;
+  openedCount?: T;
+  failedCount?: T;
+  lastSentAt?: T;
+  nextScheduledAt?: T;
+  analyticsTag?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-sends_select".
+ */
+export interface NotificationSendsSelect<T extends boolean = true> {
+  campaign?: T;
+  template?: T;
+  pushToken?: T;
+  fingerprintHash?: T;
+  variant?: T;
+  title?: T;
+  body?: T;
+  data?: T;
+  status?: T;
+  expoTicketId?: T;
+  expoReceiptStatus?: T;
+  errorMessage?: T;
+  errorCode?: T;
+  sentAt?: T;
+  deliveredAt?: T;
+  openedAt?: T;
+  matchedSegments?: T;
+  platform?: T;
+  analyticsTag?: T;
+  statsigExperiment?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "contributor-profiles_select".
  */
 export interface ContributorProfilesSelect<T extends boolean = true> {
@@ -5514,6 +7010,147 @@ export interface SearchQueriesSelect<T extends boolean = true> {
   sessionId?: T;
   clickedResult?: T;
   clickedProductId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paywall-variants_select".
+ */
+export interface PaywallVariantsSelect<T extends boolean = true> {
+  variantId?: T;
+  name?: T;
+  description?: T;
+  headline?: T;
+  subheadline?: T;
+  ctaText?: T;
+  ctaSubtext?: T;
+  valueProps?:
+    | T
+    | {
+        text?: T;
+        icon?: T;
+        emoji?: T;
+        lottieKey?: T;
+        id?: T;
+      };
+  trialEmphasis?: T;
+  showSocialProof?: T;
+  socialProofText?: T;
+  socialProofRating?: T;
+  backgroundColor?: T;
+  accentColor?: T;
+  heroImage?: T;
+  isActive?: T;
+  weight?: T;
+  analyticsTag?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-segments_select".
+ */
+export interface UserSegmentsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  rules?:
+    | T
+    | {
+        field?: T;
+        operator?: T;
+        value?: T;
+        id?: T;
+      };
+  ruleLogic?: T;
+  syncToStatsig?: T;
+  statsigGateName?: T;
+  statsigPropertyName?: T;
+  syncToRevenueCat?: T;
+  revenueCatAttribute?: T;
+  isActive?: T;
+  priority?: T;
+  estimatedSize?: T;
+  lastSyncedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feature-flag-cache_select".
+ */
+export interface FeatureFlagCacheSelect<T extends boolean = true> {
+  statsigId?: T;
+  type?: T;
+  name?: T;
+  description?: T;
+  isEnabled?: T;
+  rolloutPercentage?: T;
+  variants?: T;
+  experimentStatus?: T;
+  rules?: T;
+  defaultValue?: T;
+  tags?: T;
+  lastSyncedAt?: T;
+  syncError?: T;
+  statsigLastModified?: T;
+  checksPerHour?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "manufacturer-disputes_select".
+ */
+export interface ManufacturerDisputesSelect<T extends boolean = true> {
+  referenceNumber?: T;
+  status?: T;
+  priority?: T;
+  companyName?: T;
+  contactName?: T;
+  contactTitle?: T;
+  contactEmail?: T;
+  contactPhone?: T;
+  emailDomainVerified?: T;
+  product?: T;
+  productReference?: T;
+  sampleId?: T;
+  disputeType?: T;
+  description?: T;
+  supportingDocuments?:
+    | T
+    | {
+        document?: T;
+        documentDescription?: T;
+        id?: T;
+      };
+  assignedTo?: T;
+  internalNotes?: T;
+  investigationFindings?: T;
+  labReviewRequested?: T;
+  labReviewDate?: T;
+  reportUpdated?: T;
+  updateDescription?: T;
+  responseToManufacturer?: T;
+  responseDate?: T;
+  responseSentBy?: T;
+  manufacturerFollowUp?: T;
+  resolutionSummary?: T;
+  resolvedDate?: T;
+  submittedAt?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  verificationCheckbox?: T;
+  auditLog?:
+    | T
+    | {
+        timestamp?: T;
+        action?: T;
+        performedBy?: T;
+        notes?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -5953,6 +7590,69 @@ export interface SiteSetting {
   createdAt?: string | null;
 }
 /**
+ * Configure how paywall variants are served to users
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paywall-settings".
+ */
+export interface PaywallSetting {
+  id: number;
+  /**
+   * How variant selection is determined
+   */
+  mode: 'statsig' | 'cms_ab_test' | 'fixed';
+  /**
+   * Variant to show all users (when mode is "fixed")
+   */
+  fixedVariant?: (number | null) | PaywallVariant;
+  /**
+   * Statsig experiment name for variant bucketing (e.g., "paywall_copy_test_v1")
+   */
+  statsigExperimentName?: string | null;
+  /**
+   * Statsig parameter that returns the variant ID
+   */
+  statsigParameterName?: string | null;
+  /**
+   * Notes about the current A/B test (internal)
+   */
+  abTestDescription?: string | null;
+  /**
+   * Fallback variant if primary selection fails
+   */
+  fallbackVariant?: (number | null) | PaywallVariant;
+  /**
+   * Master toggle to enable/disable paywall globally
+   */
+  showPaywall?: boolean | null;
+  /**
+   * Show paywall even to subscribers (for testing)
+   */
+  forcePaywallForAll?: boolean | null;
+  /**
+   * Delay in milliseconds before showing paywall
+   */
+  delayBeforeShow?: number | null;
+  /**
+   * Minimum app sessions before showing paywall (0 = show immediately)
+   */
+  minSessionsBeforePaywall?: number | null;
+  /**
+   * Default trial length to display in copy
+   */
+  defaultTrialDays?: number | null;
+  /**
+   * Display pricing information on paywall
+   */
+  showPricing?: boolean | null;
+  /**
+   * How to display the subscription price
+   */
+  priceDisplayFormat?: ('monthly' | 'weekly' | 'annual_monthly' | 'annual_total') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
@@ -6045,6 +7745,28 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         enableAiCategories?: T;
         enableAutoAlternatives?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "paywall-settings_select".
+ */
+export interface PaywallSettingsSelect<T extends boolean = true> {
+  mode?: T;
+  fixedVariant?: T;
+  statsigExperimentName?: T;
+  statsigParameterName?: T;
+  abTestDescription?: T;
+  fallbackVariant?: T;
+  showPaywall?: T;
+  forcePaywallForAll?: T;
+  delayBeforeShow?: T;
+  minSessionsBeforePaywall?: T;
+  defaultTrialDays?: T;
+  showPricing?: T;
+  priceDisplayFormat?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

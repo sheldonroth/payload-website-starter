@@ -77,7 +77,7 @@ import * as migration_20260110_030000_create_paywall_variants from './20260110_0
 import * as migration_20260110_031000_create_paywall_settings from './20260110_031000_create_paywall_settings';
 import * as migration_20260110_040000_create_user_segments from './20260110_040000_create_user_segments';
 import * as migration_20260110_050000_create_notification_engine from './20260110_050000_create_notification_engine';
-import * as migration_20260110_060000_add_legal_framework from './20260110_000000_add_legal_framework';
+import * as migration_20260110_000000_add_legal_framework from './20260110_000000_add_legal_framework';
 
 export const migrations = [
   {
@@ -471,9 +471,9 @@ export const migrations = [
     name: '20260110_050000_create_notification_engine'
   },
   {
-    up: migration_20260110_060000_add_legal_framework.up,
-    down: migration_20260110_060000_add_legal_framework.down,
-    name: '20260110_060000_add_legal_framework'
+    up: migration_20260110_000000_add_legal_framework.up,
+    down: migration_20260110_000000_add_legal_framework.down,
+    name: '20260110_000000_add_legal_framework'
   },
 ];
 

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * User Segments Collection
@@ -12,6 +13,10 @@ export const UserSegments: CollectionConfig = {
     labels: {
         singular: 'User Segment',
         plural: 'User Segments',
+    },
+    hooks: {
+        afterChange: [createAuditLogHook('user-segments')],
+        afterDelete: [createAuditDeleteHook('user-segments')],
     },
     admin: {
         useAsTitle: 'name',
