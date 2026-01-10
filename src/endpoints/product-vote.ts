@@ -119,6 +119,146 @@ const VOTE_WEIGHTS = {
     bounty_contribution: 10, // Bonus for adding photos to someone else's request
 }
 
+// Rate limiting configuration
+const RATE_LIMIT = {
+    maxVotesPerMinute: 10, // Max votes per fingerprint per minute
+    maxVotesPerHour: 100, // Max votes per fingerprint per hour
+    cooldownSeconds: 5, // Minimum seconds between votes for same product
+}
+
+// In-memory rate limit storage (in production, use Redis)
+const rateLimitStore = new Map<string, { timestamps: number[]; lastVote: Map<string, number> }>()
+
+/**
+ * Check and update rate limits for a fingerprint
+ * Returns null if allowed, error message if rate limited
+ */
+function checkRateLimit(fingerprint: string, barcode: string): string | null {
+    if (!fingerprint) return null // Can't rate limit without fingerprint
+
+    const now = Date.now()
+    const oneMinuteAgo = now - 60 * 1000
+    const oneHourAgo = now - 60 * 60 * 1000
+
+    // Get or create rate limit entry
+    if (!rateLimitStore.has(fingerprint)) {
+        rateLimitStore.set(fingerprint, { timestamps: [], lastVote: new Map() })
+    }
+
+    const entry = rateLimitStore.get(fingerprint)!
+
+    // Clean up old timestamps
+    entry.timestamps = entry.timestamps.filter((ts) => ts > oneHourAgo)
+
+    // Check per-product cooldown
+    const lastProductVote = entry.lastVote.get(barcode)
+    if (lastProductVote && now - lastProductVote < RATE_LIMIT.cooldownSeconds * 1000) {
+        const waitSeconds = Math.ceil((RATE_LIMIT.cooldownSeconds * 1000 - (now - lastProductVote)) / 1000)
+        return `Please wait ${waitSeconds} seconds before voting for this product again`
+    }
+
+    // Check votes per minute
+    const votesLastMinute = entry.timestamps.filter((ts) => ts > oneMinuteAgo).length
+    if (votesLastMinute >= RATE_LIMIT.maxVotesPerMinute) {
+        return 'Too many votes. Please wait a moment before voting again.'
+    }
+
+    // Check votes per hour
+    if (entry.timestamps.length >= RATE_LIMIT.maxVotesPerHour) {
+        return 'Hourly vote limit reached. Please try again later.'
+    }
+
+    // Record this vote
+    entry.timestamps.push(now)
+    entry.lastVote.set(barcode, now)
+
+    // Limit the lastVote map size
+    if (entry.lastVote.size > 1000) {
+        const oldestKey = entry.lastVote.keys().next().value
+        if (oldestKey) entry.lastVote.delete(oldestKey)
+    }
+
+    return null
+}
+
+// Fraud detection patterns
+interface FraudSignals {
+    isRapidVoting: boolean
+    isSuspiciousPattern: boolean
+    riskScore: number // 0-100, higher = more suspicious
+    flags: string[]
+}
+
+/**
+ * Analyze voting patterns for potential fraud
+ */
+function detectFraudSignals(
+    fingerprint: string | undefined,
+    voteRecord: {
+        voterFingerprints: string[]
+        scanTimestamps?: number[]
+        totalWeightedVotes: number
+    }
+): FraudSignals {
+    const flags: string[] = []
+    let riskScore = 0
+
+    // Check rapid voting within the vote record
+    const timestamps = voteRecord.scanTimestamps || []
+    const now = Date.now()
+    const recentVotes = timestamps.filter((ts) => now - ts < 60 * 1000).length
+
+    if (recentVotes > 5) {
+        flags.push('rapid_voting_detected')
+        riskScore += 30
+    }
+
+    // Check for suspiciously high vote counts from single fingerprint
+    if (fingerprint) {
+        const entry = rateLimitStore.get(fingerprint)
+        if (entry && entry.timestamps.length > 50) {
+            flags.push('high_volume_voter')
+            riskScore += 20
+        }
+    }
+
+    // Check for burst patterns (many votes in quick succession)
+    if (timestamps.length >= 10) {
+        const recentTimestamps = timestamps.slice(-10)
+        const timeSpan = recentTimestamps[recentTimestamps.length - 1] - recentTimestamps[0]
+        if (timeSpan < 30 * 1000) { // 10 votes in 30 seconds
+            flags.push('burst_pattern')
+            riskScore += 40
+        }
+    }
+
+    return {
+        isRapidVoting: recentVotes > 5,
+        isSuspiciousPattern: riskScore > 50,
+        riskScore: Math.min(100, riskScore),
+        flags,
+    }
+}
+
+/**
+ * Log fraud detection events for monitoring
+ */
+function logFraudEvent(
+    fingerprint: string | undefined,
+    barcode: string,
+    signals: FraudSignals
+): void {
+    if (signals.riskScore > 30) {
+        console.warn('[Fraud Detection]', {
+            fingerprint: fingerprint?.slice(0, 8) + '...',
+            barcode,
+            riskScore: signals.riskScore,
+            flags: signals.flags,
+            timestamp: new Date().toISOString(),
+        })
+    }
+}
+
 // Time constants for velocity tracking
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * ONE_DAY_MS
@@ -217,6 +357,18 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
         // Validate vote type
         if (!['search', 'scan', 'member_scan'].includes(voteType)) {
             return validationError('Invalid vote type')
+        }
+
+        // Rate limiting check
+        if (fingerprint) {
+            const rateLimitError = checkRateLimit(fingerprint, barcode)
+            if (rateLimitError) {
+                return Response.json({
+                    success: false,
+                    error: rateLimitError,
+                    rateLimited: true,
+                }, { status: 429 })
+            }
         }
 
         const voteWeight = VOTE_WEIGHTS[voteType]
@@ -335,6 +487,14 @@ export const productVoteHandler = async (req: PayloadRequest): Promise<Response>
 
             voteRecord = updated as typeof voteRecord
             yourVoteRank = newUniqueVoters
+
+            // Fraud detection - analyze patterns after update
+            const fraudSignals = detectFraudSignals(fingerprint, {
+                voterFingerprints: newFingerprints,
+                scanTimestamps: velocity?.scanTimestamps || existing.scanTimestamps || [],
+                totalWeightedVotes: newTotalVotes,
+            })
+            logFraudEvent(fingerprint, barcode, fraudSignals)
 
         } else {
             // Create new vote record

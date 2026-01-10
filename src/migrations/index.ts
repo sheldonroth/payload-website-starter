@@ -70,6 +70,13 @@ import * as migration_20260108_000000_add_search_queries from './20260108_000000
 import * as migration_20260108_100000_fix_push_tokens_array_table from './20260108_100000_fix_push_tokens_array_table';
 import * as migration_20260108_120000_fix_product_votes_contributor_fk from './20260108_120000_fix_product_votes_contributor_fk';
 // Removed: migration_20260108_140000_rename_purchase_links_to_where_to_buy (reverted field rename)
+import * as migration_20260110_000000_create_notification_templates from './20260110_000000_create_notification_templates';
+import * as migration_20260110_010000_seed_notification_templates from './20260110_010000_seed_notification_templates';
+import * as migration_20260110_020000_create_audit_logs from './20260110_020000_create_audit_logs';
+import * as migration_20260110_030000_create_paywall_variants from './20260110_030000_create_paywall_variants';
+import * as migration_20260110_031000_create_paywall_settings from './20260110_031000_create_paywall_settings';
+import * as migration_20260110_040000_create_user_segments from './20260110_040000_create_user_segments';
+import * as migration_20260110_050000_create_notification_engine from './20260110_050000_create_notification_engine';
 
 export const migrations = [
   {
@@ -426,6 +433,41 @@ export const migrations = [
     up: migration_20260108_120000_fix_product_votes_contributor_fk.up,
     down: migration_20260108_120000_fix_product_votes_contributor_fk.down,
     name: '20260108_120000_fix_product_votes_contributor_fk'
+  },
+  {
+    up: migration_20260110_000000_create_notification_templates.up,
+    down: migration_20260110_000000_create_notification_templates.down,
+    name: '20260110_000000_create_notification_templates'
+  },
+  {
+    up: migration_20260110_010000_seed_notification_templates.up,
+    down: migration_20260110_010000_seed_notification_templates.down,
+    name: '20260110_010000_seed_notification_templates'
+  },
+  {
+    up: migration_20260110_020000_create_audit_logs.up,
+    down: migration_20260110_020000_create_audit_logs.down,
+    name: '20260110_020000_create_audit_logs'
+  },
+  {
+    up: migration_20260110_030000_create_paywall_variants.up,
+    down: migration_20260110_030000_create_paywall_variants.down,
+    name: '20260110_030000_create_paywall_variants'
+  },
+  {
+    up: migration_20260110_031000_create_paywall_settings.up,
+    down: migration_20260110_031000_create_paywall_settings.down,
+    name: '20260110_031000_create_paywall_settings'
+  },
+  {
+    up: migration_20260110_040000_create_user_segments.up,
+    down: migration_20260110_040000_create_user_segments.down,
+    name: '20260110_040000_create_user_segments'
+  },
+  {
+    up: migration_20260110_050000_create_notification_engine.up,
+    down: migration_20260110_050000_create_notification_engine.down,
+    name: '20260110_050000_create_notification_engine'
   },
 ];
 

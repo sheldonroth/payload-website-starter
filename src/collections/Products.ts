@@ -313,7 +313,27 @@ export const Products: CollectionConfig = {
 
                     // Get product name and brand for search link
                     const productName = data?.name || ''
-                    const brandName = typeof data?.brand === 'object' ? data?.brand?.name : ''
+
+                    // Get brand name - it could be a populated object or just an ID
+                    let brandName = ''
+                    if (data?.brand) {
+                        if (typeof data.brand === 'object' && data.brand?.name) {
+                            // Brand is already populated
+                            brandName = data.brand.name
+                        } else if (typeof data.brand === 'string' || typeof data.brand === 'number') {
+                            // Brand is just an ID, need to fetch it
+                            try {
+                                const brand = await req.payload.findByID({
+                                    collection: 'brands',
+                                    id: data.brand,
+                                    depth: 0,
+                                })
+                                brandName = brand?.name || ''
+                            } catch (e) {
+                                console.log('[affiliate-links] Could not fetch brand:', e)
+                            }
+                        }
+                    }
 
                     // Need at least a product name to generate any link
                     if (!productName) {

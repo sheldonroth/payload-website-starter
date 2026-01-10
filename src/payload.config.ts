@@ -37,11 +37,17 @@ import { GeneratedContent } from './collections/GeneratedContent'
 import { DailyDiscoveries } from './collections/DailyDiscoveries'
 import { EmailTemplates } from './collections/EmailTemplates'
 import { EmailSends } from './collections/EmailSends'
+import { NotificationTemplates } from './collections/NotificationTemplates'
 import { ContributorProfiles } from './collections/ContributorProfiles'
 import { MarketIntelligence } from './collections/MarketIntelligence'
 import { BrandAnalytics } from './collections/BrandAnalytics'
 import { BrandUsers } from './collections/BrandUsers'
 import { SearchQueries } from './collections/SearchQueries'
+import { AdminAuditLogs } from './collections/AuditLogs'
+import { PaywallVariants } from './collections/PaywallVariants'
+import { UserSegments } from './collections/UserSegments'
+import { NotificationCampaigns } from './collections/NotificationCampaigns'
+import { NotificationSends } from './collections/NotificationSends'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -100,6 +106,7 @@ import { productVoteEnrichHandler } from './endpoints/product-vote-enrich'
 import { productReportHandler } from './endpoints/product-report'
 import { productFeedHandler } from './endpoints/product-feed'
 import { generateAffiliateLinksHandler } from './endpoints/generate-affiliate-links'
+import { amazonLookupHandler } from './endpoints/amazon-lookup'
 import { pushTokenRegisterHandler, pushTokenSubscribeHandler, pushTokenUnsubscribeHandler } from './endpoints/push-tokens'
 import { scannerLookupHandler, scannerSubmitHandler } from './endpoints/scanner'
 import { voteSubmissionHandler } from './endpoints/vote-submission'
@@ -141,8 +148,15 @@ import { apiDocsHandler } from './endpoints/api-docs'
 import { apiStatusEndpoint } from './endpoints/api-status'
 import { searchAutocompleteHandler } from './endpoints/search-autocomplete'
 import { searchAnalyticsEndpoint, logSearchQueryEndpoint } from './endpoints/search-analytics'
+import { paywallConfigHandler, paywallVariantsHandler } from './endpoints/paywall-config'
+import { segmentsEvaluateHandler, segmentsListHandler, segmentsGetHandler } from './endpoints/segments'
+import { campaignSendHandler, campaignStatsHandler, campaignTriggerHandler } from './endpoints/notification-campaign'
+import { featureFlagsDashboardHandler, featureFlagsToggleHandler, featureFlagsRolloutHandler, featureFlagsGetGateHandler, featureFlagsClearCacheHandler } from './endpoints/feature-flags'
+import { referralEnhancedStatsHandler, referralLeaderboardHandler, referralMilestonesHandler, referralHistoryHandler } from './endpoints/referral-enhanced'
+import { adminAnalyticsHandler, adminAnalyticsTimeSeriesHandler, adminAnalyticsTopContentHandler, adminAnalyticsFunnelHandler, adminAnalyticsExportHandler } from './endpoints/admin-analytics'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
+import { PaywallSettings } from './globals/PaywallSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -318,7 +332,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments],
   cors: [
     // Main website
     'https://www.theproductreport.org',
@@ -332,7 +346,7 @@ export default buildConfig({
     process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '',
     process.env.NODE_ENV === 'development' ? 'http://localhost:3002' : '', // Brand portal dev
   ].filter(Boolean) as string[],
-  globals: [Header, Footer, YouTubeSettings, SiteSettings],
+  globals: [Header, Footer, YouTubeSettings, SiteSettings, PaywallSettings],
   endpoints: [
     ...oauthEndpoints,
     {
@@ -379,6 +393,16 @@ export default buildConfig({
       path: '/product/save-image',
       method: 'post',
       handler: productSaveImageHandler,
+    },
+    {
+      path: '/product/amazon-lookup',
+      method: 'post',
+      handler: amazonLookupHandler,
+    },
+    {
+      path: '/product/amazon-lookup',
+      method: 'put',
+      handler: amazonLookupHandler,
     },
     {
       path: '/background/remove',
@@ -698,6 +722,49 @@ export default buildConfig({
       method: 'get',
       handler: userSubscriptionHandler,
     },
+    // Paywall Configuration
+    {
+      path: '/paywall/config',
+      method: 'get',
+      handler: paywallConfigHandler,
+    },
+    {
+      path: '/paywall/variants',
+      method: 'get',
+      handler: paywallVariantsHandler,
+    },
+    // User Segments (Behavioral Targeting)
+    {
+      path: '/segments/evaluate',
+      method: 'post',
+      handler: segmentsEvaluateHandler,
+    },
+    {
+      path: '/segments',
+      method: 'get',
+      handler: segmentsListHandler,
+    },
+    {
+      path: '/segments/:slug',
+      method: 'get',
+      handler: segmentsGetHandler,
+    },
+    // Notification Campaigns (Smart Notification Engine)
+    {
+      path: '/campaigns/send',
+      method: 'post',
+      handler: campaignSendHandler,
+    },
+    {
+      path: '/campaigns/stats',
+      method: 'get',
+      handler: campaignStatsHandler,
+    },
+    {
+      path: '/campaigns/trigger',
+      method: 'post',
+      handler: campaignTriggerHandler,
+    },
     // Product Voting (Proof of Possession)
     {
       path: '/product-vote',
@@ -825,6 +892,27 @@ export default buildConfig({
     revenuecatWebhookHandler,
     // Referral System Endpoints
     ...referralEndpoints,
+    // Enhanced Referral Program (Multi-tier, Milestones, Leaderboard)
+    {
+      path: '/referral/enhanced-stats',
+      method: 'get',
+      handler: referralEnhancedStatsHandler,
+    },
+    {
+      path: '/referral/leaderboard',
+      method: 'get',
+      handler: referralLeaderboardHandler,
+    },
+    {
+      path: '/referral/milestones',
+      method: 'get',
+      handler: referralMilestonesHandler,
+    },
+    {
+      path: '/referral/history',
+      method: 'get',
+      handler: referralHistoryHandler,
+    },
     // Business Analytics Dashboard
     businessAnalyticsEndpoint,
     businessAnalyticsExportEndpoint,
@@ -882,6 +970,32 @@ export default buildConfig({
       path: '/statsig-gates',
       method: 'get',
       handler: statsigGatesHandler,
+    },
+    // Feature Flags Management (Admin UI)
+    {
+      path: '/feature-flags/dashboard',
+      method: 'get',
+      handler: featureFlagsDashboardHandler,
+    },
+    {
+      path: '/feature-flags/gates/toggle',
+      method: 'post',
+      handler: featureFlagsToggleHandler,
+    },
+    {
+      path: '/feature-flags/gates/rollout',
+      method: 'post',
+      handler: featureFlagsRolloutHandler,
+    },
+    {
+      path: '/feature-flags/gates',
+      method: 'get',
+      handler: featureFlagsGetGateHandler,
+    },
+    {
+      path: '/feature-flags/cache/clear',
+      method: 'post',
+      handler: featureFlagsClearCacheHandler,
     },
     // User Analytics Dashboard
     {
@@ -956,6 +1070,32 @@ export default buildConfig({
     // Search Analytics
     searchAnalyticsEndpoint,
     logSearchQueryEndpoint,
+    // Admin Analytics Dashboard (Comprehensive Metrics)
+    {
+      path: '/admin-analytics',
+      method: 'get',
+      handler: adminAnalyticsHandler,
+    },
+    {
+      path: '/admin-analytics/time-series',
+      method: 'get',
+      handler: adminAnalyticsTimeSeriesHandler,
+    },
+    {
+      path: '/admin-analytics/top-content',
+      method: 'get',
+      handler: adminAnalyticsTopContentHandler,
+    },
+    {
+      path: '/admin-analytics/funnel',
+      method: 'get',
+      handler: adminAnalyticsFunnelHandler,
+    },
+    {
+      path: '/admin-analytics/export',
+      method: 'get',
+      handler: adminAnalyticsExportHandler,
+    },
   ],
   plugins: [
     ...plugins,
