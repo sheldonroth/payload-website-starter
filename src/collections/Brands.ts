@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/roleAccess'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * Brands Collection
@@ -41,6 +42,8 @@ export const Brands: CollectionConfig = {
                 return data
             },
         ],
+        afterChange: [createAuditLogHook('brands')],
+        afterDelete: [createAuditDeleteHook('brands')],
     },
     fields: [
         // === IDENTIFICATION ===

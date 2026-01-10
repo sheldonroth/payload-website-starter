@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * Paywall Variants Collection
@@ -24,6 +25,10 @@ export const PaywallVariants: CollectionConfig = {
         create: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
         update: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
         delete: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+    },
+    hooks: {
+        afterChange: [createAuditLogHook('paywall-variants')],
+        afterDelete: [createAuditDeleteHook('paywall-variants')],
     },
     fields: [
         // Identification

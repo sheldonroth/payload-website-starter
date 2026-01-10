@@ -1,4 +1,5 @@
 import type { GlobalConfig } from 'payload'
+import { createGlobalAuditHook } from '../hooks/auditLog'
 
 /**
  * Paywall Settings Global
@@ -16,6 +17,9 @@ export const PaywallSettings: GlobalConfig = {
     access: {
         read: () => true, // Public for mobile app
         update: ({ req: { user } }) => (user as { role?: string })?.role === 'admin',
+    },
+    hooks: {
+        afterChange: [createGlobalAuditHook('paywall-settings')],
     },
     fields: [
         {

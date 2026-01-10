@@ -475,3 +475,174 @@ export const featureFlagsClearCacheHandler: PayloadHandler = async (req: Payload
         message: 'Cache cleared',
     })
 }
+
+/**
+ * POST /api/feature-flags/sync
+ *
+ * Sync all feature flags from Statsig to the feature-flag-cache collection.
+ * Called by cron job every 5 minutes and can be triggered manually.
+ */
+export const featureFlagsSyncHandler: PayloadHandler = async (req: PayloadRequest) => {
+    if (req.method !== 'POST') {
+        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
+    // Allow cron secret OR admin user
+    const authHeader = req.headers.get('authorization')
+    const cronSecret = process.env.CRON_SECRET
+    const isAdmin = req.user && (req.user as { role?: string })?.role === 'admin'
+    const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`
+
+    if (!isAdmin && !isCron) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const apiKey = process.env.STATSIG_CONSOLE_API_KEY
+    const validation = validateApiKey(apiKey)
+    if (!validation.valid) {
+        return Response.json({ error: validation.error }, { status: 500 })
+    }
+
+    try {
+        const now = new Date()
+        let gatesSync = { created: 0, updated: 0, errors: 0 }
+        let experimentsSync = { created: 0, updated: 0, errors: 0 }
+
+        // Fetch gates from Statsig
+        const gatesResponse = await fetch('https://statsigapi.net/console/v1/gates', {
+            method: 'GET',
+            headers: {
+                'STATSIG-API-KEY': apiKey!,
+                'Content-Type': 'application/json',
+            },
+        })
+
+        if (gatesResponse.ok) {
+            const gatesData = await gatesResponse.json()
+            const gates: StatsigGate[] = gatesData.data || []
+
+            for (const gate of gates) {
+                try {
+                    // Check if exists
+                    const { docs: existing } = await req.payload.find({
+                        collection: 'feature-flag-cache' as any,
+                        where: { statsigId: { equals: gate.id } },
+                        limit: 1,
+                    })
+
+                    const flagData = {
+                        statsigId: gate.id,
+                        type: 'gate',
+                        name: gate.name,
+                        description: gate.description || '',
+                        isEnabled: gate.isEnabled,
+                        rolloutPercentage: gate.rules?.[0]?.passPercentage ?? (gate.isEnabled ? 100 : 0),
+                        rules: gate.rules || [],
+                        defaultValue: gate.defaultValue,
+                        tags: gate.tags || [],
+                        lastSyncedAt: now.toISOString(),
+                        statsigLastModified: new Date(gate.lastModifiedTime).toISOString(),
+                        checksPerHour: gate.checksPerHour || 0,
+                        syncError: null,
+                    }
+
+                    if (existing.length > 0) {
+                        await req.payload.update({
+                            collection: 'feature-flag-cache' as any,
+                            id: existing[0].id,
+                            data: flagData as any,
+                        })
+                        gatesSync.updated++
+                    } else {
+                        await req.payload.create({
+                            collection: 'feature-flag-cache' as any,
+                            data: flagData as any,
+                        })
+                        gatesSync.created++
+                    }
+                } catch (err) {
+                    console.error(`[FeatureFlags Sync] Error syncing gate ${gate.id}:`, err)
+                    gatesSync.errors++
+                }
+            }
+        }
+
+        // Fetch experiments from Statsig
+        const experimentsResponse = await fetch('https://statsigapi.net/console/v1/experiments', {
+            method: 'GET',
+            headers: {
+                'STATSIG-API-KEY': apiKey!,
+                'Content-Type': 'application/json',
+            },
+        })
+
+        if (experimentsResponse.ok) {
+            const experimentsData = await experimentsResponse.json()
+            const experiments: StatsigExperiment[] = experimentsData.data || []
+
+            for (const exp of experiments) {
+                try {
+                    // Check if exists
+                    const { docs: existing } = await req.payload.find({
+                        collection: 'feature-flag-cache' as any,
+                        where: { statsigId: { equals: exp.id } },
+                        limit: 1,
+                    })
+
+                    const flagData = {
+                        statsigId: exp.id,
+                        type: 'experiment',
+                        name: exp.name,
+                        description: exp.description || '',
+                        isEnabled: exp.status === 'active',
+                        experimentStatus: exp.status,
+                        variants: exp.groups?.map((g) => ({
+                            name: g.name,
+                            weight: g.weight,
+                            parameters: g.json,
+                        })) || [],
+                        tags: exp.tags || [],
+                        lastSyncedAt: now.toISOString(),
+                        statsigLastModified: exp.lastModifiedTime,
+                        syncError: null,
+                    }
+
+                    if (existing.length > 0) {
+                        await req.payload.update({
+                            collection: 'feature-flag-cache' as any,
+                            id: existing[0].id,
+                            data: flagData as any,
+                        })
+                        experimentsSync.updated++
+                    } else {
+                        await req.payload.create({
+                            collection: 'feature-flag-cache' as any,
+                            data: flagData as any,
+                        })
+                        experimentsSync.created++
+                    }
+                } catch (err) {
+                    console.error(`[FeatureFlags Sync] Error syncing experiment ${exp.id}:`, err)
+                    experimentsSync.errors++
+                }
+            }
+        }
+
+        // Invalidate in-memory cache
+        dashboardCache = null
+
+        return Response.json({
+            success: true,
+            syncedAt: now.toISOString(),
+            gates: gatesSync,
+            experiments: experimentsSync,
+            message: `Synced ${gatesSync.created + gatesSync.updated} gates and ${experimentsSync.created + experimentsSync.updated} experiments`,
+        })
+    } catch (error) {
+        console.error('[FeatureFlags Sync] Error:', error)
+        return Response.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Sync failed',
+        }, { status: 500 })
+    }
+}

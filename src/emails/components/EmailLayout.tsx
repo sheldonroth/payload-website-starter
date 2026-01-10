@@ -37,6 +37,13 @@ export const EmailLayout: React.FC<EmailLayoutProps> = ({
         <Container style={container}>
           {/* Header */}
           <Section style={header}>
+            <Img
+              src={`${baseUrl}/email-avatar.gif`}
+              width="64"
+              height="64"
+              alt="Verified"
+              style={avatarImage}
+            />
             <Link href={baseUrl} style={logoLink}>
               <Text style={logoText}>The Product Report</Text>
             </Link>
@@ -108,6 +115,11 @@ const logoText = {
   fontWeight: '800',
   letterSpacing: '-0.5px',
   margin: '0',
+}
+
+const avatarImage = {
+  margin: '0 auto 16px',
+  borderRadius: '50%',
 }
 
 const content = {

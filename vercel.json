@@ -57,6 +57,10 @@
     {
       "path": "/api/cron/generate-embeddings",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/feature-flags/sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

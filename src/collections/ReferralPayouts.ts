@@ -10,6 +10,7 @@
  */
 
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 export const ReferralPayouts: CollectionConfig = {
     slug: 'referral-payouts',
@@ -24,6 +25,10 @@ export const ReferralPayouts: CollectionConfig = {
         create: ({ req: { user } }) => Boolean(user),
         update: ({ req: { user } }) => Boolean(user),
         delete: ({ req: { user } }) => Boolean(user),
+    },
+    hooks: {
+        afterChange: [createAuditLogHook('referral-payouts')],
+        afterDelete: [createAuditDeleteHook('referral-payouts')],
     },
     fields: [
         // Referrer Information

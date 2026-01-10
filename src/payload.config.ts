@@ -48,6 +48,7 @@ import { PaywallVariants } from './collections/PaywallVariants'
 import { UserSegments } from './collections/UserSegments'
 import { NotificationCampaigns } from './collections/NotificationCampaigns'
 import { NotificationSends } from './collections/NotificationSends'
+import { FeatureFlagCache } from './collections/FeatureFlagCache'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -152,8 +153,9 @@ import { paywallConfigHandler, paywallVariantsHandler } from './endpoints/paywal
 import { segmentsEvaluateHandler, segmentsListHandler, segmentsGetHandler } from './endpoints/segments'
 import { campaignSendHandler, campaignStatsHandler, campaignTriggerHandler } from './endpoints/notification-campaign'
 import { featureFlagsDashboardHandler, featureFlagsToggleHandler, featureFlagsRolloutHandler, featureFlagsGetGateHandler, featureFlagsClearCacheHandler } from './endpoints/feature-flags'
-import { referralEnhancedStatsHandler, referralLeaderboardHandler, referralMilestonesHandler, referralHistoryHandler } from './endpoints/referral-enhanced'
-import { adminAnalyticsHandler, adminAnalyticsTimeSeriesHandler, adminAnalyticsTopContentHandler, adminAnalyticsFunnelHandler, adminAnalyticsExportHandler } from './endpoints/admin-analytics'
+import { referralEnhancedStatsHandler, referralLeaderboardHandler, referralMilestonesHandler, referralHistoryHandler, referralAttributeHandler, referralConvertHandler, referralApplyRewardHandler } from './endpoints/referral-enhanced'
+import { adminAnalyticsHandler, adminAnalyticsTimeSeriesHandler, adminAnalyticsTopContentHandler, adminAnalyticsFunnelHandler, adminAnalyticsExportHandler, adminAnalyticsRevenueHandler } from './endpoints/admin-analytics'
+import { featureFlagsSyncHandler } from './endpoints/feature-flags'
 import { YouTubeSettings } from './globals/YouTubeSettings'
 import { SiteSettings } from './globals/SiteSettings'
 import { PaywallSettings } from './globals/PaywallSettings'
@@ -332,7 +334,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments, FeatureFlagCache],
   cors: [
     // Main website
     'https://www.theproductreport.org',
@@ -913,6 +915,22 @@ export default buildConfig({
       method: 'get',
       handler: referralHistoryHandler,
     },
+    // Referral Attribution & Conversion
+    {
+      path: '/referral/attribute',
+      method: 'post',
+      handler: referralAttributeHandler,
+    },
+    {
+      path: '/referral/convert',
+      method: 'post',
+      handler: referralConvertHandler,
+    },
+    {
+      path: '/referral/apply-reward',
+      method: 'post',
+      handler: referralApplyRewardHandler,
+    },
     // Business Analytics Dashboard
     businessAnalyticsEndpoint,
     businessAnalyticsExportEndpoint,
@@ -996,6 +1014,12 @@ export default buildConfig({
       path: '/feature-flags/cache/clear',
       method: 'post',
       handler: featureFlagsClearCacheHandler,
+    },
+    // Feature Flag Sync (Cron job for Statsig sync)
+    {
+      path: '/feature-flags/sync',
+      method: 'post',
+      handler: featureFlagsSyncHandler,
     },
     // User Analytics Dashboard
     {
@@ -1095,6 +1119,12 @@ export default buildConfig({
       path: '/admin-analytics/export',
       method: 'get',
       handler: adminAnalyticsExportHandler,
+    },
+    // Revenue Analytics (MRR, ARR, Churn)
+    {
+      path: '/admin-analytics/revenue',
+      method: 'get',
+      handler: adminAnalyticsRevenueHandler,
     },
   ],
   plugins: [

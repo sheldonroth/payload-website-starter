@@ -3,6 +3,7 @@ import type { CollectionConfig, FieldHook, CollectionAfterDeleteHook, Collection
 import { authenticated } from '../../access/authenticated'
 import { isSelfOrAdmin } from '../../access/isSelfOrAdmin'
 import { createAuditLog } from '../AuditLog'
+import { createAuditLogHook, createAuditDeleteHook } from '../../hooks/auditLog'
 import { sendWelcomeEmail, syncToResendAudience } from './hooks'
 
 /**
@@ -166,8 +167,8 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     beforeDelete: [beforeDeleteUser],
-    afterDelete: [afterDeleteUser],
-    afterChange: [sendWelcomeEmail, syncToResendAudience],
+    afterDelete: [afterDeleteUser, createAuditDeleteHook('users')],
+    afterChange: [sendWelcomeEmail, syncToResendAudience, createAuditLogHook('users')],
   },
   auth: {
     forgotPassword: {

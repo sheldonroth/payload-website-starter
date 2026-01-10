@@ -11,6 +11,7 @@
  */
 
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 // Anti-fraud: Maximum referrals that can be created in a short time window
 const MAX_REFERRALS_PER_HOUR = 10
@@ -96,6 +97,8 @@ export const Referrals: CollectionConfig = {
                 return data
             },
         ],
+        afterChange: [createAuditLogHook('referrals')],
+        afterDelete: [createAuditDeleteHook('referrals')],
     },
     fields: [
         // Referrer Information

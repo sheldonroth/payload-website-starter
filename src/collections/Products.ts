@@ -22,6 +22,7 @@ import {
 } from '../utilities/smart-automation'
 import { debouncedRecalculateFeaturedProduct } from '../utilities/featured-product'
 import { createAuditLog } from './AuditLog'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 import { classifyCategory } from '../utilities/ai-category'
 import { populateSafeAlternatives } from '../utilities/safe-alternatives'
 import { extractAndPopulateProduct } from '../utilities/image-extraction'
@@ -694,6 +695,8 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+            // Audit log hook for tracking changes
+            createAuditLogHook('products'),
         ],
 
         // ============================================
@@ -731,6 +734,8 @@ export const Products: CollectionConfig = {
 
                 return doc
             },
+            // Audit log hook for tracking deletions
+            createAuditDeleteHook('products'),
         ],
 
         // TEMPORARILY DISABLED - afterRead hook causing API timeouts

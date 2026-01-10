@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload'
 import { isAdmin } from '../access/roleAccess'
+import { createGlobalAuditHook } from '../hooks/auditLog'
 
 export const SiteSettings: GlobalConfig = {
     slug: 'site-settings',
@@ -9,6 +10,9 @@ export const SiteSettings: GlobalConfig = {
     },
     admin: {
         group: 'Settings',
+    },
+    hooks: {
+        afterChange: [createGlobalAuditHook('site-settings')],
     },
     fields: [
         // === FEATURED PRODUCT ===

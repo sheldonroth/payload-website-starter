@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isEditorOrAdmin, isAdmin } from '../access/roleAccess'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -16,6 +17,8 @@ export const Categories: CollectionConfig = {
   },
   hooks: {
     beforeChange: [],
+    afterChange: [createAuditLogHook('categories')],
+    afterDelete: [createAuditDeleteHook('categories')],
   },
   fields: [
     {

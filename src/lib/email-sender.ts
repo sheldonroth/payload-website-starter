@@ -87,8 +87,9 @@ function generateEmailHtml(template: EmailTemplate, variables: Record<string, st
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden;">
           <!-- Header -->
           <tr>
-            <td style="background-color: #1d1d1f; padding: 24px; text-align: center;">
-              <img src="https://theproductreport.org/logo-white.png" alt="The Product Report" width="180" style="max-width: 180px;">
+            <td style="background-color: #065f46; background-image: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 24px; text-align: center;">
+              <img src="https://www.theproductreport.org/email-avatar.gif" alt="Verified" width="64" height="64" style="border-radius: 50%; margin-bottom: 16px;">
+              <div style="color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">The Product Report</div>
             </td>
           </tr>
           
