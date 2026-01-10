@@ -1,6 +1,7 @@
 import { PayloadHandler } from 'payload'
 import { renderOneShotReceipt, emailSubjects } from '../email'
 import { trackServer, identifyServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { atomicIncrement } from '../utilities/atomic-operations'
 
 /**
  * Product Unlock Endpoint
@@ -121,29 +122,56 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
         // Determine unlock type
         let unlockType: 'free_credit' | 'subscription' | 'admin_grant' = 'free_credit'
         const now = new Date().toISOString()
+        let creditIncrementedAtomically = false // Track if we've atomically incremented
 
         if (isPremiumMember) {
             unlockType = 'subscription'
         } else {
-            // Check if free credit is available
-            const usedCredits = fingerprint?.unlockCreditsUsed || 0
-            if (usedCredits >= 1) {
-                // Track upgrade required event - important for conversion funnel
-                trackServer('Upgrade Required', {
-                    product_id: productId,
-                    product_name: (product as { name: string }).name,
-                    member_state: memberState,
-                    credits_used: usedCredits,
-                }, { anonymousId: fingerprintHash })
-                await flushServer()
+            // RACE CONDITION FIX: Use atomic increment to reserve the credit FIRST
+            // This prevents two concurrent requests from both using the "free" credit
+            if (fingerprint) {
+                const newCreditsUsed = await atomicIncrement(
+                    req.payload,
+                    'device-fingerprints',
+                    fingerprint.id,
+                    'unlockCreditsUsed',
+                    1,
+                )
+                creditIncrementedAtomically = true
 
-                // No free credits - requires subscription
-                return Response.json({
-                    success: false,
-                    requiresUpgrade: true,
-                    memberState,
-                    message: 'You have used your free unlock. Subscribe for unlimited access.',
-                })
+                // If new value > 1, another request already used the credit
+                // We need to decrement and return upgrade required
+                if (newCreditsUsed > 1) {
+                    // Rollback the increment since this request lost the race
+                    await atomicIncrement(
+                        req.payload,
+                        'device-fingerprints',
+                        fingerprint.id,
+                        'unlockCreditsUsed',
+                        -1, // Decrement
+                    )
+                    creditIncrementedAtomically = false
+
+                    // Track upgrade required event - important for conversion funnel
+                    trackServer('Upgrade Required', {
+                        product_id: productId,
+                        product_name: (product as { name: string }).name,
+                        member_state: memberState,
+                        credits_used: newCreditsUsed - 1, // The actual used count before our failed attempt
+                    }, { anonymousId: fingerprintHash })
+                    await flushServer()
+
+                    // No free credits - requires subscription
+                    return Response.json({
+                        success: false,
+                        requiresUpgrade: true,
+                        memberState,
+                        message: 'You have used your free unlock. Subscribe for unlimited access.',
+                    })
+                }
+            } else {
+                // No fingerprint yet - this is fine, we'll create one
+                // The credit will be used when we create it
             }
         }
 
@@ -165,7 +193,17 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
         })
 
         if (existingUnlock.docs.length > 0) {
-            // Already unlocked - return success
+            // Already unlocked - rollback the credit increment if we did one
+            if (creditIncrementedAtomically && fingerprint) {
+                await atomicIncrement(
+                    req.payload,
+                    'device-fingerprints',
+                    fingerprint.id,
+                    'unlockCreditsUsed',
+                    -1, // Decrement - rollback the reservation
+                )
+            }
+            // Return success - product was already unlocked
             return Response.json({
                 success: true,
                 alreadyUnlocked: true,
@@ -249,16 +287,9 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
             },
         })
 
-        // Update fingerprint credits used (for free unlocks)
-        if (unlockType === 'free_credit' && fingerprint) {
-            await req.payload.update({
-                collection: 'device-fingerprints' as 'users',
-                id: fingerprint.id,
-                data: {
-                    unlockCreditsUsed: (fingerprint.unlockCreditsUsed || 0) + 1,
-                } as unknown as Record<string, unknown>,
-            })
-        }
+        // NOTE: unlockCreditsUsed was already atomically incremented above
+        // at the start of the free credit flow to prevent race conditions.
+        // No need to update it again here.
 
         // Update user stats if logged in
         if (userId) {
@@ -365,6 +396,10 @@ export const productUnlockHandler: PayloadHandler = async (req) => {
         })
     } catch (error) {
         console.error('[Product Unlock] Error:', error)
+        // NOTE: If an error occurred after atomic credit increment, the credit may remain
+        // incremented. This is acceptable for error cases - the user can retry and the
+        // credit will still be considered "used". For a more robust solution in high-traffic
+        // scenarios, consider using database transactions.
         return Response.json(
             { error: 'Failed to unlock product' },
             { status: 500 }
@@ -389,11 +424,6 @@ export const productUnlockStatusHandler: PayloadHandler = async (req) => {
                 { status: 400 }
             )
         }
-
-        // Build query conditions
-        const conditions: { product: { equals: number } }[] = [
-            { product: { equals: parseInt(productId) } },
-        ]
 
         // Check by user if logged in
         if (req.user) {

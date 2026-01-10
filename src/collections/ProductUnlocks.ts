@@ -15,8 +15,14 @@ export const ProductUnlocks: CollectionConfig = {
             const role = (req.user as { role?: string }).role
             return role === 'admin'
         },
-        // Allow system creates (from unlock endpoint)
-        create: () => true,
+        // Allow system creates (from unlock endpoint) - require API key
+        create: ({ req }) => {
+            const apiKey = req.headers.get('x-api-key')
+            const expectedKey = process.env.PAYLOAD_API_SECRET
+            if (apiKey && expectedKey && apiKey === expectedKey) return true
+            if ((req.user as { role?: string })?.role === 'admin') return true
+            return false
+        },
         // No updates - unlocks are immutable
         update: () => false,
         // Only admins can delete

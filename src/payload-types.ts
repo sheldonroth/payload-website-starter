@@ -699,6 +699,145 @@ export interface Product {
    */
   aiMentions?: number | null;
   /**
+   * Unique identifier for this specific sample (e.g., TPR-2026-0142)
+   */
+  sampleId?: string | null;
+  /**
+   * When the sample was purchased
+   */
+  purchaseDate?: string | null;
+  /**
+   * Where the sample was purchased (e.g., Amazon, Target, Walmart)
+   */
+  purchaseRetailer?: string | null;
+  /**
+   * Manufacturing lot number from package
+   */
+  lotNumber?: string | null;
+  /**
+   * Product expiration date from package
+   */
+  expirationDate?: string | null;
+  /**
+   * When the lab testing was performed
+   */
+  testDate?: string | null;
+  /**
+   * ALL text from package: ingredients, warnings, allergens, fine print. Used for Fragrance Whitelist matching.
+   */
+  fullPackageText?: string | null;
+  /**
+   * REQUIRED for AVOID verdicts. Must be authorized source to defeat counterfeit defense.
+   */
+  retailerType?: ('authorized_retailer' | 'manufacturer_direct' | 'pharmacy' | 'other') | null;
+  /**
+   * Photo/scan of purchase receipt. REQUIRED for AVOID verdicts.
+   */
+  purchaseReceipt?: (number | null) | Media;
+  /**
+   * Photos of security seals, batch codes, packaging. Min 2 for AVOID verdicts.
+   */
+  authenticityPhotos?:
+    | {
+        photo: number | Media;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Document storage between purchase and testing
+   */
+  storageConditions?: {
+    storageLocation?: string | null;
+    temperatureRange?: string | null;
+    /**
+     * Days between purchase and analysis. Max 7 recommended.
+     */
+    daysInStorage?: number | null;
+  };
+  /**
+   * REQUIRED for AVOID verdicts - enables independent verification
+   */
+  splitSample?: {
+    retained?: boolean | null;
+    retentionLocation?: string | null;
+    /**
+     * Retain minimum 1 year from test date
+     */
+    retentionExpiration?: string | null;
+    availableForVerification?: boolean | null;
+  };
+  /**
+   * SOP, LOD studies, precision data. REQUIRED for AVOID verdicts.
+   */
+  methodValidationPackage?: (number | null) | Media;
+  externalLabVerification?: {
+    verifiedByThirdParty?: boolean | null;
+    verifyingLabName?: string | null;
+    labAccreditation?: string | null;
+    verificationDate?: string | null;
+    verificationReport?: (number | null) | Media;
+  };
+  /**
+   * REQUIRED for AVOID verdicts
+   */
+  expertReview?: {
+    reviewerName?: string | null;
+    reviewerCredentials?: string | null;
+    reviewDate?: string | null;
+    /**
+     * Expert assessment and methodology confirmation
+     */
+    reviewNotes?: string | null;
+  };
+  /**
+   * REQUIRED for AVOID verdicts. Must be legitimate editorial reason.
+   */
+  selectionRationale?: string | null;
+  /**
+   * Proves selection predates results
+   */
+  selectionDate?: string | null;
+  affiliateStatusDisclosure?: {
+    brandHasAffiliateRelationship?: boolean | null;
+    /**
+     * If YES, document why selection was still appropriate
+     */
+    affiliateStatusKnownAtSelection?: boolean | null;
+    affiliateDisclosureNote?: string | null;
+  };
+  editorialSignoff?: {
+    editorName?: string | null;
+    signoffDate?: string | null;
+    independenceConfirmed?: boolean | null;
+  };
+  /**
+   * Immutable history of published report versions for litigation defense
+   */
+  reportVersions?:
+    | {
+        versionNumber: number;
+        publishedAt: string;
+        /**
+         * Complete JSON snapshot of report as displayed to users
+         */
+        snapshot?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        /**
+         * Why this version was created (e.g., "Manufacturer dispute", "New test data")
+         */
+        changeReason?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * System-detected conflicts (blocks publishing if unresolved)
    */
   conflicts?:
@@ -845,6 +984,57 @@ export interface Product {
            */
           threshold?: string | null;
           interpretation?: ('below' | 'at' | 'above' | 'none') | null;
+          /**
+           * NIST Library match probability (0-100%). ≥80% for primary display.
+           */
+          matchProbability?: number | null;
+          /**
+           * Auto-set based on matchProbability. Controls UI visibility.
+           */
+          displayMode?: ('primary' | 'low_confidence' | 'hidden') | null;
+          /**
+           * Classification for legal display. Fragrance components use softer language.
+           */
+          detectionType?: ('standard' | 'fragrance_component' | 'hidden_contaminant') | null;
+          /**
+           * CRITICAL: Screening cannot support AVOID verdicts. Must be confirmed or quantified.
+           */
+          confirmationLevel: 'screening' | 'confirmed' | 'quantified';
+          /**
+           * Required for confirmed/quantified detections
+           */
+          referenceStandard?: {
+            standardName?: string | null;
+            catalogNumber?: string | null;
+            lotNumber?: string | null;
+            expirationDate?: string | null;
+            /**
+             * Upload CoA from supplier
+             */
+            certificateOfAnalysis?: (number | null) | Media;
+            retentionTimeMatch?: boolean | null;
+            spectrumMatch?: boolean | null;
+          };
+          /**
+           * Required for quantified detections
+           */
+          calibrationData?: {
+            calibrationDate?: string | null;
+            /**
+             * Number of calibration points (minimum 5)
+             */
+            calibrationLevels?: number | null;
+            /**
+             * Correlation coefficient (must be ≥0.995)
+             */
+            rSquared?: number | null;
+            limitOfDetection?: string | null;
+            limitOfQuantification?: string | null;
+            /**
+             * Screenshot or export of calibration curve
+             */
+            calibrationCurve?: (number | null) | Media;
+          };
           id?: string | null;
         }[]
       | null;
@@ -4772,6 +4962,18 @@ export interface ManufacturerDispute {
     | 'closed_no_response';
   priority?: ('low' | 'normal' | 'high' | 'urgent') | null;
   /**
+   * Response due by this date (auto-set to 14 business days)
+   */
+  slaDeadline?: string | null;
+  /**
+   * Deadline passed without resolution
+   */
+  slaBreached?: boolean | null;
+  /**
+   * Actual time to first response
+   */
+  responseTimeHours?: number | null;
+  /**
    * Legal company name
    */
   companyName: string;
@@ -5614,6 +5816,80 @@ export interface ProductsSelect<T extends boolean = true> {
   aiConfidence?: T;
   aiSourceType?: T;
   aiMentions?: T;
+  sampleId?: T;
+  purchaseDate?: T;
+  purchaseRetailer?: T;
+  lotNumber?: T;
+  expirationDate?: T;
+  testDate?: T;
+  fullPackageText?: T;
+  retailerType?: T;
+  purchaseReceipt?: T;
+  authenticityPhotos?:
+    | T
+    | {
+        photo?: T;
+        description?: T;
+        id?: T;
+      };
+  storageConditions?:
+    | T
+    | {
+        storageLocation?: T;
+        temperatureRange?: T;
+        daysInStorage?: T;
+      };
+  splitSample?:
+    | T
+    | {
+        retained?: T;
+        retentionLocation?: T;
+        retentionExpiration?: T;
+        availableForVerification?: T;
+      };
+  methodValidationPackage?: T;
+  externalLabVerification?:
+    | T
+    | {
+        verifiedByThirdParty?: T;
+        verifyingLabName?: T;
+        labAccreditation?: T;
+        verificationDate?: T;
+        verificationReport?: T;
+      };
+  expertReview?:
+    | T
+    | {
+        reviewerName?: T;
+        reviewerCredentials?: T;
+        reviewDate?: T;
+        reviewNotes?: T;
+      };
+  selectionRationale?: T;
+  selectionDate?: T;
+  affiliateStatusDisclosure?:
+    | T
+    | {
+        brandHasAffiliateRelationship?: T;
+        affiliateStatusKnownAtSelection?: T;
+        affiliateDisclosureNote?: T;
+      };
+  editorialSignoff?:
+    | T
+    | {
+        editorName?: T;
+        signoffDate?: T;
+        independenceConfirmed?: T;
+      };
+  reportVersions?:
+    | T
+    | {
+        versionNumber?: T;
+        publishedAt?: T;
+        snapshot?: T;
+        changeReason?: T;
+        id?: T;
+      };
   conflicts?: T;
   freshnessStatus?: T;
   status?: T;
@@ -5682,6 +5958,31 @@ export interface ProductsSelect<T extends boolean = true> {
               level?: T;
               threshold?: T;
               interpretation?: T;
+              matchProbability?: T;
+              displayMode?: T;
+              detectionType?: T;
+              confirmationLevel?: T;
+              referenceStandard?:
+                | T
+                | {
+                    standardName?: T;
+                    catalogNumber?: T;
+                    lotNumber?: T;
+                    expirationDate?: T;
+                    certificateOfAnalysis?: T;
+                    retentionTimeMatch?: T;
+                    spectrumMatch?: T;
+                  };
+              calibrationData?:
+                | T
+                | {
+                    calibrationDate?: T;
+                    calibrationLevels?: T;
+                    rSquared?: T;
+                    limitOfDetection?: T;
+                    limitOfQuantification?: T;
+                    calibrationCurve?: T;
+                  };
               id?: T;
             };
         spectrographImageUrl?: T;
@@ -7107,6 +7408,9 @@ export interface ManufacturerDisputesSelect<T extends boolean = true> {
   referenceNumber?: T;
   status?: T;
   priority?: T;
+  slaDeadline?: T;
+  slaBreached?: T;
+  responseTimeHours?: T;
   companyName?: T;
   contactName?: T;
   contactTitle?: T;

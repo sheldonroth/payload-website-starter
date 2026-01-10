@@ -14,6 +14,7 @@
  */
 
 import { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 export const EmailTemplates: CollectionConfig = {
   slug: 'email-templates',
@@ -337,7 +338,7 @@ export const EmailTemplates: CollectionConfig = {
   ],
   hooks: {
     afterChange: [
-      async ({ doc, previousDoc, operation }) => {
+      async ({ doc }) => {
         // Recalculate rates when stats change
         if (doc.stats && doc.stats.sent > 0) {
           const openRate = ((doc.stats.opened || 0) / doc.stats.sent * 100).toFixed(1) + '%'
@@ -353,7 +354,9 @@ export const EmailTemplates: CollectionConfig = {
         }
         return doc
       },
+      createAuditLogHook('email-templates'),
     ],
+    afterDelete: [createAuditDeleteHook('email-templates')],
   },
   timestamps: true,
 }

@@ -10,8 +10,8 @@
  */
 
 import type { Endpoint } from 'payload'
-import { Payload } from 'payload'
 import { trackServer, flushServer } from '../lib/analytics/rudderstack-server'
+import { atomicIncrement } from '../utilities/atomic-operations'
 
 interface ValidateRequest {
     code: string
@@ -146,27 +146,36 @@ export const registerReferral: Endpoint = {
                 return Response.json({ success: false, error: 'Device already referred' }, { status: 409 })
             }
 
-            // Create referral record
-            await payload.create({
-                collection: 'referrals',
-                data: {
-                    referrerId: String(referrer.id),
-                    referralCode: body.referrerCode.toUpperCase(),
-                    referredDeviceId: body.referredDeviceId,
-                    referredUserId: body.referredUserId || null,
-                    status: 'pending',
-                },
-            })
+            // Create referral record with race condition protection
+            // Even if two requests pass the check above, the unique constraint will catch duplicates
+            try {
+                await payload.create({
+                    collection: 'referrals',
+                    data: {
+                        referrerId: String(referrer.id),
+                        referralCode: body.referrerCode.toUpperCase(),
+                        referredDeviceId: body.referredDeviceId,
+                        referredUserId: body.referredUserId || null,
+                        status: 'pending',
+                    },
+                })
+            } catch (createError: any) {
+                // Handle unique constraint violation (PostgreSQL error code 23505)
+                if (createError?.code === '23505' || createError?.message?.includes('unique constraint') || createError?.message?.includes('duplicate')) {
+                    console.warn(`[Referral] Race condition caught - device ${body.referredDeviceId} already referred`)
+                    return Response.json({ success: false, error: 'Device already referred' }, { status: 409 })
+                }
+                throw createError // Re-throw other errors
+            }
 
-            // Update referrer's pending count
-            const currentPending = (referrer as any).pendingReferrals || 0
-            await payload.update({
-                collection: 'device-fingerprints',
-                id: referrer.id,
-                data: {
-                    pendingReferrals: currentPending + 1,
-                } as any,
-            })
+            // Update referrer's pending count atomically to prevent race conditions
+            const newPendingCount = await atomicIncrement(
+                payload,
+                'device-fingerprints',
+                referrer.id,
+                'pendingReferrals',
+                1,
+            )
 
             // Track referral registration
             trackServer('Referral Registered', {
@@ -181,7 +190,7 @@ export const registerReferral: Endpoint = {
                 referrer_id: String(referrer.id),
                 referrer_code: body.referrerCode.toUpperCase(),
                 referred_device_id: body.referredDeviceId,
-                pending_count: currentPending + 1,
+                pending_count: newPendingCount,
             }, { anonymousId: String(referrer.id) })
 
             await flushServer()

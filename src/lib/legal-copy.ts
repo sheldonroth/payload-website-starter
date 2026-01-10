@@ -170,6 +170,102 @@ export const CMS_FIELD_DESCRIPTIONS = {
 } as const;
 
 // ============================================================================
+// Fragrance Whitelist (Tortious Interference Shield)
+// These are known fragrance allergens from IFRA/EU Cosmetics Regulation
+// If detected AND "Fragrance/Parfum" is on label, use softer language
+// ============================================================================
+
+export const FRAGRANCE_COMPONENTS = [
+  // Terpenes
+  'Limonene',
+  'Linalool',
+  'Pinene',
+  'Myrcene',
+  'Terpineol',
+  // Aldehydes
+  'Citral',
+  'Citronellal',
+  'Hydroxycitronellal',
+  // Alcohols
+  'Geraniol',
+  'Citronellol',
+  'Farnesol',
+  'Benzyl Alcohol',
+  // Esters
+  'Benzyl Benzoate',
+  'Benzyl Salicylate',
+  'Benzyl Cinnamate',
+  // Phenols
+  'Eugenol',
+  'Isoeugenol',
+  // Lactones
+  'Coumarin',
+  // Others
+  'Cinnamal',
+  'Cinnamyl Alcohol',
+  'Amyl Cinnamal',
+  'Hexyl Cinnamal',
+  'Anise Alcohol',
+  'Evernia Prunastri', // Oakmoss
+  'Evernia Furfuracea', // Treemoss
+] as const;
+
+/**
+ * Check if a compound is a known fragrance component
+ */
+export function isFragranceComponent(compound: string): boolean {
+  const lowerCompound = compound.toLowerCase();
+  return FRAGRANCE_COMPONENTS.some(fc => lowerCompound.includes(fc.toLowerCase()));
+}
+
+/**
+ * Classify detection type based on compound and package text
+ * @param compound - The detected compound name
+ * @param fullPackageText - All text from the product package (ingredients, warnings, allergens)
+ */
+export function classifyDetection(
+  compound: string,
+  fullPackageText: string
+): 'fragrance_component' | 'hidden_contaminant' | 'standard' {
+  const lowerText = fullPackageText.toLowerCase();
+  const lowerCompound = compound.toLowerCase();
+
+  // Check if compound is explicitly mentioned anywhere on package
+  const compoundMentioned = lowerText.includes(lowerCompound);
+
+  // Check for generic fragrance/parfum disclosure
+  const hasFragranceDisclosure =
+    lowerText.includes('fragrance') ||
+    lowerText.includes('parfum') ||
+    lowerText.includes('aroma') ||
+    lowerText.includes('may contain') ||
+    lowerText.includes('allergen');
+
+  // If it's a known fragrance component AND disclosed (explicitly or via Fragrance)
+  if (isFragranceComponent(compound) && (compoundMentioned || hasFragranceDisclosure)) {
+    return 'fragrance_component';
+  }
+
+  // Known contaminants that are NEVER fragrance components
+  const KNOWN_CONTAMINANTS = ['benzene', 'lead', 'mercury', 'cadmium', 'arsenic', 'pfas', 'pfoa', 'pfos', 'formaldehyde', '1,4-dioxane'];
+  if (KNOWN_CONTAMINANTS.some(c => lowerCompound.includes(c))) {
+    return 'hidden_contaminant';
+  }
+
+  // Default: standard detection
+  return 'standard';
+}
+
+/**
+ * Get display mode based on match probability (Low-Confidence Gatekeeper)
+ */
+export function getDisplayMode(matchProbability: number): 'primary' | 'low_confidence' | 'hidden' {
+  if (matchProbability >= 80) return 'primary';
+  if (matchProbability >= 50) return 'low_confidence';
+  return 'hidden';
+}
+
+// ============================================================================
 // Prohibited Terms (DO NOT USE - Reference Only)
 // ============================================================================
 

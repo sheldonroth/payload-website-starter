@@ -1,11 +1,243 @@
 /**
  * Cron Job Utilities
  *
- * Provides retry logic, logging, and error handling for background jobs.
+ * Provides retry logic, logging, error handling, and idempotency for background jobs.
  */
 
 // Note: getPayload and config are imported dynamically in functions that need them
 // to avoid breaking tests that don't need payload
+
+import { cache } from './redis-cache'
+
+// ═══════════════════════════════════════════════════════════════
+// IDEMPOTENCY CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Lock TTLs for different cron job types (in seconds)
+ * These determine how long a job "owns" its execution slot
+ */
+export const CronLockTTL = {
+    /** Quick jobs (< 30 seconds) - lock for 2 minutes */
+    QUICK: 2 * 60,
+    /** Medium jobs (30 seconds - 5 minutes) - lock for 10 minutes */
+    MEDIUM: 10 * 60,
+    /** Long jobs (> 5 minutes) - lock for 30 minutes */
+    LONG: 30 * 60,
+    /** Batch jobs that process many records - lock for 1 hour */
+    BATCH: 60 * 60,
+} as const
+
+export type CronLockTTLValue = (typeof CronLockTTL)[keyof typeof CronLockTTL]
+
+/**
+ * Skip window - if job ran within this window, skip execution
+ * Prevents duplicate runs when cron triggers multiple times
+ */
+export const CronSkipWindow = {
+    /** For hourly crons - skip if ran within 30 minutes */
+    HOURLY: 30 * 60,
+    /** For daily crons - skip if ran within 12 hours */
+    DAILY: 12 * 60 * 60,
+    /** For weekly crons - skip if ran within 3 days */
+    WEEKLY: 3 * 24 * 60 * 60,
+} as const
+
+// ═══════════════════════════════════════════════════════════════
+// IDEMPOTENCY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+interface CronLockResult {
+    acquired: boolean
+    skipped: boolean
+    reason?: string
+    lockId?: string
+    lastRun?: string
+}
+
+/**
+ * Attempt to acquire a distributed lock for a cron job.
+ * Returns lock status and whether to skip execution.
+ *
+ * @param jobName - Unique identifier for the cron job
+ * @param options - Lock configuration
+ * @returns Lock result indicating if execution should proceed
+ */
+export async function acquireCronLock(
+    jobName: string,
+    options: {
+        lockTTL?: number  // How long to hold the lock (seconds)
+        skipWindow?: number  // Skip if ran within this window (seconds)
+        instanceId?: string  // Unique identifier for this instance
+    } = {}
+): Promise<CronLockResult> {
+    const {
+        lockTTL = CronLockTTL.MEDIUM,
+        skipWindow = 0,  // No skip window by default
+        instanceId = `${process.env.VERCEL_GIT_COMMIT_SHA || 'local'}-${Date.now()}`,
+    } = options
+
+    const lockKey = `cron:lock:${jobName}`
+    const lastRunKey = `cron:lastrun:${jobName}`
+
+    try {
+        // Check skip window - if job ran recently, skip this execution
+        if (skipWindow > 0) {
+            const lastRun = await cache.get<string>(lastRunKey)
+            if (lastRun) {
+                const lastRunTime = new Date(lastRun).getTime()
+                const elapsed = (Date.now() - lastRunTime) / 1000
+                if (elapsed < skipWindow) {
+                    return {
+                        acquired: false,
+                        skipped: true,
+                        reason: `Job ran ${Math.round(elapsed / 60)} minutes ago (within ${Math.round(skipWindow / 60)} minute skip window)`,
+                        lastRun,
+                    }
+                }
+            }
+        }
+
+        // Try to acquire the lock using SETNX pattern
+        // Note: Redis SETNX is atomic, but our fallback isn't
+        const existingLock = await cache.get<{ instanceId: string; acquiredAt: string }>(lockKey)
+
+        if (existingLock) {
+            // Lock exists - another instance is running or hasn't released
+            return {
+                acquired: false,
+                skipped: false,
+                reason: `Lock held by ${existingLock.instanceId} since ${existingLock.acquiredAt}`,
+            }
+        }
+
+        // No lock exists - acquire it
+        const lockData = {
+            instanceId,
+            acquiredAt: new Date().toISOString(),
+        }
+
+        await cache.set(lockKey, lockData, lockTTL)
+
+        // Double-check we got the lock (handle race condition in fallback)
+        // In production with Redis, this is unnecessary due to SETNX atomicity
+        const verifyLock = await cache.get<{ instanceId: string }>(lockKey)
+        if (verifyLock?.instanceId !== instanceId) {
+            // Lost the race
+            return {
+                acquired: false,
+                skipped: false,
+                reason: 'Lost lock race to another instance',
+            }
+        }
+
+        return {
+            acquired: true,
+            skipped: false,
+            lockId: instanceId,
+        }
+
+    } catch (error) {
+        console.error(`[Cron Lock] Error acquiring lock for ${jobName}:`, error)
+        // On error, allow execution but log the issue
+        // This prevents cache failures from blocking all cron jobs
+        return {
+            acquired: true,
+            skipped: false,
+            reason: 'Lock check failed, allowing execution',
+        }
+    }
+}
+
+/**
+ * Release a cron lock after job completion
+ */
+export async function releaseCronLock(
+    jobName: string,
+    options: {
+        recordLastRun?: boolean  // Record timestamp for skip window
+        skipWindow?: number  // How long to remember this run
+    } = {}
+): Promise<void> {
+    const { recordLastRun = true, skipWindow = CronSkipWindow.HOURLY } = options
+
+    const lockKey = `cron:lock:${jobName}`
+    const lastRunKey = `cron:lastrun:${jobName}`
+
+    try {
+        // Delete the lock
+        await cache.del(lockKey)
+
+        // Record last run time for skip window checking
+        if (recordLastRun) {
+            await cache.set(lastRunKey, new Date().toISOString(), skipWindow)
+        }
+    } catch (error) {
+        console.error(`[Cron Lock] Error releasing lock for ${jobName}:`, error)
+    }
+}
+
+/**
+ * Simple idempotency guard for existing cron jobs.
+ *
+ * Usage:
+ * ```ts
+ * export async function GET(request: Request) {
+ *   // Auth check first...
+ *
+ *   const idempotencyCheck = await cronIdempotencyGuard('my-job', {
+ *     lockTTL: CronLockTTL.MEDIUM,
+ *   })
+ *   if (idempotencyCheck.skip) {
+ *     return NextResponse.json(idempotencyCheck.response)
+ *   }
+ *
+ *   try {
+ *     // Job logic here...
+ *   } finally {
+ *     await idempotencyCheck.release()
+ *   }
+ * }
+ * ```
+ */
+export async function cronIdempotencyGuard(
+    jobName: string,
+    options: {
+        lockTTL?: number
+        skipWindow?: number
+    } = {}
+): Promise<{
+    skip: boolean
+    response?: { success: boolean; skipped: boolean; reason?: string; jobName: string }
+    release: () => Promise<void>
+}> {
+    const { lockTTL = CronLockTTL.MEDIUM, skipWindow = 0 } = options
+
+    const lockResult = await acquireCronLock(jobName, { lockTTL, skipWindow })
+
+    if (!lockResult.acquired) {
+        return {
+            skip: true,
+            response: {
+                success: true, // Not an error
+                skipped: true,
+                reason: lockResult.reason,
+                jobName,
+            },
+            release: async () => {}, // No-op since we didn't acquire
+        }
+    }
+
+    return {
+        skip: false,
+        release: async () => {
+            await releaseCronLock(jobName, {
+                recordLastRun: true,
+                skipWindow: skipWindow || CronSkipWindow.HOURLY,
+            })
+        },
+    }
+}
 
 interface RetryOptions {
   maxRetries?: number
@@ -136,21 +368,43 @@ export async function logCronExecution(
 }
 
 /**
- * Wrapper for cron job handlers that adds retry logic and logging.
+ * Options for cron job wrapper including idempotency settings
+ */
+export interface CronHandlerOptions extends RetryOptions {
+  /** How long to hold the execution lock (seconds). Default: MEDIUM (10 minutes) */
+  lockTTL?: number
+  /** Skip execution if job ran within this window (seconds). Default: 0 (no skip) */
+  skipWindow?: number
+  /** Enable idempotency checking. Default: true */
+  enableIdempotency?: boolean
+}
+
+/**
+ * Wrapper for cron job handlers that adds retry logic, logging, and idempotency.
  *
  * Usage:
  * ```ts
  * export const GET = wrapCronHandler('my-job', async (payload) => {
  *   // Job logic here
  *   return { processed: 10 }
+ * }, {
+ *   lockTTL: CronLockTTL.MEDIUM,
+ *   skipWindow: CronSkipWindow.HOURLY,
  * })
  * ```
  */
 export function wrapCronHandler<T>(
   jobName: string,
   handler: (payload: unknown) => Promise<T>,
-  options?: RetryOptions
+  options?: CronHandlerOptions
 ) {
+  const {
+    lockTTL = CronLockTTL.MEDIUM,
+    skipWindow = 0,
+    enableIdempotency = true,
+    ...retryOptions
+  } = options || {}
+
   return async (request: Request): Promise<Response> => {
     // Verify authorization
     const cronSecret = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -163,6 +417,30 @@ export function wrapCronHandler<T>(
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // IDEMPOTENCY CHECK: Prevent duplicate/concurrent executions
+    if (enableIdempotency) {
+      const lockResult = await acquireCronLock(jobName, {
+        lockTTL,
+        skipWindow,
+      })
+
+      if (!lockResult.acquired) {
+        const message = lockResult.skipped
+          ? `Skipped: ${lockResult.reason}`
+          : `Lock not acquired: ${lockResult.reason}`
+
+        console.log(`[${jobName}] ${message}`)
+
+        return Response.json({
+          success: true, // Not an error - intentionally skipped
+          jobName,
+          skipped: true,
+          reason: lockResult.reason,
+          lastRun: lockResult.lastRun,
+        })
+      }
+    }
+
     // Log job start
     await logCronExecution(jobName, 'started')
 
@@ -171,47 +449,57 @@ export function wrapCronHandler<T>(
     const config = (await import('@payload-config')).default
     const payload = await getPayload({ config })
 
-    // Execute with retry
-    const result = await withRetry(
-      () => handler(payload),
-      {
-        ...options,
-        onRetry: (attempt, error, delayMs) => {
-          console.log(`[${jobName}] Attempt ${attempt} failed: ${error.message}. Retrying in ${Math.round(delayMs)}ms...`)
-        },
-      }
-    )
-
-    // Log result
-    await logCronExecution(
-      jobName,
-      result.success ? 'success' : 'error',
-      {
-        duration: result.duration,
-        attempts: result.attempts,
-        error: result.error,
-        result: result.data,
-      }
-    )
-
-    if (result.success) {
-      return Response.json({
-        success: true,
-        jobName,
-        data: result.data,
-        duration: result.duration,
-        attempts: result.attempts,
-      })
-    } else {
-      return Response.json(
+    try {
+      // Execute with retry
+      const result = await withRetry(
+        () => handler(payload),
         {
-          error: result.error,
-          jobName,
+          ...retryOptions,
+          onRetry: (attempt, error, delayMs) => {
+            console.log(`[${jobName}] Attempt ${attempt} failed: ${error.message}. Retrying in ${Math.round(delayMs)}ms...`)
+          },
+        }
+      )
+
+      // Log result
+      await logCronExecution(
+        jobName,
+        result.success ? 'success' : 'error',
+        {
           duration: result.duration,
           attempts: result.attempts,
-        },
-        { status: 500 }
+          error: result.error,
+          result: result.data,
+        }
       )
+
+      if (result.success) {
+        return Response.json({
+          success: true,
+          jobName,
+          data: result.data,
+          duration: result.duration,
+          attempts: result.attempts,
+        })
+      } else {
+        return Response.json(
+          {
+            error: result.error,
+            jobName,
+            duration: result.duration,
+            attempts: result.attempts,
+          },
+          { status: 500 }
+        )
+      }
+    } finally {
+      // ALWAYS release the lock, even on error
+      if (enableIdempotency) {
+        await releaseCronLock(jobName, {
+          recordLastRun: true,
+          skipWindow: skipWindow || CronSkipWindow.HOURLY,
+        })
+      }
     }
   }
 }

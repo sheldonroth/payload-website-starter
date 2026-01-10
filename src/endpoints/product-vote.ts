@@ -12,6 +12,7 @@ import {
     rateLimitResponse,
     RateLimits,
 } from '../utilities/rate-limiter'
+import { cache, CacheTTL } from '../utilities/redis-cache'
 
 /**
  * Product Vote API Endpoint
@@ -1179,26 +1180,35 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
             })
         }
 
-        // Get global queue for ranking (only active products)
-        const globalQueue = await req.payload.find({
-            collection: 'product-votes',
-            where: {
-                status: { in: ['collecting_votes', 'threshold_reached', 'queued', 'testing'] },
-            },
-            sort: '-velocityScore', // Use velocity for ranking
-            limit: 500,
-            select: {
-                barcode: true,
-                velocityScore: true,
-            },
-        })
+        // Get global queue for ranking (only active products) - CACHED to prevent N+1
+        // Queue positions don't change frequently, so cache for 2 minutes
+        const cacheKey = 'product-vote:queue-positions'
+        let queuePositionMap = await cache.get<Record<string, number>>(cacheKey)
 
-        // Build barcode -> queue position map
-        const queuePositionMap = new Map<string, number>()
-        globalQueue.docs.forEach((doc, index) => {
-            const vote = doc as { barcode: string }
-            queuePositionMap.set(vote.barcode, index + 1)
-        })
+        if (!queuePositionMap) {
+            const globalQueue = await req.payload.find({
+                collection: 'product-votes',
+                where: {
+                    status: { in: ['collecting_votes', 'threshold_reached', 'queued', 'testing'] },
+                },
+                sort: '-velocityScore', // Use velocity for ranking
+                limit: 500,
+                select: {
+                    barcode: true,
+                    velocityScore: true,
+                },
+            })
+
+            // Build barcode -> queue position map
+            queuePositionMap = {}
+            globalQueue.docs.forEach((doc, index) => {
+                const vote = doc as { barcode: string }
+                queuePositionMap![vote.barcode] = index + 1
+            })
+
+            // Cache the map for 2 minutes
+            await cache.set(cacheKey, queuePositionMap, CacheTTL.SHORT * 4) // 2 minutes
+        }
 
         // Transform into investigation objects
         const investigations = userVotes.docs.map((doc) => {
@@ -1246,7 +1256,7 @@ export const myInvestigationsHandler = async (req: PayloadRequest): Promise<Resp
 
             // Get queue position (only for waiting/testing)
             const queuePosition = status !== 'complete'
-                ? queuePositionMap.get(vote.barcode) || null
+                ? queuePositionMap[vote.barcode] || null
                 : null
 
             // Check if trending (high 24h velocity)

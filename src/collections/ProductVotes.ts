@@ -143,6 +143,7 @@ export const ProductVotes: CollectionConfig = {
                 return doc
             },
         ],
+        afterDelete: [createAuditDeleteHook('product-votes')],
     },
     fields: [
         // === PRODUCT IDENTIFICATION ===

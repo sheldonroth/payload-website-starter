@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 /**
  * Contributor Profiles Collection
@@ -235,6 +236,8 @@ export const ContributorProfiles: CollectionConfig = {
                 return data
             },
         ],
+        afterChange: [createAuditLogHook('contributor-profiles')],
+        afterDelete: [createAuditDeleteHook('contributor-profiles')],
     },
     timestamps: true,
 }

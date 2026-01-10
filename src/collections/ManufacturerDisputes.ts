@@ -86,6 +86,42 @@ export const ManufacturerDisputes: CollectionConfig = {
     },
 
     // ═══════════════════════════════════════════════════════════════════════
+    // SLA Tracking (Tortious Interference Shield)
+    // Proves systematic attention to disputes - defeats "malice" claims
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      name: 'slaDeadline',
+      type: 'date',
+      label: 'SLA Deadline',
+      admin: {
+        position: 'sidebar',
+        description: 'Response due by this date (auto-set to 14 business days)',
+        date: { pickerAppearance: 'dayAndTime' },
+      },
+    },
+    {
+      name: 'slaBreached',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'SLA Breached',
+      admin: {
+        position: 'sidebar',
+        description: 'Deadline passed without resolution',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'responseTimeHours',
+      type: 'number',
+      label: 'Response Time (hours)',
+      admin: {
+        position: 'sidebar',
+        description: 'Actual time to first response',
+        readOnly: true,
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
     // Company Information
     // ═══════════════════════════════════════════════════════════════════════
     {
@@ -412,20 +448,63 @@ export const ManufacturerDisputes: CollectionConfig = {
   timestamps: true,
   hooks: {
     beforeChange: [
-      // Auto-generate reference number on create
+      // Auto-generate reference number and SLA deadline on create
       async ({ data, operation }) => {
-        if (operation === 'create' && !data.referenceNumber) {
-          const timestamp = Date.now()
-          data.referenceNumber = `DIS-${new Date().getFullYear()}-${timestamp.toString(36).toUpperCase()}`
+        if (operation === 'create') {
+          // Generate reference number
+          if (!data.referenceNumber) {
+            const timestamp = Date.now()
+            data.referenceNumber = `DIS-${new Date().getFullYear()}-${timestamp.toString(36).toUpperCase()}`
+          }
+
+          // Set SLA deadline to 14 business days from now
+          if (!data.slaDeadline) {
+            const deadline = new Date()
+            let businessDays = 0
+            while (businessDays < 14) {
+              deadline.setDate(deadline.getDate() + 1)
+              const day = deadline.getDay()
+              if (day !== 0 && day !== 6) businessDays++ // Skip weekends
+            }
+            data.slaDeadline = deadline.toISOString()
+          }
+        }
+        return data
+      },
+      // Calculate response time when first response is sent
+      async ({ data, originalDoc, operation }) => {
+        if (operation === 'update') {
+          // Track response time when responseDate is first set
+          if (data.responseDate && !originalDoc?.responseDate && originalDoc?.submittedAt) {
+            const submitted = new Date(originalDoc.submittedAt)
+            const responded = new Date(data.responseDate)
+            const hours = Math.round((responded.getTime() - submitted.getTime()) / (1000 * 60 * 60))
+            data.responseTimeHours = hours
+          }
+
+          // Check for SLA breach
+          if (!data.slaBreached && data.slaDeadline) {
+            const deadline = new Date(data.slaDeadline)
+            const now = new Date()
+            const isResolved = data.status?.startsWith('resolved_') || data.status?.startsWith('closed_')
+            if (now > deadline && !isResolved) {
+              data.slaBreached = true
+            }
+          }
         }
         return data
       },
     ],
     afterChange: [
-      // Log status changes to audit trail
+      // Log status changes and SLA breaches to audit trail
       async ({ doc, previousDoc, operation }) => {
-        if (operation === 'update' && previousDoc?.status !== doc.status) {
-          console.log(`[ManufacturerDispute] ${doc.referenceNumber} status changed: ${previousDoc?.status} -> ${doc.status}`)
+        if (operation === 'update') {
+          if (previousDoc?.status !== doc.status) {
+            console.log(`[ManufacturerDispute] ${doc.referenceNumber} status changed: ${previousDoc?.status} -> ${doc.status}`)
+          }
+          if (!previousDoc?.slaBreached && doc.slaBreached) {
+            console.warn(`[ManufacturerDispute] SLA BREACHED for ${doc.referenceNumber}! Response overdue.`)
+          }
         }
       },
     ],

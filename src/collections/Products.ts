@@ -27,6 +27,7 @@ import { classifyCategory } from '../utilities/ai-category'
 import { populateSafeAlternatives } from '../utilities/safe-alternatives'
 import { extractAndPopulateProduct } from '../utilities/image-extraction'
 import { getThresholds } from '../utilities/get-thresholds'
+import { containsProhibitedTerms, classifyDetection, getDisplayMode } from '../lib/legal-copy'
 
 /**
  * Check if a user has premium access (admin, member, or premium subscriber)
@@ -392,6 +393,173 @@ export const Products: CollectionConfig = {
             },
 
             // ============================================
+            // HOOK 9.5: PROHIBITED TERMS VALIDATION
+            // Block publishing if content contains prohibited terms
+            // ============================================
+            async ({ data, req }) => {
+                // Only validate when trying to publish
+                if (data?.status !== 'published') return data
+
+                // Fields to validate for prohibited terms
+                const fieldsToValidate = [
+                    { name: 'summary', value: data.summary },
+                    { name: 'fullReview', value: data.fullReview },
+                    { name: 'pros', value: Array.isArray(data.pros) ? data.pros.map((p: { text?: string }) => p.text).join(' ') : '' },
+                    { name: 'cons', value: Array.isArray(data.cons) ? data.cons.map((c: { text?: string }) => c.text).join(' ') : '' },
+                ]
+
+                for (const field of fieldsToValidate) {
+                    if (!field.value) continue
+                    const violations = containsProhibitedTerms(field.value)
+                    if (violations.length > 0) {
+                        console.warn(`[Legal] Prohibited terms found in ${field.name}:`, violations)
+                        throw new Error(
+                            `Cannot publish: Field "${field.name}" contains prohibited terms: ${violations.join(', ')}. ` +
+                            `Use approved alternatives from legal-copy.ts instead.`
+                        )
+                    }
+                }
+
+                return data
+            },
+
+            // ============================================
+            // HOOK 9.6: AUTO-CLASSIFY DETECTION TYPES
+            // Set displayMode and detectionType based on confidence and package text
+            // ============================================
+            async ({ data }) => {
+                if (!data?.detectionResults?.detections) return data
+
+                const fullPackageText = data.sampleInfo?.fullPackageText || ''
+
+                data.detectionResults.detections = data.detectionResults.detections.map(
+                    (detection: { compound: string; matchProbability?: number; displayMode?: string; detectionType?: string }) => {
+                        // Auto-set displayMode based on matchProbability
+                        if (detection.matchProbability !== undefined && !detection.displayMode) {
+                            detection.displayMode = getDisplayMode(detection.matchProbability)
+                        }
+
+                        // Auto-classify detection type if not set
+                        if (detection.compound && !detection.detectionType) {
+                            detection.detectionType = classifyDetection(detection.compound, fullPackageText)
+                        }
+
+                        return detection
+                    }
+                )
+
+                return data
+            },
+
+            // ============================================
+            // HOOK 9.7: DAUBERT DEFENSE VALIDATION
+            // Prevent AVOID verdicts without proper scientific documentation
+            // Legal Framework: Ensure defensibility against junk science attacks
+            // ============================================
+            async ({ data, req, originalDoc }) => {
+                // Only validate when publishing AVOID verdicts
+                if (data?.status !== 'published' || data?.verdict !== 'avoid') {
+                    return data
+                }
+
+                const errors: string[] = []
+
+                // === DETECTION CONFIRMATION LEVEL ===
+                // AVOID verdicts cannot rely on screening-only detections
+                const detections = data.detectionResults?.detections || []
+                const primaryScreeningOnly = detections.filter(
+                    (d: { displayMode?: string; confirmationLevel?: string }) =>
+                        d.displayMode === 'primary' && d.confirmationLevel === 'screening'
+                )
+
+                if (primaryScreeningOnly.length > 0) {
+                    const compoundNames = primaryScreeningOnly
+                        .map((d: { compound?: string }) => d.compound || 'Unknown')
+                        .join(', ')
+                    errors.push(
+                        `DAUBERT DEFENSE: ${primaryScreeningOnly.length} primary detection(s) are screening-only (${compoundNames}). ` +
+                        `AVOID verdicts require confirmed or quantified detections. Update confirmationLevel for each detection.`
+                    )
+                }
+
+                // === CHAIN OF CUSTODY ===
+                // Sample acquisition fields (in Sample Information collapsible)
+                if (!data.retailerType) {
+                    errors.push(
+                        'CHAIN OF CUSTODY: Retailer type required for AVOID verdicts. ' +
+                        'Set in "Sample Information" → "Retailer Type".'
+                    )
+                }
+
+                if (!data.purchaseReceipt && !data.sampleInfo?.photoOfPurchase) {
+                    errors.push(
+                        'CHAIN OF CUSTODY: Purchase receipt required for AVOID verdicts. ' +
+                        'Upload in "Sample Information" → "Purchase Receipt" or "Photo of Purchase Receipt".'
+                    )
+                }
+
+                // Split sample retention
+                const splitSampleRetained = data.splitSample?.retained
+                if (splitSampleRetained === false) {
+                    errors.push(
+                        'CHAIN OF CUSTODY: Split sample must be retained for AVOID verdicts. ' +
+                        'Enable "Split Sample Retained" in "Sample Information".'
+                    )
+                }
+
+                // === EDITORIAL INDEPENDENCE ===
+                if (!data.selectionRationale) {
+                    errors.push(
+                        'LANHAM DEFENSE: Selection rationale required for AVOID verdicts. ' +
+                        'Document why this product was selected in "Editorial Independence".'
+                    )
+                }
+
+                // === EXPERT REVIEW OR METHOD VALIDATION ===
+                // At least one form of scientific validation required
+                const hasMethodValidation = !!data.methodValidationPackage
+                const hasExpertReview = !!data.expertReview?.reviewerName && !!data.expertReview?.reviewDate
+                const hasThirdPartyVerification = !!data.externalLabVerification?.verifiedByThirdParty
+
+                if (!hasMethodValidation && !hasExpertReview && !hasThirdPartyVerification) {
+                    errors.push(
+                        'DAUBERT DEFENSE: AVOID verdicts require at least ONE of: ' +
+                        '(1) Method Validation Package uploaded, ' +
+                        '(2) Expert Review sign-off, or ' +
+                        '(3) Third-Party Lab Verification. ' +
+                        'Document in "Daubert Defense" section.'
+                    )
+                }
+
+                // === BLOCK PUBLICATION IF ERRORS ===
+                if (errors.length > 0) {
+                    // Log the validation failure for audit
+                    await createAuditLog(req.payload, {
+                        action: 'publish_blocked',
+                        sourceType: 'system',
+                        targetCollection: 'products',
+                        targetId: originalDoc?.id,
+                        targetName: data.name,
+                        metadata: {
+                            verdict: 'avoid',
+                            validationErrors: errors,
+                            blockedAt: new Date().toISOString(),
+                        },
+                        performedBy: (req.user as { id?: number })?.id,
+                    })
+
+                    throw new Error(
+                        `⚠️ LEGAL DEFENSE REQUIREMENTS NOT MET\n\n` +
+                        `Cannot publish AVOID verdict without proper documentation:\n\n` +
+                        errors.map((e, i) => `${i + 1}. ${e}`).join('\n\n') +
+                        `\n\n📋 See docs/DAUBERT_DEFENSE_PLAYBOOK.md for guidance.`
+                    )
+                }
+
+                return data
+            },
+
+            // ============================================
             // HOOK 10: OCR IMAGE EXTRACTION
             // Auto-extract product info from uploaded image
             // ============================================
@@ -423,9 +591,65 @@ export const Products: CollectionConfig = {
         ],
 
         // ============================================
-        // AFTER CHANGE: AUTO BACKGROUND REMOVAL ON PUBLISH
+        // AFTER CHANGE: AUTO VERSION SNAPSHOT (Litigation Defense)
+        // Legal Framework Section 14.3: Create immutable report history
         // ============================================
         afterChange: [
+            async ({ doc, previousDoc, req, operation }) => {
+                // Create version snapshot when product is published or updated while published
+                const isPublished = doc.status === 'published'
+                const justPublished = isPublished && previousDoc?.status !== 'published'
+                const updatedWhilePublished = isPublished && previousDoc?.status === 'published'
+
+                if (justPublished || updatedWhilePublished) {
+                    // Build snapshot of key fields
+                    const snapshot = {
+                        name: doc.name,
+                        brand: doc.brand,
+                        verdict: doc.verdict,
+                        summary: doc.summary,
+                        sampleId: doc.sampleId,
+                        testDate: doc.testDate,
+                        category: doc.category,
+                        badges: doc.badges,
+                    }
+
+                    // Calculate next version number
+                    const existingVersions = (doc as { reportVersions?: unknown[] }).reportVersions || []
+                    const nextVersion = existingVersions.length + 1
+
+                    // Add new version (don't block on this)
+                    setTimeout(async () => {
+                        try {
+                            await req.payload.update({
+                                collection: 'products',
+                                id: doc.id,
+                                data: {
+                                    reportVersions: [
+                                        ...existingVersions,
+                                        {
+                                            versionNumber: nextVersion,
+                                            publishedAt: new Date().toISOString(),
+                                            snapshot,
+                                            changeReason: justPublished ? 'Initial publication' : 'Content update',
+                                        },
+                                    ],
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                } as any,
+                            })
+                            console.log(`[Version Snapshot] Created v${nextVersion} for product ${doc.id}`)
+                        } catch (error) {
+                            console.error('[Version Snapshot] Failed:', error)
+                        }
+                    }, 200)
+                }
+
+                return doc
+            },
+
+            // ============================================
+            // HOOK: AUTO BACKGROUND REMOVAL ON PUBLISH
+            // ============================================
             async ({ doc, previousDoc, req }) => {
                 // Only process if:
                 // 1. Status just changed to 'published'
@@ -718,6 +942,7 @@ export const Products: CollectionConfig = {
             type: 'text',
             required: true,
             label: 'Brand Name',
+            index: true, // Added for query performance - frequently filtered/searched
         },
         {
             name: 'displayTitle',
@@ -1095,6 +1320,424 @@ export const Products: CollectionConfig = {
             },
         },
 
+        // =============================================================
+        // === SAMPLE INFORMATION (N=1 Defense) ===
+        // Legal Framework Section 13.2: Track specific sample tested
+        // This enables the "N=1 Defense" - we only claim issues with 
+        // THIS specific bottle, not all products of this type.
+        // =============================================================
+        {
+            type: 'collapsible',
+            label: '🧪 Sample Information (Legal Shield)',
+            admin: {
+                initCollapsed: true,
+                description: 'N=1 Defense: Track the specific sample tested',
+            },
+            fields: [
+                {
+                    name: 'sampleId',
+                    type: 'text',
+                    label: 'Sample ID',
+                    admin: {
+                        description: 'Unique identifier for this specific sample (e.g., TPR-2026-0142)',
+                    },
+                },
+                {
+                    name: 'purchaseDate',
+                    type: 'date',
+                    label: 'Purchase Date',
+                    admin: {
+                        description: 'When the sample was purchased',
+                    },
+                },
+                {
+                    name: 'purchaseRetailer',
+                    type: 'text',
+                    label: 'Purchase Retailer',
+                    admin: {
+                        description: 'Where the sample was purchased (e.g., Amazon, Target, Walmart)',
+                    },
+                },
+                {
+                    name: 'lotNumber',
+                    type: 'text',
+                    label: 'Lot/Batch Number',
+                    admin: {
+                        description: 'Manufacturing lot number from package',
+                    },
+                },
+                {
+                    name: 'expirationDate',
+                    type: 'date',
+                    label: 'Expiration Date',
+                    admin: {
+                        description: 'Product expiration date from package',
+                    },
+                },
+                {
+                    name: 'testDate',
+                    type: 'date',
+                    label: 'Test Date',
+                    admin: {
+                        description: 'When the lab testing was performed',
+                    },
+                },
+                {
+                    name: 'fullPackageText',
+                    type: 'textarea',
+                    label: 'Full Package Text',
+                    admin: {
+                        description: 'ALL text from package: ingredients, warnings, allergens, fine print. Used for Fragrance Whitelist matching.',
+                    },
+                },
+                // === ENHANCED CHAIN OF CUSTODY (Litigation Defense) ===
+                {
+                    name: 'retailerType',
+                    type: 'select',
+                    label: 'Retailer Type',
+                    options: [
+                        { label: 'Authorized Retailer', value: 'authorized_retailer' },
+                        { label: 'Manufacturer Direct', value: 'manufacturer_direct' },
+                        { label: 'Licensed Pharmacy', value: 'pharmacy' },
+                        { label: 'Other (Document Reason)', value: 'other' },
+                    ],
+                    admin: {
+                        description: 'REQUIRED for AVOID verdicts. Must be authorized source to defeat counterfeit defense.',
+                    },
+                },
+                {
+                    name: 'purchaseReceipt',
+                    type: 'upload',
+                    relationTo: 'media',
+                    label: 'Purchase Receipt',
+                    admin: {
+                        description: 'Photo/scan of purchase receipt. REQUIRED for AVOID verdicts.',
+                    },
+                },
+                {
+                    name: 'authenticityPhotos',
+                    type: 'array',
+                    label: 'Authenticity Documentation',
+                    admin: {
+                        description: 'Photos of security seals, batch codes, packaging. Min 2 for AVOID verdicts.',
+                    },
+                    fields: [
+                        {
+                            name: 'photo',
+                            type: 'upload',
+                            relationTo: 'media',
+                            required: true,
+                        },
+                        {
+                            name: 'description',
+                            type: 'text',
+                            admin: {
+                                placeholder: 'e.g., "Front label with batch code", "Security seal intact"',
+                            },
+                        },
+                    ],
+                },
+                {
+                    name: 'storageConditions',
+                    type: 'group',
+                    label: 'Storage Conditions',
+                    admin: {
+                        description: 'Document storage between purchase and testing',
+                    },
+                    fields: [
+                        {
+                            name: 'storageLocation',
+                            type: 'text',
+                            admin: {
+                                placeholder: 'e.g., "Climate-controlled lab storage"',
+                            },
+                        },
+                        {
+                            name: 'temperatureRange',
+                            type: 'text',
+                            admin: {
+                                placeholder: 'e.g., "68-72°F"',
+                            },
+                        },
+                        {
+                            name: 'daysInStorage',
+                            type: 'number',
+                            admin: {
+                                description: 'Days between purchase and analysis. Max 7 recommended.',
+                            },
+                        },
+                    ],
+                },
+                {
+                    name: 'splitSample',
+                    type: 'group',
+                    label: 'Split Sample Retention',
+                    admin: {
+                        description: 'REQUIRED for AVOID verdicts - enables independent verification',
+                    },
+                    fields: [
+                        {
+                            name: 'retained',
+                            type: 'checkbox',
+                            label: 'Split Sample Retained',
+                            defaultValue: true,
+                        },
+                        {
+                            name: 'retentionLocation',
+                            type: 'text',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.retained,
+                                placeholder: 'e.g., "Lab freezer unit B-7"',
+                            },
+                        },
+                        {
+                            name: 'retentionExpiration',
+                            type: 'date',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.retained,
+                                description: 'Retain minimum 1 year from test date',
+                            },
+                        },
+                        {
+                            name: 'availableForVerification',
+                            type: 'checkbox',
+                            label: 'Available for Manufacturer Verification',
+                            defaultValue: true,
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.retained,
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+
+        // =============================================================
+        // === DAUBERT DEFENSE (Scientific Methodology) ===
+        // Legal Framework: Bulletproof the science against exclusion
+        // =============================================================
+        {
+            type: 'collapsible',
+            label: '🔬 Daubert Defense (Scientific Validation)',
+            admin: {
+                initCollapsed: true,
+                description: 'Documentation to defeat junk science attacks',
+            },
+            fields: [
+                {
+                    name: 'methodValidationPackage',
+                    type: 'upload',
+                    relationTo: 'media',
+                    label: 'Method Validation Package',
+                    admin: {
+                        description: 'SOP, LOD studies, precision data. REQUIRED for AVOID verdicts.',
+                    },
+                },
+                {
+                    name: 'externalLabVerification',
+                    type: 'group',
+                    label: 'Third-Party Lab Verification',
+                    fields: [
+                        {
+                            name: 'verifiedByThirdParty',
+                            type: 'checkbox',
+                            label: 'Verified by External Lab',
+                        },
+                        {
+                            name: 'verifyingLabName',
+                            type: 'text',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.verifiedByThirdParty,
+                                placeholder: 'e.g., "Eurofins Scientific"',
+                            },
+                        },
+                        {
+                            name: 'labAccreditation',
+                            type: 'text',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.verifiedByThirdParty,
+                                placeholder: 'e.g., "ISO 17025 #L2345"',
+                            },
+                        },
+                        {
+                            name: 'verificationDate',
+                            type: 'date',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.verifiedByThirdParty,
+                            },
+                        },
+                        {
+                            name: 'verificationReport',
+                            type: 'upload',
+                            relationTo: 'media',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.verifiedByThirdParty,
+                            },
+                        },
+                    ],
+                },
+                {
+                    name: 'expertReview',
+                    type: 'group',
+                    label: 'Expert Sign-off',
+                    admin: {
+                        description: 'REQUIRED for AVOID verdicts',
+                    },
+                    fields: [
+                        {
+                            name: 'reviewerName',
+                            type: 'text',
+                            admin: {
+                                placeholder: 'Full name of reviewing scientist',
+                            },
+                        },
+                        {
+                            name: 'reviewerCredentials',
+                            type: 'text',
+                            admin: {
+                                placeholder: 'e.g., "Ph.D. Analytical Chemistry, 15 years GC/MS experience"',
+                            },
+                        },
+                        {
+                            name: 'reviewDate',
+                            type: 'date',
+                        },
+                        {
+                            name: 'reviewNotes',
+                            type: 'textarea',
+                            admin: {
+                                description: 'Expert assessment and methodology confirmation',
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+
+        // =============================================================
+        // === EDITORIAL INDEPENDENCE (Lanham Act Defense) ===
+        // Legal Framework: Prove separation of editorial and commercial
+        // =============================================================
+        {
+            type: 'collapsible',
+            label: '📰 Editorial Independence (Lanham Defense)',
+            admin: {
+                initCollapsed: true,
+                description: 'Documentation proving separation from commercial interests',
+            },
+            fields: [
+                {
+                    name: 'selectionRationale',
+                    type: 'textarea',
+                    label: 'Why Was This Product Selected for Testing?',
+                    admin: {
+                        description: 'REQUIRED for AVOID verdicts. Must be legitimate editorial reason.',
+                        placeholder: 'e.g., "High user request volume (47 requests in 30 days)", "Category gap - no sunscreens tested in 6 months", "Follow-up to FDA recall in category"',
+                    },
+                },
+                {
+                    name: 'selectionDate',
+                    type: 'date',
+                    label: 'Date Added to Testing Queue',
+                    admin: {
+                        description: 'Proves selection predates results',
+                    },
+                },
+                {
+                    name: 'affiliateStatusDisclosure',
+                    type: 'group',
+                    label: 'Affiliate Relationship Disclosure',
+                    fields: [
+                        {
+                            name: 'brandHasAffiliateRelationship',
+                            type: 'checkbox',
+                            label: 'This brand has affiliate relationship with TPR',
+                        },
+                        {
+                            name: 'affiliateStatusKnownAtSelection',
+                            type: 'checkbox',
+                            label: 'Affiliate status was known when product was selected',
+                            admin: {
+                                description: 'If YES, document why selection was still appropriate',
+                            },
+                        },
+                        {
+                            name: 'affiliateDisclosureNote',
+                            type: 'textarea',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.affiliateStatusKnownAtSelection,
+                                placeholder: 'Explain why testing proceeded despite affiliate relationship',
+                            },
+                        },
+                    ],
+                },
+                {
+                    name: 'editorialSignoff',
+                    type: 'group',
+                    label: 'Editorial Sign-off',
+                    fields: [
+                        {
+                            name: 'editorName',
+                            type: 'text',
+                        },
+                        {
+                            name: 'signoffDate',
+                            type: 'date',
+                        },
+                        {
+                            name: 'independenceConfirmed',
+                            type: 'checkbox',
+                            label: 'I confirm this verdict was made independently of commercial considerations',
+                        },
+                    ],
+                },
+            ],
+        },
+
+        // =============================================================
+        // === REPORT VERSIONS (Litigation Snapshots) ===
+        // Legal Framework Section 14.3: Immutable report history
+        // When sued, retrieve EXACT data user saw on a given date.
+        // =============================================================
+        {
+            name: 'reportVersions',
+            type: 'array',
+            label: 'Report Version History',
+            admin: {
+                readOnly: true,
+                description: 'Immutable history of published report versions for litigation defense',
+                initCollapsed: true,
+            },
+            fields: [
+                {
+                    name: 'versionNumber',
+                    type: 'number',
+                    required: true,
+                },
+                {
+                    name: 'publishedAt',
+                    type: 'date',
+                    required: true,
+                },
+                {
+                    name: 'snapshot',
+                    type: 'json',
+                    label: 'Full Report Snapshot',
+                    admin: {
+                        description: 'Complete JSON snapshot of report as displayed to users',
+                    },
+                },
+                {
+                    name: 'changeReason',
+                    type: 'text',
+                    label: 'Change Reason',
+                    admin: {
+                        description: 'Why this version was created (e.g., "Manufacturer dispute", "New test data")',
+                    },
+                },
+            ],
+        },
+
         // === CONFLICTS & GUARDRAILS ===
         {
             name: 'conflicts',
@@ -1109,6 +1752,7 @@ export const Products: CollectionConfig = {
         {
             name: 'freshnessStatus',
             type: 'select',
+            index: true, // Added for query performance - used in admin list filtering
             options: [
                 { label: '🟢 Fresh', value: 'fresh' },
                 { label: '🟡 Needs Review', value: 'needs_review' },
@@ -1515,6 +2159,166 @@ export const Products: CollectionConfig = {
                                 { label: 'No regulatory threshold', value: 'none' },
                             ],
                         },
+                        // ─── LOW-CONFIDENCE GATEKEEPER ───
+                        // If < 80%, detection should not be prominently displayed
+                        {
+                            name: 'matchProbability',
+                            type: 'number',
+                            min: 0,
+                            max: 100,
+                            admin: {
+                                description: 'NIST Library match probability (0-100%). ≥80% for primary display.',
+                            },
+                        },
+                        {
+                            name: 'displayMode',
+                            type: 'select',
+                            defaultValue: 'primary',
+                            options: [
+                                { label: 'Primary (≥80% confidence)', value: 'primary' },
+                                { label: 'Low Confidence (50-79%)', value: 'low_confidence' },
+                                { label: 'Hidden (<50%)', value: 'hidden' },
+                            ],
+                            admin: {
+                                description: 'Auto-set based on matchProbability. Controls UI visibility.',
+                            },
+                        },
+                        // ─── FRAGRANCE WHITELIST ───
+                        // Differentiates disclosed fragrance components from hidden contaminants
+                        {
+                            name: 'detectionType',
+                            type: 'select',
+                            defaultValue: 'standard',
+                            options: [
+                                { label: 'Standard Detection', value: 'standard' },
+                                { label: 'Fragrance Component (Disclosed)', value: 'fragrance_component' },
+                                { label: 'Hidden Contaminant (Unlisted)', value: 'hidden_contaminant' },
+                            ],
+                            admin: {
+                                description: 'Classification for legal display. Fragrance components use softer language.',
+                            },
+                        },
+                        // ─── DAUBERT DEFENSE: CONFIRMATION LEVEL ───
+                        // Critical for legal defensibility - determines what claims we can make
+                        {
+                            name: 'confirmationLevel',
+                            type: 'select',
+                            required: true,
+                            defaultValue: 'screening',
+                            options: [
+                                { label: '🔍 Screening Only (Library Match)', value: 'screening' },
+                                { label: '✅ Confirmed (Reference Standard)', value: 'confirmed' },
+                                { label: '📊 Quantified (Calibrated)', value: 'quantified' },
+                            ],
+                            admin: {
+                                description: 'CRITICAL: Screening cannot support AVOID verdicts. Must be confirmed or quantified.',
+                            },
+                        },
+                        {
+                            name: 'referenceStandard',
+                            type: 'group',
+                            label: 'Reference Standard Documentation',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.confirmationLevel !== 'screening',
+                                description: 'Required for confirmed/quantified detections',
+                            },
+                            fields: [
+                                {
+                                    name: 'standardName',
+                                    type: 'text',
+                                    admin: {
+                                        placeholder: 'e.g., "Styrene, ≥99%, Sigma-Aldrich"',
+                                    },
+                                },
+                                {
+                                    name: 'catalogNumber',
+                                    type: 'text',
+                                    admin: {
+                                        placeholder: 'e.g., "S4972-100ML"',
+                                    },
+                                },
+                                {
+                                    name: 'lotNumber',
+                                    type: 'text',
+                                },
+                                {
+                                    name: 'expirationDate',
+                                    type: 'date',
+                                },
+                                {
+                                    name: 'certificateOfAnalysis',
+                                    type: 'upload',
+                                    relationTo: 'media',
+                                    admin: {
+                                        description: 'Upload CoA from supplier',
+                                    },
+                                },
+                                {
+                                    name: 'retentionTimeMatch',
+                                    type: 'checkbox',
+                                    label: 'Retention Time Matches (±0.1 min)',
+                                },
+                                {
+                                    name: 'spectrumMatch',
+                                    type: 'checkbox',
+                                    label: 'Mass Spectrum Matches (≥3 ions, ±20% abundance)',
+                                },
+                            ],
+                        },
+                        {
+                            name: 'calibrationData',
+                            type: 'group',
+                            label: 'Calibration Data',
+                            admin: {
+                                condition: (data, siblingData) => siblingData?.confirmationLevel === 'quantified',
+                                description: 'Required for quantified detections',
+                            },
+                            fields: [
+                                {
+                                    name: 'calibrationDate',
+                                    type: 'date',
+                                },
+                                {
+                                    name: 'calibrationLevels',
+                                    type: 'number',
+                                    min: 5,
+                                    admin: {
+                                        description: 'Number of calibration points (minimum 5)',
+                                    },
+                                },
+                                {
+                                    name: 'rSquared',
+                                    type: 'number',
+                                    min: 0,
+                                    max: 1,
+                                    admin: {
+                                        description: 'Correlation coefficient (must be ≥0.995)',
+                                    },
+                                },
+                                {
+                                    name: 'limitOfDetection',
+                                    type: 'text',
+                                    admin: {
+                                        placeholder: 'e.g., "0.5 ppm"',
+                                    },
+                                },
+                                {
+                                    name: 'limitOfQuantification',
+                                    type: 'text',
+                                    admin: {
+                                        placeholder: 'e.g., "1.5 ppm"',
+                                    },
+                                },
+                                {
+                                    name: 'calibrationCurve',
+                                    type: 'upload',
+                                    relationTo: 'media',
+                                    admin: {
+                                        description: 'Screenshot or export of calibration curve',
+                                    },
+                                },
+                            ],
+                        },
                     ],
                 },
                 {
@@ -1776,4 +2580,6 @@ export const Products: CollectionConfig = {
         },
 
     ],
+    // Enable automatic createdAt and updatedAt timestamps
+    timestamps: true,
 }

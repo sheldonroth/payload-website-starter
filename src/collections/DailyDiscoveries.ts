@@ -1,17 +1,22 @@
 /**
  * Daily Discovery Collection
- * 
+ *
  * One shocking product reveal per day - same for all users.
  * Content rotates: exposed brands, hidden champions, ingredient deep dives.
  */
 
 import { CollectionConfig } from 'payload';
+import { createAuditLogHook, createAuditDeleteHook } from '../hooks/auditLog'
 
 export const DailyDiscoveries: CollectionConfig = {
     slug: 'daily-discoveries',
     labels: {
         singular: 'Daily Discovery',
         plural: 'Daily Discoveries',
+    },
+    hooks: {
+        afterChange: [createAuditLogHook('daily-discoveries')],
+        afterDelete: [createAuditDeleteHook('daily-discoveries')],
     },
     admin: {
         useAsTitle: 'title',

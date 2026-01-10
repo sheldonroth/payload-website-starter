@@ -453,23 +453,36 @@ export const referralAttributeHandler: PayloadHandler = async (req: PayloadReque
             }, { status: 400 })
         }
 
-        // Create the referral attribution
-        const referral = await req.payload.create({
-            collection: 'referrals',
-            data: {
-                referrerId: String(referrer.id),
-                referralCode: referralCode.toUpperCase(),
-                referredDeviceId,
-                status: 'pending',
-                source: source || 'mobile',
-            },
-        })
+        // Create the referral attribution with race condition protection
+        // Even if two requests pass the check above, the unique constraint will catch duplicates
+        try {
+            const referral = await req.payload.create({
+                collection: 'referrals',
+                data: {
+                    referrerId: String(referrer.id),
+                    referralCode: referralCode.toUpperCase(),
+                    referredDeviceId,
+                    status: 'pending',
+                    source: source || 'mobile',
+                },
+            })
 
-        return Response.json({
-            success: true,
-            referralId: referral.id,
-            message: 'Referral attributed successfully',
-        })
+            return Response.json({
+                success: true,
+                referralId: referral.id,
+                message: 'Referral attributed successfully',
+            })
+        } catch (createError: any) {
+            // Handle unique constraint violation (PostgreSQL error code 23505)
+            if (createError?.code === '23505' || createError?.message?.includes('unique constraint') || createError?.message?.includes('duplicate')) {
+                console.warn(`[Referral Attribute] Race condition caught - device ${referredDeviceId} already attributed`)
+                return Response.json({
+                    success: false,
+                    error: 'Device already attributed to a referral',
+                }, { status: 409 })
+            }
+            throw createError // Re-throw other errors
+        }
     } catch (error) {
         console.error('[Referral Attribute] Error:', error)
         return Response.json({
