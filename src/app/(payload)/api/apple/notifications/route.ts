@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt, { JwtHeader, SigningKeyCallback } from 'jsonwebtoken'
-// @ts-expect-error - jwks-rsa needs to be installed: npm install jwks-rsa
 import jwksClient from 'jwks-rsa'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
