@@ -80,6 +80,7 @@ import * as migration_20260110_050000_create_notification_engine from './2026011
 import * as migration_20260110_000000_add_legal_framework from './20260110_000000_add_legal_framework';
 import * as migration_20260110_100000_add_legal_enhancements from './20260110_100000_add_legal_enhancements';
 import * as migration_20260110_110000_audit_fixes from './20260110_110000_audit_fixes';
+import * as migration_20260112_000000_add_daubert_defense_fields from './20260112_000000_add_daubert_defense_fields';
 
 export const migrations = [
   {
@@ -486,6 +487,11 @@ export const migrations = [
     up: migration_20260110_110000_audit_fixes.up,
     down: migration_20260110_110000_audit_fixes.down,
     name: '20260110_110000_audit_fixes'
+  },
+  {
+    up: migration_20260112_000000_add_daubert_defense_fields.up,
+    down: migration_20260112_000000_add_daubert_defense_fields.down,
+    name: '20260112_000000_add_daubert_defense_fields'
   },
 ];
 

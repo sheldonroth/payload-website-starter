@@ -634,7 +634,7 @@ export const Products: CollectionConfig = {
                                             changeReason: justPublished ? 'Initial publication' : 'Content update',
                                         },
                                     ],
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 } as any,
                             })
                             console.log(`[Version Snapshot] Created v${nextVersion} for product ${doc.id}`)
@@ -1389,6 +1389,53 @@ export const Products: CollectionConfig = {
                     admin: {
                         description: 'ALL text from package: ingredients, warnings, allergens, fine print. Used for Fragrance Whitelist matching.',
                     },
+                },
+                // === EVIDENCE LOCKER (Chain of Custody) ===
+                {
+                    name: 'evidenceLocker',
+                    type: 'group',
+                    label: 'Evidence Locker (Audit Trail)',
+                    admin: {
+                        description: 'Secure storage for unboxing videos and raw lab reports',
+                    },
+                    fields: [
+                        {
+                            name: 'unboxingVideo',
+                            type: 'upload',
+                            relationTo: 'media',
+                            label: 'Unboxing/Sealing Video',
+                            admin: {
+                                description: 'Continuous video of purchase -> sealing box. REQUIRED for legal defense.',
+                            },
+                        },
+                        {
+                            name: 'labReportOriginal',
+                            type: 'upload',
+                            relationTo: 'media',
+                            label: 'Raw Lab Report (COA)',
+                            admin: {
+                                description: 'Original PDF from the lab. Do not edit.',
+                            },
+                        },
+                        {
+                            name: 'labReportHash',
+                            type: 'text',
+                            label: 'Lab Report Hash (SHA-256)',
+                            admin: {
+                                readOnly: true,
+                                description: 'Auto-generated hash of the COA file to prove immutability.',
+                            },
+                        },
+                        {
+                            name: 'labChainOfCustody',
+                            type: 'upload',
+                            relationTo: 'media',
+                            label: 'Lab Chain of Custody Doc',
+                            admin: {
+                                description: 'Signed document tracking sample from logistics to lab technician.',
+                            },
+                        },
+                    ],
                 },
                 // === ENHANCED CHAIN OF CUSTODY (Litigation Defense) ===
                 {

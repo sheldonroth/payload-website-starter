@@ -727,6 +727,27 @@ export interface Product {
    */
   fullPackageText?: string | null;
   /**
+   * Secure storage for unboxing videos and raw lab reports
+   */
+  evidenceLocker?: {
+    /**
+     * Continuous video of purchase -> sealing box. REQUIRED for legal defense.
+     */
+    unboxingVideo?: (number | null) | Media;
+    /**
+     * Original PDF from the lab. Do not edit.
+     */
+    labReportOriginal?: (number | null) | Media;
+    /**
+     * Auto-generated hash of the COA file to prove immutability.
+     */
+    labReportHash?: string | null;
+    /**
+     * Signed document tracking sample from logistics to lab technician.
+     */
+    labChainOfCustody?: (number | null) | Media;
+  };
+  /**
    * REQUIRED for AVOID verdicts. Must be authorized source to defeat counterfeit defense.
    */
   retailerType?: ('authorized_retailer' | 'manufacturer_direct' | 'pharmacy' | 'other') | null;
@@ -5823,6 +5844,14 @@ export interface ProductsSelect<T extends boolean = true> {
   expirationDate?: T;
   testDate?: T;
   fullPackageText?: T;
+  evidenceLocker?:
+    | T
+    | {
+        unboxingVideo?: T;
+        labReportOriginal?: T;
+        labReportHash?: T;
+        labChainOfCustody?: T;
+      };
   retailerType?: T;
   purchaseReceipt?: T;
   authenticityPhotos?:
