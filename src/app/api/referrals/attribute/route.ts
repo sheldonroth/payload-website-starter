@@ -54,12 +54,23 @@ export async function POST(request: NextRequest) {
 
         const referrerId = referrerLookup.docs[0].referrerId
 
-        // Prevent self-referral
-        const referredFingerprint = await payload.find({
-            collection: 'device-fingerprints',
-            where: { fingerprintHash: { equals: referredDeviceId } },
-            limit: 1,
-        })
+        // Run self-referral check and existing attribution check in parallel
+        const [referredFingerprint, existingAttribution] = await Promise.all([
+            // Prevent self-referral - check the referred device fingerprint
+            payload.find({
+                collection: 'device-fingerprints',
+                where: { fingerprintHash: { equals: referredDeviceId } },
+                limit: 1,
+            }),
+            // Check if this device was already referred
+            payload.find({
+                collection: 'referrals',
+                where: {
+                    referredDeviceId: { equals: referredDeviceId },
+                },
+                limit: 1,
+            }),
+        ])
 
         // Check if the referred device is the same as the referrer
         if (referredFingerprint.docs[0]?.fingerprintHash === referrerId) {
@@ -68,15 +79,6 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             )
         }
-
-        // Check if this device was already referred
-        const existingAttribution = await payload.find({
-            collection: 'referrals',
-            where: {
-                referredDeviceId: { equals: referredDeviceId },
-            },
-            limit: 1,
-        })
 
         if (existingAttribution.docs[0]) {
             return NextResponse.json({

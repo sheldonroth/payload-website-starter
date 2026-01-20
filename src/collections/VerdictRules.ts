@@ -62,7 +62,7 @@ export const VerdictRules: CollectionConfig = {
             name: 'ingredientVerdictCondition',
             type: 'select',
             options: [
-                { label: 'Any AVOID ingredient', value: 'avoid' },
+                { label: 'Any FLAGGED ingredient', value: 'flagged' },
                 { label: 'Any CAUTION ingredient', value: 'caution' },
                 { label: 'Only SAFE ingredients', value: 'safe_only' },
             ],
@@ -88,7 +88,7 @@ export const VerdictRules: CollectionConfig = {
             type: 'select',
             required: true,
             options: [
-                { label: '🚫 Set AVOID Verdict', value: 'set_avoid' },
+                { label: '⚠️ Set FLAGGED Verdict', value: 'set_flagged' },
                 { label: '⚠️ Set CAUTION Verdict', value: 'set_caution' },
                 { label: '✅ Set RECOMMEND Verdict', value: 'set_recommend' },
                 { label: '🛑 Block Publishing', value: 'block_publish' },

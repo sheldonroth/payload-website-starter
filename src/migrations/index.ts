@@ -81,6 +81,8 @@ import * as migration_20260110_000000_add_legal_framework from './20260110_00000
 import * as migration_20260110_100000_add_legal_enhancements from './20260110_100000_add_legal_enhancements';
 import * as migration_20260110_110000_audit_fixes from './20260110_110000_audit_fixes';
 import * as migration_20260112_000000_add_daubert_defense_fields from './20260112_000000_add_daubert_defense_fields';
+import * as migration_20260112_010000_fix_locked_docs_feature_flag_cache from './20260112_010000_fix_locked_docs_feature_flag_cache';
+import * as migration_20260119_000000_legal_verdict_avoid_to_flagged from './20260119_000000_legal_verdict_avoid_to_flagged';
 
 export const migrations = [
   {
@@ -493,5 +495,16 @@ export const migrations = [
     down: migration_20260112_000000_add_daubert_defense_fields.down,
     name: '20260112_000000_add_daubert_defense_fields'
   },
+  {
+    up: migration_20260112_010000_fix_locked_docs_feature_flag_cache.up,
+    down: migration_20260112_010000_fix_locked_docs_feature_flag_cache.down,
+    name: '20260112_010000_fix_locked_docs_feature_flag_cache'
+  },
+  {
+    up: migration_20260119_000000_legal_verdict_avoid_to_flagged.up,
+    down: migration_20260119_000000_legal_verdict_avoid_to_flagged.down,
+    name: '20260119_000000_legal_verdict_avoid_to_flagged'
+  },
 ];
+
 

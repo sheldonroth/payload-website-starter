@@ -131,9 +131,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
-    const payload = await getPayload({ config })
-    const headersList = await headers()
-
+    // Parallelize independent calls
+    const [payload, headersList] = await Promise.all([
+      getPayload({ config }),
+      headers(),
+    ])
     const { user } = await payload.auth({ headers: headersList })
 
     if (!user) {

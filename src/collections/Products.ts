@@ -69,13 +69,13 @@ const premiumFieldAccess: FieldAccess = ({ req }) => {
 
 /**
  * Verdict-based field access control (Liability Shield).
- * For AVOID products, sensitive lab data is restricted to:
+ * For FLAGGED products, sensitive lab data is restricted to:
  * - CMS users (admin/editor)
  * - Premium users (member, premium subscriber)
  * - Requests with valid API key from trusted frontend
  *
  * This protects the company from liability by not exposing
- * detailed ingredient/testing data for products marked as AVOID.
+ * detailed ingredient/testing data for products marked as FLAGGED.
  */
 const verdictBasedFieldAccess: FieldAccess = ({ doc, req }) => {
     // CMS users (admin/editor) always see everything
@@ -91,10 +91,10 @@ const verdictBasedFieldAccess: FieldAccess = ({ doc, req }) => {
         return true
     }
 
-    // Non-AVOID products are visible to all
-    if (doc?.verdict !== 'avoid') return true
+    // Non-FLAGGED products are visible to all
+    if (doc?.verdict !== 'flagged') return true
 
-    // For AVOID products, only premium users can see sensitive fields
+    // For FLAGGED products, only premium users can see sensitive fields
     return isPremiumUser(req.user)
 }
 
@@ -247,10 +247,10 @@ export const Products: CollectionConfig = {
 
             // ============================================
             // HOOK 6.5: AUTO-FLAG RESTRICTED LAB DATA
-            // When verdict becomes AVOID, auto-set the restricted flag
+            // When verdict becomes FLAGGED, auto-set the restricted flag
             // ============================================
             async ({ data, req, originalDoc }) => {
-                const justBecameAvoid = data?.verdict === 'avoid' && originalDoc?.verdict !== 'avoid'
+                const justBecameAvoid = data?.verdict === 'flagged' && originalDoc?.verdict !== 'flagged'
 
                 if (justBecameAvoid) {
                     data.hasRestrictedLabData = true
@@ -264,7 +264,7 @@ export const Products: CollectionConfig = {
                         targetName: data.name,
                         metadata: {
                             previousVerdict: originalDoc?.verdict,
-                            newVerdict: 'avoid',
+                            newVerdict: 'flagged',
                             autoFlaggedRestrictedLabData: true,
                             shieldedFields: ['fullReview', 'testingInfo'],
                         },
@@ -272,8 +272,8 @@ export const Products: CollectionConfig = {
                     })
                 }
 
-                // Clear flag if verdict is no longer AVOID
-                if (data?.verdict !== 'avoid' && originalDoc?.hasRestrictedLabData) {
+                // Clear flag if verdict is no longer FLAGGED
+                if (data?.verdict !== 'flagged' && originalDoc?.hasRestrictedLabData) {
                     data.hasRestrictedLabData = false
                 }
 
@@ -453,19 +453,19 @@ export const Products: CollectionConfig = {
 
             // ============================================
             // HOOK 9.7: DAUBERT DEFENSE VALIDATION
-            // Prevent AVOID verdicts without proper scientific documentation
+            // Prevent FLAGGED verdicts without proper scientific documentation
             // Legal Framework: Ensure defensibility against junk science attacks
             // ============================================
             async ({ data, req, originalDoc }) => {
-                // Only validate when publishing AVOID verdicts
-                if (data?.status !== 'published' || data?.verdict !== 'avoid') {
+                // Only validate when publishing FLAGGED verdicts
+                if (data?.status !== 'published' || data?.verdict !== 'flagged') {
                     return data
                 }
 
                 const errors: string[] = []
 
                 // === DETECTION CONFIRMATION LEVEL ===
-                // AVOID verdicts cannot rely on screening-only detections
+                // FLAGGED verdicts cannot rely on screening-only detections
                 const detections = data.detectionResults?.detections || []
                 const primaryScreeningOnly = detections.filter(
                     (d: { displayMode?: string; confirmationLevel?: string }) =>
@@ -478,7 +478,7 @@ export const Products: CollectionConfig = {
                         .join(', ')
                     errors.push(
                         `DAUBERT DEFENSE: ${primaryScreeningOnly.length} primary detection(s) are screening-only (${compoundNames}). ` +
-                        `AVOID verdicts require confirmed or quantified detections. Update confirmationLevel for each detection.`
+                        `FLAGGED verdicts require confirmed or quantified detections. Update confirmationLevel for each detection.`
                     )
                 }
 
@@ -486,14 +486,14 @@ export const Products: CollectionConfig = {
                 // Sample acquisition fields (in Sample Information collapsible)
                 if (!data.retailerType) {
                     errors.push(
-                        'CHAIN OF CUSTODY: Retailer type required for AVOID verdicts. ' +
+                        'CHAIN OF CUSTODY: Retailer type required for FLAGGED verdicts. ' +
                         'Set in "Sample Information" → "Retailer Type".'
                     )
                 }
 
                 if (!data.purchaseReceipt && !data.sampleInfo?.photoOfPurchase) {
                     errors.push(
-                        'CHAIN OF CUSTODY: Purchase receipt required for AVOID verdicts. ' +
+                        'CHAIN OF CUSTODY: Purchase receipt required for FLAGGED verdicts. ' +
                         'Upload in "Sample Information" → "Purchase Receipt" or "Photo of Purchase Receipt".'
                     )
                 }
@@ -502,7 +502,7 @@ export const Products: CollectionConfig = {
                 const splitSampleRetained = data.splitSample?.retained
                 if (splitSampleRetained === false) {
                     errors.push(
-                        'CHAIN OF CUSTODY: Split sample must be retained for AVOID verdicts. ' +
+                        'CHAIN OF CUSTODY: Split sample must be retained for FLAGGED verdicts. ' +
                         'Enable "Split Sample Retained" in "Sample Information".'
                     )
                 }
@@ -510,7 +510,7 @@ export const Products: CollectionConfig = {
                 // === EDITORIAL INDEPENDENCE ===
                 if (!data.selectionRationale) {
                     errors.push(
-                        'LANHAM DEFENSE: Selection rationale required for AVOID verdicts. ' +
+                        'LANHAM DEFENSE: Selection rationale required for FLAGGED verdicts. ' +
                         'Document why this product was selected in "Editorial Independence".'
                     )
                 }
@@ -523,7 +523,7 @@ export const Products: CollectionConfig = {
 
                 if (!hasMethodValidation && !hasExpertReview && !hasThirdPartyVerification) {
                     errors.push(
-                        'DAUBERT DEFENSE: AVOID verdicts require at least ONE of: ' +
+                        'DAUBERT DEFENSE: FLAGGED verdicts require at least ONE of: ' +
                         '(1) Method Validation Package uploaded, ' +
                         '(2) Expert Review sign-off, or ' +
                         '(3) Third-Party Lab Verification. ' +
@@ -541,7 +541,7 @@ export const Products: CollectionConfig = {
                         targetId: originalDoc?.id,
                         targetName: data.name,
                         metadata: {
-                            verdict: 'avoid',
+                            verdict: 'flagged',
                             validationErrors: errors,
                             blockedAt: new Date().toISOString(),
                         },
@@ -550,7 +550,7 @@ export const Products: CollectionConfig = {
 
                     throw new Error(
                         `⚠️ LEGAL DEFENSE REQUIREMENTS NOT MET\n\n` +
-                        `Cannot publish AVOID verdict without proper documentation:\n\n` +
+                        `Cannot publish FLAGGED verdict without proper documentation:\n\n` +
                         errors.map((e, i) => `${i + 1}. ${e}`).join('\n\n') +
                         `\n\n📋 See docs/DAUBERT_DEFENSE_PLAYBOOK.md for guidance.`
                     )
@@ -757,16 +757,16 @@ export const Products: CollectionConfig = {
 
             // ============================================
             // HOOK: AUTO-SUGGEST SAFE ALTERNATIVES
-            // Populate comparedWith for AVOID products
+            // Populate comparedWith for FLAGGED products
             // ============================================
             async ({ doc, previousDoc, req }) => {
                 // Only process if:
-                // 1. Product just became 'avoid' verdict
+                // 1. Product just became 'flagged' verdict
                 // 2. Product just became 'published'
                 // 3. comparedWith is empty
-                const justBecameAvoid = doc.verdict === 'avoid' && previousDoc?.verdict !== 'avoid'
+                const justBecameAvoid = doc.verdict === 'flagged' && previousDoc?.verdict !== 'flagged'
                 const justPublished = doc.status === 'published' && previousDoc?.status !== 'published'
-                const isPublishedAvoid = doc.status === 'published' && doc.verdict === 'avoid'
+                const isPublishedAvoid = doc.status === 'published' && doc.verdict === 'flagged'
                 const hasNoAlternatives = !doc.comparedWith || doc.comparedWith.length === 0
 
                 if ((justBecameAvoid || justPublished) && isPublishedAvoid && hasNoAlternatives) {
@@ -1073,7 +1073,7 @@ export const Products: CollectionConfig = {
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
                 { label: '⚠️ CAUTION', value: 'caution' },
-                { label: '🚫 AVOID', value: 'avoid' },
+                { label: '🚫 FLAGGED', value: 'flagged' },
             ],
             admin: {
                 position: 'sidebar',
@@ -1094,7 +1094,7 @@ export const Products: CollectionConfig = {
             options: [
                 { label: '✅ RECOMMEND', value: 'recommend' },
                 { label: '⚠️ CAUTION', value: 'caution' },
-                { label: '🚫 AVOID', value: 'avoid' },
+                { label: '🚫 FLAGGED', value: 'flagged' },
             ],
             admin: {
                 position: 'sidebar',
@@ -1449,7 +1449,7 @@ export const Products: CollectionConfig = {
                         { label: 'Other (Document Reason)', value: 'other' },
                     ],
                     admin: {
-                        description: 'REQUIRED for AVOID verdicts. Must be authorized source to defeat counterfeit defense.',
+                        description: 'REQUIRED for FLAGGED verdicts. Must be authorized source to defeat counterfeit defense.',
                     },
                 },
                 {
@@ -1458,7 +1458,7 @@ export const Products: CollectionConfig = {
                     relationTo: 'media',
                     label: 'Purchase Receipt',
                     admin: {
-                        description: 'Photo/scan of purchase receipt. REQUIRED for AVOID verdicts.',
+                        description: 'Photo/scan of purchase receipt. REQUIRED for FLAGGED verdicts.',
                     },
                 },
                 {
@@ -1466,7 +1466,7 @@ export const Products: CollectionConfig = {
                     type: 'array',
                     label: 'Authenticity Documentation',
                     admin: {
-                        description: 'Photos of security seals, batch codes, packaging. Min 2 for AVOID verdicts.',
+                        description: 'Photos of security seals, batch codes, packaging. Min 2 for FLAGGED verdicts.',
                     },
                     fields: [
                         {
@@ -1520,7 +1520,7 @@ export const Products: CollectionConfig = {
                     type: 'group',
                     label: 'Split Sample Retention',
                     admin: {
-                        description: 'REQUIRED for AVOID verdicts - enables independent verification',
+                        description: 'REQUIRED for FLAGGED verdicts - enables independent verification',
                     },
                     fields: [
                         {
@@ -1577,7 +1577,7 @@ export const Products: CollectionConfig = {
                     relationTo: 'media',
                     label: 'Method Validation Package',
                     admin: {
-                        description: 'SOP, LOD studies, precision data. REQUIRED for AVOID verdicts.',
+                        description: 'SOP, LOD studies, precision data. REQUIRED for FLAGGED verdicts.',
                     },
                 },
                 {
@@ -1628,7 +1628,7 @@ export const Products: CollectionConfig = {
                     type: 'group',
                     label: 'Expert Sign-off',
                     admin: {
-                        description: 'REQUIRED for AVOID verdicts',
+                        description: 'REQUIRED for FLAGGED verdicts',
                     },
                     fields: [
                         {
@@ -1678,7 +1678,7 @@ export const Products: CollectionConfig = {
                     type: 'textarea',
                     label: 'Why Was This Product Selected for Testing?',
                     admin: {
-                        description: 'REQUIRED for AVOID verdicts. Must be legitimate editorial reason.',
+                        description: 'REQUIRED for FLAGGED verdicts. Must be legitimate editorial reason.',
                         placeholder: 'e.g., "High user request volume (47 requests in 30 days)", "Category gap - no sunscreens tested in 6 months", "Follow-up to FDA recall in category"',
                     },
                 },
@@ -1839,8 +1839,8 @@ export const Products: CollectionConfig = {
             admin: {
                 position: 'sidebar',
                 readOnly: true,
-                description: 'Auto-set when verdict is AVOID. Lab data hidden from non-premium users.',
-                condition: (data) => data?.verdict === 'avoid',
+                description: 'Auto-set when verdict is FLAGGED. Lab data hidden from non-premium users.',
+                condition: (data) => data?.verdict === 'flagged',
             },
         },
 
@@ -1911,7 +1911,7 @@ export const Products: CollectionConfig = {
             type: 'richText',
             label: 'Full Review',
             access: {
-                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
+                read: verdictBasedFieldAccess, // Hidden for FLAGGED products to non-premium users
             },
         },
 
@@ -1975,7 +1975,7 @@ export const Products: CollectionConfig = {
             type: 'group',
             label: 'Testing Information',
             access: {
-                read: verdictBasedFieldAccess, // Hidden for AVOID products to non-premium users
+                read: verdictBasedFieldAccess, // Hidden for FLAGGED products to non-premium users
             },
             fields: [
                 {
@@ -2258,7 +2258,7 @@ export const Products: CollectionConfig = {
                                 { label: '📊 Quantified (Calibrated)', value: 'quantified' },
                             ],
                             admin: {
-                                description: 'CRITICAL: Screening cannot support AVOID verdicts. Must be confirmed or quantified.',
+                                description: 'CRITICAL: Screening cannot support FLAGGED verdicts. Must be confirmed or quantified.',
                             },
                         },
                         {
