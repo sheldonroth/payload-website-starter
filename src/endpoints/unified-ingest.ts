@@ -1,5 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { createAuditLog } from '../collections/AuditLog'
+import { getInternalBaseUrl } from '../utilities/internal-base-url'
 
 /**
  * Unified Ingestion Gateway
@@ -202,6 +203,8 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
             metadata: { inputType, autoCreate },
         })
 
+        const internalBaseUrl = getInternalBaseUrl(req)
+
         // Route to appropriate handler based on input type
         switch (inputType) {
             case 'youtube': {
@@ -215,7 +218,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
                 }
 
                 // Call video analyze endpoint internally
-                const videoResponse = await fetch(`${req.headers.get('origin') || 'http://localhost:3000'}/api/video/analyze`, {
+                const videoResponse = await fetch(`${internalBaseUrl}/api/video/analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -266,7 +269,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
                 }
 
                 // We have a valid channel ID (UC...), call the channel analyze endpoint
-                const channelResponse = await fetch(`${req.headers.get('origin') || 'http://localhost:3000'}/api/channel/analyze`, {
+                const channelResponse = await fetch(`${internalBaseUrl}/api/channel/analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -295,7 +298,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
 
             case 'tiktok': {
                 // Call TikTok analyze endpoint internally
-                const tiktokResponse = await fetch(`${req.headers.get('origin') || 'http://localhost:3000'}/api/tiktok/analyze`, {
+                const tiktokResponse = await fetch(`${internalBaseUrl}/api/tiktok/analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -322,7 +325,7 @@ export const unifiedIngestHandler: PayloadHandler = async (req: PayloadRequest) 
             case 'amazon':
             case 'product_page': {
                 // Call magic-url endpoint internally
-                const magicResponse = await fetch(`${req.headers.get('origin') || 'http://localhost:3000'}/api/magic-url`, {
+                const magicResponse = await fetch(`${internalBaseUrl}/api/magic-url`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

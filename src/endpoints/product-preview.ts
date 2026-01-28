@@ -1,5 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { classifyCategory } from '../utilities/ai-category'
+import { getInternalBaseUrl } from '../utilities/internal-base-url'
 
 /**
  * Product Preview Endpoint
@@ -145,7 +146,7 @@ export const productPreviewHandler: PayloadHandler = async (req: PayloadRequest)
         }
 
         const payload = req.payload
-        const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
+        const baseUrl = getInternalBaseUrl(req)
 
         // Call unified-ingest with autoCreate=false for preview mode
         const ingestResponse = await fetch(`${baseUrl}/api/ingest`, {
