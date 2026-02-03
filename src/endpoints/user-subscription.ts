@@ -129,7 +129,7 @@ export const userSubscriptionHandler: PayloadHandler = async (req: PayloadReques
             subscriptionStatus: user.subscriptionStatus || 'free',
             memberState: user.memberState || 'virgin',
             trialEndDate: user.trialEndDate,
-            isPremium: user.subscriptionStatus === 'premium' || user.memberState === 'member',
+            isPremium: user.subscriptionStatus === 'premium' || user.subscriptionStatus === 'past_due' || user.subscriptionStatus === 'unpaid' || user.memberState === 'member',
             hasStripe: !!user.stripeCustomerId,
             hasRevenueCat: !!user.revenuecatUserId,
         })
