@@ -402,6 +402,42 @@ export const Users: CollectionConfig = {
         readOnly: true,
       },
     },
+    {
+      name: 'subscriptionStore',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Subscription store/provider (APP_STORE / PLAY_STORE / STRIPE) for cancellation routing + notices',
+      },
+    },
+    {
+      name: 'subscriptionProductId',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Billing product identifier from the store/provider (used to infer monthly vs annual)',
+      },
+    },
+    {
+      name: 'subscriptionCurrency',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Last-seen currency code for the subscription (e.g., USD)',
+      },
+    },
+    {
+      name: 'subscriptionPrice',
+      type: 'number',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Last-seen subscription price in subscriptionCurrency (used for renewal notices)',
+      },
+    },
     // ============================================
     // OAuth Provider IDs
     // ============================================

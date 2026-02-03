@@ -637,7 +637,7 @@ export interface Product {
   /**
    * Final verdict on this product
    */
-  verdict: 'recommend' | 'caution' | 'avoid';
+  verdict: 'recommend' | 'caution' | 'flagged';
   /**
    * Brief explanation of why this verdict was given
    */
@@ -645,7 +645,7 @@ export interface Product {
   /**
    * System-calculated from ingredients + rules
    */
-  autoVerdict?: ('recommend' | 'caution' | 'avoid') | null;
+  autoVerdict?: ('recommend' | 'caution' | 'flagged') | null;
   /**
    * Enable to manually set verdict different from auto-calculated
    */
@@ -748,15 +748,15 @@ export interface Product {
     labChainOfCustody?: (number | null) | Media;
   };
   /**
-   * REQUIRED for AVOID verdicts. Must be authorized source to defeat counterfeit defense.
+   * REQUIRED for FLAGGED verdicts. Must be authorized source to defeat counterfeit defense.
    */
   retailerType?: ('authorized_retailer' | 'manufacturer_direct' | 'pharmacy' | 'other') | null;
   /**
-   * Photo/scan of purchase receipt. REQUIRED for AVOID verdicts.
+   * Photo/scan of purchase receipt. REQUIRED for FLAGGED verdicts.
    */
   purchaseReceipt?: (number | null) | Media;
   /**
-   * Photos of security seals, batch codes, packaging. Min 2 for AVOID verdicts.
+   * Photos of security seals, batch codes, packaging. Min 2 for FLAGGED verdicts.
    */
   authenticityPhotos?:
     | {
@@ -777,7 +777,7 @@ export interface Product {
     daysInStorage?: number | null;
   };
   /**
-   * REQUIRED for AVOID verdicts - enables independent verification
+   * REQUIRED for FLAGGED verdicts - enables independent verification
    */
   splitSample?: {
     retained?: boolean | null;
@@ -789,7 +789,7 @@ export interface Product {
     availableForVerification?: boolean | null;
   };
   /**
-   * SOP, LOD studies, precision data. REQUIRED for AVOID verdicts.
+   * SOP, LOD studies, precision data. REQUIRED for FLAGGED verdicts.
    */
   methodValidationPackage?: (number | null) | Media;
   externalLabVerification?: {
@@ -800,7 +800,7 @@ export interface Product {
     verificationReport?: (number | null) | Media;
   };
   /**
-   * REQUIRED for AVOID verdicts
+   * REQUIRED for FLAGGED verdicts
    */
   expertReview?: {
     reviewerName?: string | null;
@@ -812,7 +812,7 @@ export interface Product {
     reviewNotes?: string | null;
   };
   /**
-   * REQUIRED for AVOID verdicts. Must be legitimate editorial reason.
+   * REQUIRED for FLAGGED verdicts. Must be legitimate editorial reason.
    */
   selectionRationale?: string | null;
   /**
@@ -876,7 +876,7 @@ export interface Product {
   freshnessStatus?: ('fresh' | 'needs_review' | 'stale') | null;
   status?: ('ai_draft' | 'draft' | 'testing' | 'writing' | 'review' | 'published') | null;
   /**
-   * Auto-set when verdict is AVOID. Lab data hidden from non-premium users.
+   * Auto-set when verdict is FLAGGED. Lab data hidden from non-premium users.
    */
   hasRestrictedLabData?: boolean | null;
   priceRange?: ('$' | '$$' | '$$$' | '$$$$') | null;
@@ -1018,7 +1018,7 @@ export interface Product {
            */
           detectionType?: ('standard' | 'fragrance_component' | 'hidden_contaminant') | null;
           /**
-           * CRITICAL: Screening cannot support AVOID verdicts. Must be confirmed or quantified.
+           * CRITICAL: Screening cannot support FLAGGED verdicts. Must be confirmed or quantified.
            */
           confirmationLevel: 'screening' | 'confirmed' | 'quantified';
           /**
@@ -1184,7 +1184,29 @@ export interface User {
    * Legacy admin flag - use role field instead
    */
   isAdmin?: boolean | null;
-  subscriptionStatus?: ('free' | 'trial' | 'premium' | 'cancelled') | null;
+  subscriptionStatus?: ('free' | 'trial' | 'premium' | 'past_due' | 'unpaid' | 'cancelled') | null;
+  /**
+   * Billing cadence for web (Stripe) subscriptions
+   */
+  subscriptionPlan?: ('monthly' | 'annual') | null;
+  /**
+   * Current period end (renewal date for active subscriptions)
+   */
+  subscriptionEndDate?: string | null;
+  /**
+   * If true, subscription will not renew at period end (Stripe cancel_at_period_end)
+   */
+  cancelAtPeriodEnd?: boolean | null;
+  /**
+   * Tracks annual renewal reminder email sends (compliance)
+   */
+  annualRenewalReminder?: {
+    lastSentAt?: string | null;
+    /**
+     * Period end the reminder was sent for (prevents duplicate sends)
+     */
+    forPeriodEnd?: string | null;
+  };
   /**
    * When the 7-day trial started
    */
@@ -1224,6 +1246,26 @@ export interface User {
     /**
      * User opted in to receive marketing emails
      */
+    marketingOptIn?: boolean | null;
+  };
+  /**
+   * Dual-consent clickwrap log (ToS + Liability/Forum Selection) for legal compliance
+   */
+  consentLog?: {
+    termsOfService?: {
+      accepted?: boolean | null;
+      timestamp?: string | null;
+      version?: string | null;
+    };
+    liabilityAndForum?: {
+      accepted?: boolean | null;
+      timestamp?: string | null;
+      version?: string | null;
+      jurisdiction?: string | null;
+    };
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    recordedAt?: string | null;
     marketingOptIn?: boolean | null;
   };
   /**
@@ -2426,7 +2468,7 @@ export interface VerdictRule {
   /**
    * Match based on ingredient verdicts
    */
-  ingredientVerdictCondition?: ('avoid' | 'caution' | 'safe_only') | null;
+  ingredientVerdictCondition?: ('flagged' | 'caution' | 'safe_only') | null;
   /**
    * Apply only to these categories
    */
@@ -2434,7 +2476,7 @@ export interface VerdictRule {
   /**
    * What happens when rule matches
    */
-  action: 'set_avoid' | 'set_caution' | 'set_recommend' | 'block_publish' | 'warn_only';
+  action: 'set_flagged' | 'set_caution' | 'set_recommend' | 'block_publish' | 'warn_only';
   /**
    * Message shown when rule triggers
    */
@@ -6388,6 +6430,15 @@ export interface UsersSelect<T extends boolean = true> {
   role?: T;
   isAdmin?: T;
   subscriptionStatus?: T;
+  subscriptionPlan?: T;
+  subscriptionEndDate?: T;
+  cancelAtPeriodEnd?: T;
+  annualRenewalReminder?:
+    | T
+    | {
+        lastSentAt?: T;
+        forPeriodEnd?: T;
+      };
   trialStartDate?: T;
   trialEndDate?: T;
   productViewsThisMonth?: T;
@@ -6402,6 +6453,29 @@ export interface UsersSelect<T extends boolean = true> {
     | {
         dataProcessingConsent?: T;
         consentDate?: T;
+        marketingOptIn?: T;
+      };
+  consentLog?:
+    | T
+    | {
+        termsOfService?:
+          | T
+          | {
+              accepted?: T;
+              timestamp?: T;
+              version?: T;
+            };
+        liabilityAndForum?:
+          | T
+          | {
+              accepted?: T;
+              timestamp?: T;
+              version?: T;
+              jurisdiction?: T;
+            };
+        ipAddress?: T;
+        userAgent?: T;
+        recordedAt?: T;
         marketingOptIn?: T;
       };
   savedProductIds?: T;

@@ -83,6 +83,7 @@ import * as migration_20260110_110000_audit_fixes from './20260110_110000_audit_
 import * as migration_20260112_000000_add_daubert_defense_fields from './20260112_000000_add_daubert_defense_fields';
 import * as migration_20260112_010000_fix_locked_docs_feature_flag_cache from './20260112_010000_fix_locked_docs_feature_flag_cache';
 import * as migration_20260119_000000_legal_verdict_avoid_to_flagged from './20260119_000000_legal_verdict_avoid_to_flagged';
+import * as migration_20260203_150000_add_subscription_renewal_notice_fields from './20260203_150000_add_subscription_renewal_notice_fields';
 
 export const migrations = [
   {
@@ -504,6 +505,11 @@ export const migrations = [
     up: migration_20260119_000000_legal_verdict_avoid_to_flagged.up,
     down: migration_20260119_000000_legal_verdict_avoid_to_flagged.down,
     name: '20260119_000000_legal_verdict_avoid_to_flagged'
+  },
+  {
+    up: migration_20260203_150000_add_subscription_renewal_notice_fields.up,
+    down: migration_20260203_150000_add_subscription_renewal_notice_fields.down,
+    name: '20260203_150000_add_subscription_renewal_notice_fields'
   },
 ];
 
