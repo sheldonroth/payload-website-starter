@@ -117,7 +117,15 @@ export const userSubscriptionHandler: PayloadHandler = async (req: PayloadReques
             memberState?: string
             trialEndDate?: string
             stripeCustomerId?: string
+            stripeSubscriptionId?: string
             revenuecatUserId?: string
+            subscriptionPlan?: string
+            subscriptionEndDate?: string
+            cancelAtPeriodEnd?: boolean
+            subscriptionStore?: string
+            subscriptionProductId?: string
+            subscriptionCurrency?: string
+            subscriptionPrice?: number
         }
 
         // Return subscription info
@@ -129,8 +137,15 @@ export const userSubscriptionHandler: PayloadHandler = async (req: PayloadReques
             subscriptionStatus: user.subscriptionStatus || 'free',
             memberState: user.memberState || 'virgin',
             trialEndDate: user.trialEndDate,
-            isPremium: user.subscriptionStatus === 'premium' || user.memberState === 'member',
-            hasStripe: !!user.stripeCustomerId,
+            subscriptionPlan: user.subscriptionPlan || null,
+            subscriptionEndDate: user.subscriptionEndDate || null,
+            cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? null,
+            subscriptionStore: user.subscriptionStore || null,
+            subscriptionProductId: user.subscriptionProductId || null,
+            subscriptionCurrency: user.subscriptionCurrency || null,
+            subscriptionPrice: user.subscriptionPrice ?? null,
+            isPremium: user.subscriptionStatus === 'premium' || user.subscriptionStatus === 'past_due' || user.subscriptionStatus === 'unpaid' || user.memberState === 'member',
+            hasStripe: !!user.stripeCustomerId || !!user.stripeSubscriptionId,
             hasRevenueCat: !!user.revenuecatUserId,
         })
     } catch (error) {

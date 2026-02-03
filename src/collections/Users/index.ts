@@ -276,11 +276,67 @@ export const Users: CollectionConfig = {
         { label: 'Free', value: 'free' },
         { label: 'Trial', value: 'trial' },
         { label: 'Premium', value: 'premium' },
+        { label: 'Past Due', value: 'past_due' },
+        { label: 'Unpaid', value: 'unpaid' },
         { label: 'Cancelled', value: 'cancelled' },
       ],
       admin: {
         position: 'sidebar',
       },
+    },
+    {
+      name: 'subscriptionPlan',
+      type: 'select',
+      options: [
+        { label: 'Monthly', value: 'monthly' },
+        { label: 'Annual', value: 'annual' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Billing cadence for web (Stripe) subscriptions',
+      },
+    },
+    {
+      name: 'subscriptionEndDate',
+      type: 'date',
+      admin: {
+        position: 'sidebar',
+        description: 'Current period end (renewal date for active subscriptions)',
+      },
+    },
+    {
+      name: 'cancelAtPeriodEnd',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: 'If true, subscription will not renew at period end (Stripe cancel_at_period_end)',
+      },
+    },
+    {
+      name: 'annualRenewalReminder',
+      type: 'group',
+      admin: {
+        position: 'sidebar',
+        description: 'Tracks annual renewal reminder email sends (compliance)',
+      },
+      fields: [
+        {
+          name: 'lastSentAt',
+          type: 'date',
+          admin: {
+            readOnly: true,
+          },
+        },
+        {
+          name: 'forPeriodEnd',
+          type: 'date',
+          admin: {
+            readOnly: true,
+            description: 'Period end the reminder was sent for (prevents duplicate sends)',
+          },
+        },
+      ],
     },
     {
       name: 'trialStartDate',
@@ -346,6 +402,42 @@ export const Users: CollectionConfig = {
         readOnly: true,
       },
     },
+    {
+      name: 'subscriptionStore',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Subscription store/provider (APP_STORE / PLAY_STORE / STRIPE) for cancellation routing + notices',
+      },
+    },
+    {
+      name: 'subscriptionProductId',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Billing product identifier from the store/provider (used to infer monthly vs annual)',
+      },
+    },
+    {
+      name: 'subscriptionCurrency',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Last-seen currency code for the subscription (e.g., USD)',
+      },
+    },
+    {
+      name: 'subscriptionPrice',
+      type: 'number',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Last-seen subscription price in subscriptionCurrency (used for renewal notices)',
+      },
+    },
     // ============================================
     // OAuth Provider IDs
     // ============================================
@@ -401,6 +493,48 @@ export const Users: CollectionConfig = {
           admin: {
             description: 'User opted in to receive marketing emails',
           },
+        },
+      ],
+    },
+    {
+      name: 'consentLog',
+      type: 'group',
+      admin: {
+        position: 'sidebar',
+        description: 'Dual-consent clickwrap log (ToS + Liability/Forum Selection) for legal compliance',
+      },
+      fields: [
+        {
+          name: 'termsOfService',
+          type: 'group',
+          fields: [
+            { name: 'accepted', type: 'checkbox', defaultValue: false },
+            { name: 'timestamp', type: 'date' },
+            { name: 'version', type: 'text' },
+          ],
+        },
+        {
+          name: 'liabilityAndForum',
+          type: 'group',
+          fields: [
+            { name: 'accepted', type: 'checkbox', defaultValue: false },
+            { name: 'timestamp', type: 'date' },
+            { name: 'version', type: 'text' },
+            { name: 'jurisdiction', type: 'text' },
+          ],
+        },
+        { name: 'ipAddress', type: 'text' },
+        { name: 'userAgent', type: 'text' },
+        {
+          name: 'recordedAt',
+          type: 'date',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'marketingOptIn',
+          type: 'checkbox',
+          defaultValue: false,
+          label: 'Marketing Emails Opt-In (Clickwrap)',
         },
       ],
     },
