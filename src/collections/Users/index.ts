@@ -283,6 +283,19 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      name: 'subscriptionPlan',
+      type: 'select',
+      options: [
+        { label: 'Monthly', value: 'monthly' },
+        { label: 'Annual', value: 'annual' },
+        { label: 'Lifetime', value: 'lifetime' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Billing cadence for web (Stripe) subscriptions',
+      },
+    },
+    {
       name: 'trialStartDate',
       type: 'date',
       admin: {
