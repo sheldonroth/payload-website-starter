@@ -50,6 +50,7 @@ import { NotificationCampaigns } from './collections/NotificationCampaigns'
 import { NotificationSends } from './collections/NotificationSends'
 import { FeatureFlagCache } from './collections/FeatureFlagCache'
 import { ManufacturerDisputes } from './collections/ManufacturerDisputes'
+import { NewsletterSubscribers } from './collections/NewsletterSubscribers'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -335,7 +336,7 @@ export default buildConfig({
     // Always include migrations for production builds
     prodMigrations: migrations,
   }),
-  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments, FeatureFlagCache, ManufacturerDisputes],
+  collections: [Pages, Posts, Products, Articles, Videos, Media, Categories, InvestigationPolls, SponsoredTestRequests, VerdictRules, AuditLog, AdminAuditLogs, Users, PriceHistory, Brands, RegulatoryChanges, UserSubmissions, DeviceFingerprints, ProductUnlocks, TrendingNews, ProductVotes, BountyCategories, PushTokens, Feedback, Referrals, ReferralPayouts, GeneratedContent, DailyDiscoveries, EmailTemplates, EmailSends, NotificationTemplates, NotificationCampaigns, NotificationSends, ContributorProfiles, MarketIntelligence, BrandAnalytics, BrandUsers, SearchQueries, PaywallVariants, UserSegments, FeatureFlagCache, ManufacturerDisputes, NewsletterSubscribers],
   cors: [
     // Main website
     'https://www.theproductreport.org',
